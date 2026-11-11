@@ -19,6 +19,12 @@ services:
       - ampd-data:/data
     # chrome is hungry; give it room (Railway/Render: set the same in their UI)
     mem_limit: 1g
+    # The image's HEALTHCHECK (see Dockerfile) polls /health and marks the
+    # container unhealthy when the API stops answering. `restart: unless-stopped`
+    # alone does not act on unhealthy state — for self-healing on a VPS, either
+    # run willfarrell/autoheal as a second container, or (compose) rely on the
+    # watchdog inside ampd to recover the renderer and keep this for crash
+    # restarts only.
     restart: unless-stopped
 
 volumes:
