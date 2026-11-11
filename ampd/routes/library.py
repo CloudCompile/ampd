@@ -6,6 +6,7 @@ GET /api/library/{resource}/{id}/{relationship}  e.g. albums/{id}/tracks
 GET /api/library/search?term=                    library-wide search
 GET /api/library/recently-added                  most recent additions
 """
+import time
 import urllib.parse
 
 from fastapi import APIRouter, HTTPException
@@ -36,6 +37,32 @@ def playlist_tracks(playlist_id: str):
     NOTE: declared before the generic routes so it wins the match."""
     try:
         return {"tracks": mk.playlist_tracks(playlist_id)}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.get("/export")
+def export_library(songs_limit: int = 100000):
+    """Full library dump as JSON — every song + every playlist (with track
+    ids). Slow by design: walks the entire library (~100 s per 9k songs).
+    Point a cron at this for backups; the output is a complete restore
+    reference (ids) if the library is ever lost."""
+    try:
+        songs = mk.paginated("/v1/me/library/songs?limit=100",
+                             lambda d: d.get("data", []))[:songs_limit]
+        playlists = mk.paginated("/v1/me/library/playlists?limit=100",
+                                 lambda d: d.get("data", []))
+        return {
+            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "song_count": len(songs),
+            "songs": [mk.song_row(s) for s in songs],
+            "playlist_count": len(playlists),
+            "playlists": [{"id": p["id"],
+                           "name": p.get("attributes", {}).get("name"),
+                           "tracks": [mk.song_row(t) for t in
+                                      mk.playlist_tracks(p["id"])]}
+                          for p in playlists],
+        }
     except BrowserError as e:
         raise HTTPException(502, str(e))
 

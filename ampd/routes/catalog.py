@@ -1,8 +1,11 @@
 """Catalog surface: Apple Music's public side — search, browse, charts,
 albums/artists/playlists and their relationships."""
+import re
 import urllib.parse
+import html
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
 
 from .. import musickit as mk
 from ..browser import BrowserError
@@ -31,6 +34,75 @@ def catalog_search(term: str, types: str = "songs,albums,artists,playlists",
             out[kind] = [mk.item_row(t) for t in group.get("data", [])]
         return out
     except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.get("/hints")
+def hints(term: str, types: str = "songs,artists,albums,playlists"):
+    """Search suggestions (what the web player's autocomplete shows).
+    Returns flat rows: {term/title, id, kind}."""
+    if not term:
+        raise HTTPException(400, "term is required")
+    try:
+        data = mk.api_music(
+            f"/v1/catalog/{STOREFRONT}/search/suggestions?term={urllib.parse.quote(term)}"
+            f"&kinds=topResults&types={types}")
+        out = []
+        for s in data.get("results", {}).get("suggestions", []):
+            c = s.get("content") or {}
+            if not c:
+                continue
+            out.append({"id": c.get("id"), "kind": c.get("type"),
+                        "title": (c.get("attributes") or {}).get("name"),
+                        "artist": (c.get("attributes") or {}).get("artistName")})
+        return {"hints": out}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+def _ttml_time(s):
+    """TTML begin/end stamp -> ms. Handles '12.345s' and 'H:MM:SS.mmm'."""
+    if s.endswith("s"):
+        s = s[:-1]
+    parts = s.split(":")
+    try:
+        secs = float(parts[-1])
+        if len(parts) == 3:
+            secs += int(parts[0]) * 3600 + int(parts[1]) * 60
+        elif len(parts) == 2:
+            secs += int(parts[0]) * 60
+        return int(secs * 1000)
+    except ValueError:
+        return None
+
+
+def _parse_ttml(ttml):
+    """TTML -> [{timeMs, text}]. Enough regex for Apple's flavor of TTML."""
+    lines = []
+    for m in re.finditer(r'<p[^>]*begin="([^"]+)"[^>]*>(.*?)</p>', ttml, re.S):
+        text = re.sub(r"<[^>]+>", "", m.group(2))     # strip spans etc.
+        text = html.unescape(text).strip()
+        if text:
+            lines.append({"timeMs": _ttml_time(m.group(1)), "text": text})
+    return lines
+
+
+@router.get("/songs/{song_id}/lyrics")
+def song_lyrics(song_id: str, raw: bool = False):
+    """Synced lyrics for a catalog song (Apple's TTML, parsed to lines).
+    `raw=1` returns the raw TTML document. Songs without lyrics -> 404."""
+    try:
+        data = mk.api_music(f"/v1/catalog/{STOREFRONT}/songs/{song_id}/lyrics")
+        attrs = (data.get("data") or [{}])[0].get("attributes", {})
+        ttml = attrs.get("ttml")
+        if not ttml:
+            raise HTTPException(404, "no lyrics for this song")
+        if raw:
+            return Response(content=ttml, media_type="application/xml")
+        return {"song_id": song_id, "lines": _parse_ttml(ttml)}
+    except BrowserError as e:
+        if "404" in str(e):
+            raise HTTPException(404, "no lyrics for this song")
         raise HTTPException(502, str(e))
 
 
