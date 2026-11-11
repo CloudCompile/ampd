@@ -1,0 +1,25 @@
+# VPS quickstart:
+#   docker compose up -d
+#   docker compose exec ampd python -m ampd.login   # needs a display — see README
+#   curl localhost:8188/health
+services:
+  ampd:
+    build: .
+    ports:
+      - "8188:8188"
+    environment:
+      # writes are OFF unless you flip this — same as the raw server
+      AMPD_ENABLE_WRITES: "0"
+      # set this before exposing beyond localhost:
+      # AMPD_API_KEY: "change-me"
+      # optional: attach to an existing chrome instead of launching one
+      # AMPD_CDP_URL: "http://host.docker.internal:9222"
+      # AMPD_AUTO_CHROME: "0"
+    volumes:
+      - ampd-data:/data
+    # chrome is hungry; give it room (Railway/Render: set the same in their UI)
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  ampd-data:

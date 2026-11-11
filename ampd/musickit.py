@@ -45,12 +45,20 @@ def raw_api(path, method="GET", body=None, timeout=60):
 # ---------------------------------------------------------------- library
 
 def paginated(first_path, extract):
-    """Walk Apple's paging (`next` links) and concatenate extracted items."""
+    """Walk Apple's paging (`next` links) and concatenate extracted items.
+    NOTE: Apple's `next` links drop the `limit` param (defaulting to 25/page)
+    — re-apply the original limit so big libraries don't take 4x the calls."""
+    import re as _re
+    m = _re.search(r"[?&]limit=(\d+)", first_path)
+    limit = m.group(1) if m else None
     out, path, guard = [], first_path, 0
-    while path and guard < 50:
+    while path and guard < 1000:
         data = api_music(path if path.startswith("/") else "/" + path)
         out.extend(extract(data))
         nxt = data.get("next")
+        if nxt and limit and "limit=" not in nxt:
+            sep = "&" if "?" in nxt else "?"
+            nxt = f"{nxt}{sep}limit={limit}"
         path = nxt if nxt and nxt.startswith("/") else ("/" + nxt if nxt else None)
         guard += 1
     return out
@@ -102,12 +110,10 @@ def playlist_tracks(playlist_id):
 
 
 def find_library_playlist(name):
-    """Find a library playlist by (case-insensitive) name."""
-    hits = paginated(f"/v1/me/library/playlists?limit=100&match=/^{_re_quote(name)}$/i",
-                     lambda d: d.get("data", []))
-    if not hits:
-        # match= filter is unreliable for library; fall back to a full scan
-        hits = paginated("/v1/me/library/playlists?limit=100", lambda d: d.get("data", []))
+    """Find a library playlist by (case-insensitive) name.
+    NOTE: no `match=` param — it's a MusicKit-client-only extension; the raw
+    amp-api rejects it. Filter locally instead."""
+    hits = paginated("/v1/me/library/playlists?limit=100", lambda d: d.get("data", []))
     for pl in hits:
         if (pl.get("attributes", {}).get("name") or "").lower() == name.lower():
             return pl["id"]
@@ -289,13 +295,28 @@ def playback_command(cmd):
 def now_playing():
     return browser.eval("""(() => {
       const mk = MusicKit.getInstance();
-      const item = mk._queue && mk._queue.nowPlayingItem;
+      // mk.nowPlayingItem is the public, reliable source (the private queue
+      // internals move around between builds). Fall back to the queue probe.
+      let item = mk.nowPlayingItem;
+      if (!item && mk._playbackController && mk._playbackController._queue) {
+        const q = mk._playbackController._queue;
+        const cur = q._queueItems && q._queueItems[q._nextPlayableItemIndex];
+        item = cur && (cur.item || cur);
+      }
+      const art = item && item.attributes && item.attributes.artwork;
       return {
         isPlaying: !!mk.isPlaying,
-        title: item ? item.title : null,
+        state: mk.playbackState,
+        title: item ? (item.title || item.attributes?.name) : null,
         artist: item ? item.artistName : null,
-        album: item ? item.albumName : null,
-        durationMs: item ? item.playbackDurationMillis : null,
+        album: item ? (item.albumName || item.attributes?.albumName) : null,
+        durationMs: item ? (item.playbackDurationMillis ||
+                            item.attributes?.durationInMillis) : null,
+        artworkUrl: art ? art.url.replace('{w}', '600').replace('{h}', '600') : null,
+        progress: typeof mk.currentPlaybackProgress === 'number'
+                  ? mk.currentPlaybackProgress : null,
+        elapsedMs: mk.currentPlaybackTime != null
+                   ? Math.round(mk.currentPlaybackTime * 1000) : null,
       };
     })()""", timeout=15)
 
