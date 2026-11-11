@@ -16,16 +16,13 @@ def _j(value):
 # ---------------------------------------------------------------- primitives
 
 def api_music(path, timeout=90):
-    """GET via MusicKit's own client (handles auth + paging metadata)."""
-    data = browser.eval(
-        f"""(async () => {{
-          const inst = MusicKit.getInstance();
-          const res = await inst.api.music({_j(path)});
-          return res.json;
-        }})()""", timeout=timeout)
-    if isinstance(data, dict) and data.get("errors"):
-        raise BrowserError(f"apple api: {data['errors'][0].get('detail', data['errors'][0])}")
-    return data
+    """GET any me/catalog path with tokens injected. Uses raw fetch instead of
+    MusicKit's api.music because the latter memoizes responses — reads after
+    mutations would return stale data."""
+    res = raw_api(path, method="GET", timeout=timeout)
+    if res["status"] != 200:
+        raise BrowserError(f"apple api: HTTP {res['status']} — {res['body'][:150]}")
+    return json.loads(res["body"])
 
 
 def raw_api(path, method="GET", body=None, timeout=60):
@@ -150,8 +147,120 @@ def set_favorite(kind, resource_id, favorited):
           }});
           return r.status;
         }})()""", timeout=30)
-    if res not in (200, 204):
+    if res not in (200, 201, 202, 204):
         raise BrowserError(f"favorites {method} -> HTTP {res}")
+
+
+# ---------------------------------------------------------------- ratings
+
+def rate_song(song_id, like):
+    """like=True -> PUT value 1; like=None -> DELETE (clear).
+    NOTE: this endpoint only accepts value 1 (like) in practice — a dislike
+    value is accepted but stores as 1, so it is not exposed."""
+    if like is None:
+        res = raw_api(f"/v1/me/ratings/songs/{song_id}", method="DELETE")
+    else:
+        res = raw_api(f"/v1/me/ratings/songs/{song_id}", method="PUT",
+                      body={"type": "ratings", "attributes": {"value": 1}})
+    if res["status"] not in (200, 204):
+        raise BrowserError(f"rating -> HTTP {res['status']}: {res['body'][:120]}")
+    return res["status"]
+
+
+def get_rating(song_id):
+    res = raw_api(f"/v1/me/ratings/songs/{song_id}", method="GET")
+    if res["status"] == 404:
+        return None
+    if res["status"] != 200:
+        raise BrowserError(f"rating GET -> HTTP {res['status']}")
+    return json.loads(res["body"])["data"][0]["attributes"].get("value")
+
+
+# ---------------------------------------------------------------- library adds
+
+def library_add(catalog_ids):
+    """Add catalog songs to the library. Returns 202 (async!) — Apple applies
+    it a beat later; verify by listing."""
+    res = raw_api(f"/v1/me/library?ids[songs]={','.join(catalog_ids)}", method="POST")
+    if res["status"] not in (200, 202):
+        raise BrowserError(f"library add -> HTTP {res['status']}: {res['body'][:120]}")
+    return res["status"]
+
+
+def library_remove(library_song_ids):
+    """Remove songs from the library (NOT the same as unfavoriting!)."""
+    out = []
+    for lid in library_song_ids:
+        res = raw_api(f"/v1/me/library/songs/{lid}", method="DELETE")
+        if res["status"] != 204:
+            raise BrowserError(f"library remove {lid} -> HTTP {res['status']}")
+        out.append(lid)
+    return out
+
+
+# ---------------------------------------------------------------- playlists
+
+def playlist_create(name, description=""):
+    body = {"attributes": {"name": name, "description": description},
+            "relationships": {"tracks": {"data": []}}}
+    res = raw_api("/v1/me/library/playlists", method="POST", body=body)
+    if res["status"] != 201:
+        raise BrowserError(f"playlist create -> HTTP {res['status']}: {res['body'][:150]}")
+    return json.loads(res["body"])["data"][0]["id"]
+
+
+def playlist_add_tracks(playlist_id, catalog_ids):
+    """Append catalog songs (auto-wrapped into the library by Apple)."""
+    res = raw_api(f"/v1/me/library/playlists/{playlist_id}/tracks", method="POST",
+                  body={"data": [{"id": cid, "type": "songs"} for cid in catalog_ids]})
+    if res["status"] not in (200, 204):
+        raise BrowserError(f"playlist add -> HTTP {res['status']}: {res['body'][:150]}")
+    return res["status"]
+
+
+def playlist_set_tracks(playlist_id, library_ids):
+    """REPLACE the playlist's track list, in the given order.
+    This one call covers reorder (same list, new order) and removal
+    (omit tracks) — there is no separate delete-track endpoint that works;
+    DELETE .../tracks always 400s ('No mode supplied')."""
+    res = raw_api(f"/v1/me/library/playlists/{playlist_id}/tracks", method="PUT",
+                  body={"data": [{"id": lid, "type": "library-songs"}
+                                 for lid in library_ids]})
+    if res["status"] not in (200, 204):
+        raise BrowserError(f"playlist set -> HTTP {res['status']}: {res['body'][:150]}")
+    return res["status"]
+
+
+def playlist_rename(playlist_id, name=None, description=None):
+    attrs = {}
+    if name is not None:
+        attrs["name"] = name
+    if description is not None:
+        attrs["description"] = description
+    res = raw_api(f"/v1/me/library/playlists/{playlist_id}", method="PATCH",
+                  body={"attributes": attrs})
+    if res["status"] not in (200, 204):
+        raise BrowserError(f"playlist rename -> HTTP {res['status']}: {res['body'][:150]}")
+    return res["status"]
+
+
+def playlist_delete(playlist_id):
+    res = raw_api(f"/v1/me/library/playlists/{playlist_id}", method="DELETE")
+    if res["status"] != 204:
+        raise BrowserError(f"playlist delete -> HTTP {res['status']}")
+    return res["status"]
+
+
+# ---------------------------------------------------------------- queue
+
+def queue_add(catalog_id, play_next=False):
+    fn = "playNext" if play_next else "playLater"
+    browser.eval(
+        f"""(async () => {{
+          const mk = MusicKit.getInstance();
+          await mk.{fn}({{songs: [{_j(catalog_id)}]}});
+          return true;
+        }})()""", timeout=30)
 
 
 # ---------------------------------------------------------------- playback
@@ -204,9 +313,12 @@ def play_song(catalog_id):
 def queue():
     return browser.eval("""(() => {
       const mk = MusicKit.getInstance();
-      const q = mk._queue || {};
-      return (q._items || q.items || []).map(t => ({
-        id: t.id, title: t.title, artist: t.artistName}));
+      const q = mk._playbackController && mk._playbackController._queue;
+      const items = q ? (q._queueItems || []) : [];
+      return items.map(e => {
+        const t = e.item || e;
+        return {id: t.id, title: t.title, artist: t.artistName, kind: t.kind};
+      });
     })()""", timeout=15)
 
 
