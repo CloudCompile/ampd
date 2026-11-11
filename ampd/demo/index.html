@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- ampd demo — a minimal custom UI built entirely on the public API.
+     Live state via EventSource /api/stream; actions via plain fetch calls.
+     This is the whole point of the streaming API: ~100 lines and you have
+     a remote control for your Apple Music account. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ampd demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font: 15px/1.4 system-ui, sans-serif; background: #131316; color: #eee;
+    display: grid; place-items: center; min-height: 100vh;
+  }
+  .card {
+    width: min(420px, 92vw); background: #1d1d21; border-radius: 16px;
+    padding: 22px; box-shadow: 0 8px 40px #0008;
+  }
+  .art {
+    width: 100%; aspect-ratio: 1; border-radius: 10px; background: #26262b;
+    object-fit: cover; display: block;
+  }
+  .art.empty::after { content: '♫'; display: grid; place-items: center;
+    height: 100%; font-size: 72px; color: #3a3a40; }
+  h1 { font-size: 19px; margin: 14px 0 2px; white-space: nowrap;
+       overflow: hidden; text-overflow: ellipsis; }
+  .by { color: #9a9aa2; font-size: 14px; white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis; }
+  .bar { height: 5px; background: #2c2c31; border-radius: 3px; margin: 14px 0 4px; }
+  .bar > div { height: 100%; width: 0; background: #fa4d56; border-radius: 3px; }
+  .times { display: flex; justify-content: space-between; color: #77777f;
+           font-size: 11px; font-variant-numeric: tabular-nums; }
+  .controls { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  button {
+    background: #2c2c31; color: #eee; border: 0; border-radius: 10px;
+    padding: 10px 14px; font-size: 15px; cursor: pointer;
+  }
+  button:hover { background: #3a3a41; }
+  .big { flex: 1; padding: 12px; font-size: 17px; }
+  input[type=range] { flex: 1; accent-color: #fa4d56; }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .state { font-size: 11px; color: #77777f; }
+  .state b { color: #4ade80; }
+  #queue { margin-top: 14px; max-height: 180px; overflow-y: auto;
+           font-size: 13px; color: #b9b9c0; }
+  #queue div { padding: 4px 6px; border-radius: 6px; }
+  #queue div.now { background: #2a2a30; color: #fff; }
+  .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+         color: #66666e; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="art" class="art"></div>
+  <h1 id="title">—</h1>
+  <div class="by" id="artist">&nbsp;</div>
+
+  <div class="bar"><div id="fill"></div></div>
+  <div class="times"><span id="elapsed">0:00</span><span id="dur">0:00</span></div>
+
+  <div class="controls">
+    <button id="prev" title="previous">⏮</button>
+    <button id="play" class="big" title="play/pause">▶</button>
+    <button id="next" title="next">⏭</button>
+  </div>
+  <div class="row">
+    <span class="state">● <b id="link">live</b></span>
+    <input type="range" id="vol" min="0" max="1" step="0.01">
+  </div>
+
+  <div class="lbl">queue</div>
+  <div id="queue"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = ms => { if (ms == null) return '0:00';
+  const s = Math.round(ms/1000);
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+
+let playing = false;
+
+function render(d) {
+  if (d.title != null) {
+    $('title').textContent = d.title || '—';
+    $('artist').textContent = [d.artist, d.album].filter(Boolean).join(' — ');
+    $('art').style.backgroundImage = d.artworkUrl ? `url(${d.artworkUrl})` : 'none';
+    $('art').style.backgroundSize = 'cover';
+    $('dur').textContent = fmt(d.durationMs);
+  }
+  playing = !!d.isPlaying;
+  $('play').textContent = playing ? '⏸' : '▶';
+  if (d.elapsedMs != null && d.durationMs)
+    $('fill').style.width = (100 * d.elapsedMs / d.durationMs) + '%';
+  $('elapsed').textContent = fmt(d.elapsedMs);
+  if (d.volume != null) $('vol').value = d.volume;
+  if (d.queue) {
+    $('queue').innerHTML = d.queue.map(t =>
+      `<div class="${t.title === d.title ? 'now' : ''}">${t.title || t.id}</div>`).join('');
+  }
+}
+
+async function api(path, method = 'POST') {
+  await fetch('/api/playback/' + path, { method });
+  if (method === 'GET') render(await (await fetch('/api/playback/' + path)).json());
+}
+
+$('play').onclick = () => api(playing ? 'pause' : 'play');
+$('next').onclick = () => api('next');
+$('prev').onclick = () => api('previous');
+$('vol').onchange = e => api('volume/' + e.target.value);
+setInterval(() => api('now-playing', 'GET'), 5000);   // keep progress fresh
+
+// live stream: one EventSource drives the whole UI
+function connect() {
+  const es = new EventSource('/api/stream');
+  es.addEventListener('snapshot', e => render(JSON.parse(e.data)));
+  es.addEventListener('update',   e => render(JSON.parse(e.data)));
+  es.onerror = () => {
+    $('link').textContent = 'reconnecting…';
+    $('link').style.color = '#f87171';
+    es.close(); setTimeout(connect, 2000);
+  };
+  es.onopen = () => { $('link').textContent = 'live'; $('link').style.color = '#4ade80'; };
+}
+connect();
+</script>
+</body>
+</html>

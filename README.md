@@ -105,6 +105,25 @@ Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 Every sweep returns a PLAN unless `execute=1`. A full library walk is
 ~100 s for a 9k-song library; sweep calls are slow by design.
 
+### Streaming — `/api/stream` (SSE) + `/demo`
+
+```
+GET /api/stream        # text/event-stream
+  event: snapshot      # full player state on connect
+  event: update        # every change: play/pause, track, ~1/s progress,
+                       # queue changes, shuffle/repeat, volume
+```
+
+One `EventSource` drives a whole custom UI — no polling loops. Every event
+carries a complete mini-snapshot (title, artist, album, art, playhead,
+volume, shuffle/repeat), so clients are dumb renderers.
+
+**A working demo ships at `/demo`** — a single-file remote control
+(now-playing card, transport, volume, queue) built on nothing but the
+public API. ~100 lines of HTML/JS: use it, or steal it as a starting point
+for your own UI. It stays readable when `AMPD_API_KEY` is set via
+`/demo?api_key=…` and `/api/stream?api_key=…`.
+
 ### The escape hatch
 
 ```
@@ -207,6 +226,8 @@ have to rediscover them:
       `mk.nowPlayingItem` (the web player's MusicKit exposes it publicly)
 - [x] library sweeps: dedupe, batch-rate, never-played report — dry-run by default
 - [x] docker packaging + deploy guides (VPS/Railway/fly/Render)
+- [x] streaming API (`/api/stream`, SSE) + demo player UI at `/demo` —
+      custom front-ends are now a first-class use case
 
 ## Deploying
 

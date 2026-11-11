@@ -321,6 +321,78 @@ def now_playing():
     })()""", timeout=15)
 
 
+# ---------------------------------------------------------------- streaming
+
+STREAM_HOOK = """(() => {
+  if (window.__ampdHooked) return true;
+  const mk = MusicKit.getInstance();
+  window.__ampdBuf = [];
+  window.__ampdSeq = 0;
+  window.__ampdLast = 0;
+  const push = (ev) => {
+    const now = Date.now();
+    // progress fires constantly while playing — throttle to ~1/s
+    if (ev === 'playbackProgressDidChange' && now - window.__ampdLast < 950) return;
+    window.__ampdLast = now;
+    const item = mk.nowPlayingItem || {};
+    const attrs = item.attributes || {};
+    const art = attrs.artwork || {};
+    window.__ampdBuf.push({
+      seq: ++window.__ampdSeq, ev, ts: now,
+      isPlaying: !!mk.isPlaying, state: mk.playbackState,
+      title: item.title || attrs.name || null,
+      artist: item.artistName || null,
+      album: item.albumName || attrs.albumName || null,
+      id: item.id || null,
+      durationMs: item.playbackDurationMillis || attrs.durationInMillis || null,
+      elapsedMs: mk.currentPlaybackTime != null
+                 ? Math.round(mk.currentPlaybackTime * 1000) : null,
+      progress: typeof mk.currentPlaybackProgress === 'number'
+                ? mk.currentPlaybackProgress : null,
+      volume: typeof mk.volume === 'number' ? mk.volume : null,
+      shuffle: mk.shuffle ?? null, repeat: mk.repeatMode ?? null,
+      artworkUrl: art && art.url
+                  ? art.url.replace('{w}', '600').replace('{h}', '600') : null,
+    });
+    if (window.__ampdBuf.length > 300)
+      window.__ampdBuf.splice(0, window.__ampdBuf.length - 300);
+  };
+  for (const e of ['playbackStateDidChange', 'nowPlayingItemDidChange',
+                   'queueItemsDidChange', 'playbackProgressDidChange',
+                   'shuffleModeDidChange', 'repeatModeDidChange']) {
+    mk.addEventListener(e, () => push(e));
+  }
+  // headless/background tabs throttle MusicKit's own progress events to
+  // nearly nothing — keep a steady ~5s tick so stream clients see the
+  // playhead move even when the tab isn't firing
+  setInterval(() => { if (mk.isPlaying) push('playbackProgressDidChange'); }, 5000);
+  window.__ampdHooked = true;
+  return true;
+})()"""
+
+
+def install_stream_hook():
+    browser.eval(STREAM_HOOK, timeout=15)
+
+
+def drain_stream(after_seq=0):
+    """Buffered player events with seq > after_seq (oldest first)."""
+    return browser.eval("""(() => {
+      const buf = window.__ampdBuf || [];
+      const after = arguments_after === undefined ? 0 : arguments_after;
+      return buf.filter(e => e.seq > after);
+    })()""".replace("arguments_after", str(after_seq)), timeout=15)
+
+
+def snapshot():
+    """Full player state — the first thing a stream client gets."""
+    st = playback_settings()
+    np = now_playing()
+    st.update(np)
+    st["queue"] = queue()
+    return st
+
+
 def play_song(catalog_id):
     browser.eval(
         f"""(async () => {{
