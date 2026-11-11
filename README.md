@@ -92,6 +92,19 @@ Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 | `GET /settings` · `GET /volume` | shuffle / repeat / volume / state |
 | `POST /volume/{0..1}` · `POST /shuffle/{on,off}` · `POST /repeat/{0,1,2}` | set them |
 
+### Sweeps — `/api/write/sweeps/…` (batch ops, dry-run by default)
+
+| Endpoint | What it does |
+|---|---|
+| `GET /sweeps/dedupe` | plan: duplicate library rows (same catalog id or same name+artist+duration) |
+| `POST /sweeps/dedupe?execute=1` | remove all-but-first row of each dup group |
+| `GET /sweeps/rate?artist=&album=&limit=` | plan: which songs a batch-heart would touch |
+| `POST /sweeps/rate?artist=creo&execute=1` | heart them (skips already-hearted; never clears) |
+| `GET /sweeps/never-played` | read-only report (Apple's API doesn't expose play counts — flagged when so) |
+
+Every sweep returns a PLAN unless `execute=1`. A full library walk is
+~100 s for a 9k-song library; sweep calls are slow by design.
+
 ### The escape hatch
 
 ```
@@ -160,10 +173,24 @@ have to rediscover them:
 * **Ratings: like or nothing.** `PUT /v1/me/ratings/songs/{id}` with
   `{"value": 1}` = like; `DELETE` clears. A dislike value is *accepted*
   but silently stores as 1 — so ampd doesn't expose it.
+* **A heart IS a rating.** Favoriting a song is just `value: 1` on the
+  ratings endpoint — so `DELETE` on a rating *removes a heart the user
+  set*. Never clear a rating "to verify"; read the prior value first.
+  (This bit us once: a test cleared a pre-existing favorite.)
+* **No favorites sync needed.** Apple auto-collects hearts into a
+  "Favorite Songs" library playlist within seconds of hearting, and
+  un-hearts leave just as fast. ampd only reads it.
 * **MusicKit memoizes `api.music` GETs** — a read right after a mutation
   returns the stale cached response, and cache-busting with `_=` gets
   rejected ("Parameter '_' is not allowed"). ampd reads via raw
   token-injected fetches instead.
+* **Apple's `next` links drop the `limit` param.** Follow them as-is and
+  every page after the first silently shrinks to 25 rows — and a naive
+  page cap makes you believe the library ends long before it does
+  (ampd's author thought 1,325 songs; the truth was 9,045). ampd
+  re-applies the original limit on every page.
+* **`match=` is a MusicKit-client-only extension** — the raw amp-api
+  rejects it (400 "Parameter 'match' is not allowed"). Filter locally.
 * **A favorite toggle for songs without a catalog page** (odd uploads /
   region-blocked entries) is only reachable through the library-keyed form.
 * **Leaked tabs zombify Chrome.** Dozens of automation tabs → renderers stop
@@ -176,11 +203,54 @@ have to rediscover them:
 - [x] write ops: favorites, ratings (like/clear), library add/remove,
       playlist create/add/reorder/remove/rename/delete, queue
       play-next/play-later — all validated live
-- [ ] library sweeps (batch re-rating, dedupe) — overnight jobs, behind the writes flag
-- [ ] now-playing metadata (transport state works; the web player's custom
-      MusicKit build keeps the queue internals private — needs a hook into its
-      playback-state events)
-- [ ] docker packaging
+- [x] now-playing metadata: full title/artist/album/artwork/progress via
+      `mk.nowPlayingItem` (the web player's MusicKit exposes it publicly)
+- [x] library sweeps: dedupe, batch-rate, never-played report — dry-run by default
+- [x] docker packaging + deploy guides (VPS/Railway/fly/Render)
+
+## Deploying
+
+ampd is a long-lived process driving a real, logged-in Chrome — that rules
+out serverless (Vercel, Lambda, Cloud Run *jobs*): there is no way to keep a
+persistent browser session there. Everything else works:
+
+### VPS (the reference setup)
+
+```bash
+docker compose up -d --build
+curl localhost:8188/health   # -> {"status":"ok","browser":"authorized"}
+```
+
+The Chrome profile lives on the `ampd-data` volume. To sign in, make a
+profile on any machine with a screen, then drop it into the volume:
+
+```bash
+# on any desktop with a screen, from a source checkout:
+AMPD_PROFILE=$HOME/ampd-profile python -m ampd.login   # sign in, press Enter
+# then, from the compose project on the server:
+tar -C $HOME/ampd-profile -c . | docker compose exec -T ampd tar -x -C /data/.config/ampd/chrome-profile
+```
+
+(The profile is just a Chrome user-data-dir — copying it copies the session.
+After a re-login once, the headless server reuses it until Apple logs it out,
+which is rare.)
+
+### Railway / fly.io
+
+Same image, same volume mount at `/data` (Railway: "Volumes", fly:
+`fly volumes create`). Set `AMPD_API_KEY` before exposing publicly.
+
+### Render
+
+Works, but needs a **paid persistent disk** mounted at `/data` — the free
+tier's ephemeral filesystem wipes your Apple session on every deploy.
+
+### Tunnels (optional)
+
+A tunnel is just a reverse proxy in front of port 8188 — nothing in ampd
+depends on it. If you want one, run cloudflared as a second container with
+`--url http://ampd:8188` and set `AMPD_API_KEY` first. ampd itself never
+needs to know.
 
 ## License
 
