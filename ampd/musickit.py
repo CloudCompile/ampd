@@ -17,12 +17,15 @@ def _j(value):
 
 def api_music(path, timeout=90):
     """GET via MusicKit's own client (handles auth + paging metadata)."""
-    return browser.eval(
+    data = browser.eval(
         f"""(async () => {{
           const inst = MusicKit.getInstance();
           const res = await inst.api.music({_j(path)});
           return res.json;
         }})()""", timeout=timeout)
+    if isinstance(data, dict) and data.get("errors"):
+        raise BrowserError(f"apple api: {data['errors'][0].get('detail', data['errors'][0])}")
+    return data
 
 
 def raw_api(path, method="GET", body=None, timeout=60):
@@ -74,6 +77,24 @@ def song_row(t):
         "artwork": art or None,
         "duration_ms": attrs.get("durationInMillis"),
     }
+
+
+def item_row(t):
+    """Normalize ANY library/catalog resource (song, album, artist, playlist…).
+    Normalized top-level fields plus the raw attributes blob — nothing hidden."""
+    row = song_row(t)
+    attrs = t.get("attributes", {}) or {}
+    art = (attrs.get("artwork") or {}).get("url", "")
+    row.update({
+        "type": t.get("type"),
+        "artwork": art.replace("{w}", "600").replace("{h}", "600") if art else None,
+        "track_number": attrs.get("trackNumber"),
+        "play_count": attrs.get("playCount"),
+        "release_date": attrs.get("releaseDate"),
+        "genres": attrs.get("genreNames"),
+        "attributes": attrs,   # full, unfiltered — every field Apple exposes
+    })
+    return row
 
 
 def playlist_tracks(playlist_id):
@@ -187,3 +208,30 @@ def queue():
       return (q._items || q.items || []).map(t => ({
         id: t.id, title: t.title, artist: t.artistName}));
     })()""", timeout=15)
+
+
+def playback_property(name):
+    return browser.eval(f"(() => MusicKit.getInstance()[{_j(name)}])()", timeout=10)
+
+
+def set_playback_property(name, value):
+    browser.eval(f"(() => {{ MusicKit.getInstance()[{_j(name)}] = {_j(value)}; }})()", timeout=10)
+
+
+def playback_settings():
+    return browser.eval("""(() => {
+      const mk = MusicKit.getInstance();
+      return {shuffle: mk.shuffle ?? null, repeat: mk.repeatMode ?? null,
+              volume: typeof mk.volume === 'number' ? mk.volume : null,
+              isPlaying: !!mk.isPlaying};
+    })()""", timeout=10)
+
+
+def play_collection(kind, resource_id):
+    browser.eval(
+        f"""(async () => {{
+          const mk = MusicKit.getInstance();
+          await mk.setQueue({{{_j(kind)}: {_j(resource_id)}}});
+          await mk.play();
+          return true;
+        }})()""", timeout=30)

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import config
 from .browser import browser, BrowserError
-from .routes import library, favorites, playback, passthrough
+from .routes import library, favorites, playback, passthrough, catalog, personal, writes
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -39,6 +39,9 @@ def health():
 
 
 app.include_router(library.router, prefix="/api")
+app.include_router(catalog.router, prefix="/api")
+app.include_router(personal.router, prefix="/api")
 app.include_router(favorites.router, prefix="/api")
 app.include_router(playback.router, prefix="/api")
 app.include_router(passthrough.router, prefix="/api")
+app.include_router(writes.router, prefix="/api")
