@@ -1,5 +1,9 @@
 # ampd 🎧
 
+[![CI](https://github.com/CloudCompile/ampd/actions/workflows/ci.yml/badge.svg)](https://github.com/CloudCompile/ampd/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](requirements.txt)
+
 **A personal, self-hosted Apple Music API.** ampd drives your own logged-in
 Apple Music web player session through Chrome DevTools and exposes it as a
 clean local REST API — including corners of Apple's API that aren't officially

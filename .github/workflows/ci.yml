@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile every module
+        run: python -m compileall -q ampd tests
+
+      - name: Import smoke test (no Chrome needed at import time)
+        run: |
+          python - <<'EOF'
+          from ampd.main import app
+
+          # newer FastAPI nests includes as _IncludedRouter objects; flatten
+          def flatten(routes, prefix=""):
+              paths = set()
+              for r in routes:
+                  if type(r).__name__ == "_IncludedRouter":
+                      p = getattr(r.include_context, "prefix", "") or ""
+                      paths |= flatten(r.original_router.routes, prefix + p)
+                  elif getattr(r, "methods", None):
+                      paths.add(prefix + r.path)
+              return paths
+
+          paths = flatten(app.routes)
+          assert len(paths) > 40, f"expected 40+ routes, got {len(paths)}"
+          for must in ("/api/library/export",
+                       "/api/catalog/songs/{song_id}/lyrics",
+                       "/api/audio/stream.mp3", "/api/stream", "/demo",
+                       "/api/write/sweeps/dedupe", "/api/playback/now-playing",
+                       "/api/favorites"):
+              assert must in paths, f"missing route: {must}"
+          print(f"app OK — {len(paths)} routes")
+
+          # no chrome connection happens without a request; ensure the
+          # lifespan-pulled pieces at least exist
+          from ampd.audio import broadcaster
+          from ampd.browser import browser
+          assert broadcaster is not None and browser is not None
+          print("singletons OK")
+          EOF
+
+      - name: Config defaults are safe
+        run: |
+          python - <<'EOF'
+          from ampd.config import config
+          assert config.enable_writes is False, "writes must default OFF"
+          assert config.audio_enabled is False, "audio must default OFF"
+          print("defaults OK — writes and audio ship disabled")
+          EOF
