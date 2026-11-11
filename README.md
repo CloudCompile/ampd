@@ -253,6 +253,13 @@ have to rediscover them:
 * **Leaked tabs zombify Chrome.** Dozens of automation tabs → renderers stop
   answering → evals hang for the full socket timeout. ampd reuses a single
   tab and closes sockets with a short timeout on purpose.
+* **A stalled renderer stalls evals.** Under heavy parallel load Apple's page
+  can stop answering `Runtime.evaluate` for ~60s (it recovers on its own).
+  ampd's CDP layer is built for that: reconnects are flat (never recursive —
+  a recursive reconnect once starved the whole thread pool, `/health` with
+  it), every eval is hard-bounded, lock waiters fast-fail with 502 instead of
+  queueing behind a zombie eval, and SSE clients ride out stalls with backoff
+  instead of dropping. Expect a burst of 502s, then full recovery — not a hang.
 
 ## Roadmap
 
