@@ -267,16 +267,19 @@ have to rediscover them:
 
 ## Roadmap
 
-- [x] library/catalog/personal read surface
-- [x] write ops: favorites, ratings (like/clear), library add/remove,
-      playlist create/add/reorder/remove/rename/delete, queue
-      play-next/play-later — all validated live
-- [x] now-playing metadata: full title/artist/album/artwork/progress via
-      `mk.nowPlayingItem` (the web player's MusicKit exposes it publicly)
-- [x] library sweeps: dedupe, batch-rate, never-played report — dry-run by default
-- [x] docker packaging + deploy guides (VPS/Railway/fly/Render)
-- [x] streaming API (`/api/stream`, SSE) + demo player UI at `/demo` —
-      custom front-ends are now a first-class use case
+Development happens in phases — see **[ROADMAP.md](ROADMAP.md)** for the full
+plan (effort- and priority-tagged, with non-goals stated honestly).
+
+* **v0.1 — shipped**: full read surface (library/catalog/personal/favorites,
+  lyrics, export), playback + queue, SSE state streaming, live audio
+  streaming, write ops with net-zero-tested sweeps, Docker + deploy guides,
+  live test suite, CI
+* **v0.2 — Bulletproof** (next): renderer watchdog, read cache + request
+  coalescing, healthchecks, metrics, ARM images
+* then **Memory** (backup/restore, local history) → **Typed API** (real
+  response models, generated clients) → **Listening experience** (PWA,
+  synced lyrics) → **Automation** (webhooks, watchers) → **Multi-user**
+  (scoped keys) → **1.0 Polish**
 
 ## Deploying
 
