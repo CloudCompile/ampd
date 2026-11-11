@@ -40,15 +40,39 @@ python -m ampd
 
 ## Endpoints
 
-### Library (read)
+### Library (read) — `/api/library/…`
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/library/playlists` | all playlists in your library |
-| `GET /api/library/playlists/{id}/tracks` | every track of a playlist (auto-paginated) |
-| `GET /api/library/songs?limit&offset` | library songs, one page |
-| `GET /api/library/recently-added` | recent library additions |
-| `GET /api/library/search-catalog?term=` | search the Apple Music catalog |
+| `GET /library/{resource}?limit&offset&term&extend` | list any resource: `songs`, `albums`, `artists`, `playlists`, `music-videos`, `stations` — fully paginated by the caller |
+| `GET /library/{resource}/{id}` | one item, **including its relationships** (e.g. an album's tracks) |
+| `GET /library/{resource}/{id}/{relationship}?limit&offset` | a relationship collection, e.g. `artists/{id}/albums` |
+| `GET /library/search?term=` | search *your* library (songs/albums/artists/playlists) |
+| `GET /library/recently-added?limit` | most recent additions |
+| `GET /library/playlists/{id}/tracks` | every track of a playlist (auto-paginated to the end) |
+
+Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
+`album`, `artwork` at 600×600, …) **and** carries Apple's full raw
+`attributes` blob, so nothing the API exposes is hidden.
+
+### Catalog (read) — `/api/catalog/…`
+
+| Endpoint | Description |
+|---|---|
+| `GET /catalog/search?term=&types=&limit` | multi-type catalog search (`songs,albums,artists,playlists,stations,curators,music-videos`) |
+| `GET /catalog/charts?types=&limit&genre` | top charts |
+| `GET /catalog/{resource}?ids=` | fetch items by id |
+| `GET /catalog/{resource}/{id}?extend=` | one item (`extend=tracks` inlines its content) |
+| `GET /catalog/{resource}/{id}/{relationship}` | e.g. `artists/{id}/albums` |
+
+### Personal — `/api/personal/…`
+
+| Endpoint | Description |
+|---|---|
+| `GET /personal/recommendations` | For You / Listen Now groups |
+| `GET /personal/heavy-rotation` | what you've had on repeat |
+| `GET /personal/recently-played` | recently played |
+| `GET /personal/made-for-you` | Apple's auto-generated mixes |
 
 ### Favorites
 
@@ -56,20 +80,17 @@ python -m ampd
 |---|---|
 | `GET /api/favorites` | every song in your auto-generated *Favorite Songs* playlist |
 
-Write operations (`POST/DELETE /api/favorites/{id}`) are **stubbed out by
-default** — they return `501` until you set `AMPD_ENABLE_WRITES=1`.
-
-### Playback
+### Playback — `/api/playback/…`
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/playback/now-playing` | what's playing |
-| `POST /api/playback/play\|pause\|toggle\|next\|previous` | transport controls |
-| `POST /api/playback/play-song/{catalog_id}` | play a catalog song |
-| `GET /api/playback/queue` | current queue |
-
-Playback works wherever Chrome has an audio device — run with `AMPD_HEADLESS=0`
-if you want to see (and hear) the player.
+| `GET /now-playing` | what's playing (transport state; metadata is best-effort) |
+| `POST /play\|pause\|toggle\|next\|previous` | transport controls |
+| `POST /play-song/{catalog_id}` | play a catalog song |
+| `POST /play-collection?kind=album\|playlist\|station&id=` | queue and play a whole collection |
+| `GET /queue` | current queue |
+| `GET /settings` · `GET /volume` | shuffle / repeat / volume / state |
+| `POST /volume/{0..1}` · `POST /shuffle/{on,off}` · `POST /repeat/{0,1,2}` | set them |
 
 ### The escape hatch
 
@@ -83,6 +104,16 @@ Any method, any path — if the web player can do it, this can too:
 ```bash
 curl 'http://127.0.0.1:8188/api/amp-api/v1/me/library/songs?limit=5'
 ```
+
+### Writes — `/api/write/…` (ALL disabled by default → `501`)
+
+`POST/DELETE /write/favorites/{id}` · `POST /write/library/add` ·
+`POST /write/playlists` · `POST/DELETE /write/playlists/{id}/tracks` ·
+`PATCH /write/playlists/{id}` · `DELETE /write/playlists/{id}` ·
+`PUT /write/ratings/songs/{id}`
+
+Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. The stubs
+are shaped after the calls we've validated by hand against a real account.
 
 ## Configuration (env vars)
 
@@ -120,7 +151,8 @@ have to rediscover them:
 
 ## Roadmap
 
-- [ ] enable write ops: favorites, playlist add/remove
+- [x] library/catalog/personal read surface
+- [ ] enable write ops: favorites, playlist add/remove, ratings
 - [ ] library sweeps (batch re-rating, dedupe) — overnight jobs, behind the writes flag
 - [ ] now-playing metadata (transport state works; the web player's custom
       MusicKit build keeps the queue internals private — needs a hook into its
