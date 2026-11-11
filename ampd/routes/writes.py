@@ -1,21 +1,26 @@
-"""Write operations — ALL stubbed until AMPD_ENABLE_WRITES=1.
+"""Write operations — ALL guarded behind AMPD_ENABLE_WRITES=1.
 
-These are the documented-and-undocumented mutations we've validated by hand
-(favorites toggling in both key flavors) plus the standard MusicKit library
-mutations. They ship disabled so the server can never touch your library by
-accident; enabling them is a single env var.
-
-NOTE: every parameter is optional *at the signature level* on purpose —
-the 501 must fire before FastAPI validation complains about missing args.
+Implementation notes from live validation against a real account:
+  * favorites: two key flavors — catalog songs use ids[songs], some library
+    tracks only respond to ids[library-songs]. A wrong-key DELETE returns
+    204 and does NOTHING, so callers should verify (GET /api/favorites).
+  * ratings: PUT value 1 = like; DELETE clears. Dislike is accepted but
+    stores as 1 — not exposed.
+  * playlist track removal AND reorder share one call: PUT the full
+    ordered library-id list (DELETE .../tracks always 400s).
+  * adding a catalog song to a library playlist auto-adds it to the library.
+  * library add is 202-async; give Apple a beat before verifying.
 """
 from fastapi import APIRouter, HTTPException
 
+from .. import musickit as mk
+from ..browser import BrowserError
 from ..config import config
 
 router = APIRouter(prefix="/write", tags=["writes (disabled by default)"])
 
 
-def _writes_disabled():
+def _guard():
     if not config.enable_writes:
         raise HTTPException(
             501,
@@ -24,56 +29,150 @@ def _writes_disabled():
             "AMPD_ENABLE_WRITES=1 in the environment.")
 
 
+# ---------------------------------------------------------------- favorites
+
 @router.post("/favorites/{song_id}")
 def favorite(song_id: str, library_key: bool = False):
     """Favorite (heart) a song. `library_key=true` for library-keyed tracks."""
-    _writes_disabled()
+    _guard()
+    try:
+        mk.set_favorite("library" if library_key else "catalog", song_id, True)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
 
 @router.delete("/favorites/{song_id}")
 def unfavorite(song_id: str, library_key: bool = False):
-    """Unfavorite a song."""
-    _writes_disabled()
+    """Unfavorite a song. Verify with GET /api/favorites — a wrong-key delete
+    returns success without doing anything."""
+    _guard()
+    try:
+        mk.set_favorite("library" if library_key else "catalog", song_id, False)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
+
+# ---------------------------------------------------------------- ratings
+
+@router.get("/ratings/songs/{song_id}")
+def get_rating(song_id: str):
+    """Current rating of a song: null = none, 1 = like."""
+    _guard()
+    try:
+        return {"song_id": song_id, "value": mk.get_rating(song_id)}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.put("/ratings/songs/{song_id}")
+def rate_song(song_id: str, rating: str = None):
+    """rating: 'like' or 'none'."""
+    _guard()
+    if rating not in ("like", "none"):
+        raise HTTPException(400, "rating must be 'like' or 'none' (dislike is "
+                                 "accepted by Apple but stores as like — not exposed)")
+    try:
+        mk.rate_song(song_id, True if rating == "like" else None)
+        return {"ok": True, "rating": rating}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+# ---------------------------------------------------------------- library
 
 @router.post("/library/add")
 def add_to_library(catalog_ids: list[str] = None):
-    """Add catalog resources to your library (POST /v1/me/library)."""
-    _writes_disabled()
+    """Add catalog songs to your library. Body is a bare JSON array of
+    catalog song ids. NOTE: 202-accepted (async on Apple's side); the
+    songs appear in the library a moment later."""
+    _guard()
+    if not catalog_ids:
+        raise HTTPException(400, "catalog_ids is required")
+    try:
+        status = mk.library_add(catalog_ids)
+        return {"ok": True, "status": status,
+                "note": "accepted asynchronously — verify via /api/library/songs"}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
+
+@router.delete("/library/{library_song_id}")
+def remove_from_library(library_song_id: str):
+    """Remove a song from your library by its library id (i.XXX).
+    This is NOT the same as unfavoriting. Destructive — no undo."""
+    _guard()
+    try:
+        mk.library_remove([library_song_id])
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+# ---------------------------------------------------------------- playlists
 
 @router.post("/playlists")
 def create_playlist(name: str = None, description: str = ""):
-    """Create a library playlist."""
-    _writes_disabled()
+    """Create a library playlist. Returns the new playlist id."""
+    _guard()
+    if not name:
+        raise HTTPException(400, "name is required")
+    try:
+        return {"ok": True, "playlist_id": mk.playlist_create(name, description)}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
 
 @router.post("/playlists/{playlist_id}/tracks")
 def add_tracks(playlist_id: str, track_ids: list[str] = None):
-    """Add tracks to a library playlist."""
-    _writes_disabled()
+    """Append catalog songs to a playlist (auto-adds them to the library).
+    Body is a bare JSON array of catalog song ids."""
+    _guard()
+    if not track_ids:
+        raise HTTPException(400, "track_ids is required")
+    try:
+        mk.playlist_add_tracks(playlist_id, track_ids)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
 
-@router.delete("/playlists/{playlist_id}/tracks")
-def remove_tracks(playlist_id: str, track_ids: list[str] = None):
-    """Remove tracks from a library playlist (the safe, idempotent way to
-    sweep a playlist — validated during a real 253-song trim)."""
-    _writes_disabled()
+@router.put("/playlists/{playlist_id}/tracks")
+def set_tracks(playlist_id: str, ordered_library_ids: list[str] = None):
+    """REPLACE the track list, in order. Body is a bare JSON array of
+    library-songs ids. This is both reorder and removal: send the full
+    list minus any song you want gone.
+    e.g.  curl -X PUT -d '["i.abc","i.def"]' /api/write/playlists/{pid}/tracks"""
+    _guard()
+    if ordered_library_ids is None:
+        raise HTTPException(400, "ordered_library_ids is required")
+    try:
+        mk.playlist_set_tracks(playlist_id, ordered_library_ids)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
 
 @router.patch("/playlists/{playlist_id}")
 def rename_playlist(playlist_id: str, name: str = None, description: str = None):
     """Rename / re-describe a library playlist."""
-    _writes_disabled()
+    _guard()
+    if name is None and description is None:
+        raise HTTPException(400, "name and/or description required")
+    try:
+        mk.playlist_rename(playlist_id, name, description)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
 
 
 @router.delete("/playlists/{playlist_id}")
 def delete_playlist(playlist_id: str):
-    """Delete a library playlist."""
-    _writes_disabled()
-
-
-@router.put("/ratings/songs/{song_id}")
-def rate_song(song_id: str, rating: str = None):
-    """rating: like | dislike | none (the classic star/heart ratings)."""
-    _writes_disabled()
+    """Delete a library playlist. Destructive — no undo."""
+    _guard()
+    try:
+        mk.playlist_delete(playlist_id)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))

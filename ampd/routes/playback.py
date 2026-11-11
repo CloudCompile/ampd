@@ -5,33 +5,12 @@ from ..browser import BrowserError
 
 router = APIRouter(prefix="/playback", tags=["playback"])
 
+# NOTE: specific routes MUST be declared before the generic /{command} route.
 
 @router.get("/now-playing")
 def now_playing():
     try:
         return mk.now_playing()
-    except BrowserError as e:
-        raise HTTPException(502, str(e))
-
-
-@router.post("/{command}")
-def command(command: str):
-    """play | pause | toggle | next | previous."""
-    if command not in ("play", "pause", "toggle", "next", "previous"):
-        raise HTTPException(404, f"unknown playback command {command!r}")
-    try:
-        mk.playback_command(command)
-        return {"ok": True}
-    except BrowserError as e:
-        raise HTTPException(502, str(e))
-
-
-@router.post("/play-song/{catalog_id}")
-def play_song(catalog_id: str):
-    """Start playing a catalog song by id (clears the queue)."""
-    try:
-        mk.play_song(catalog_id)
-        return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
 
@@ -65,7 +44,7 @@ def set_volume(value: float):
 
 @router.get("/settings")
 def settings():
-    """shuffle / repeat / volume in one shot."""
+    """shuffle / repeat / volume / playing state in one shot."""
     try:
         return mk.playback_settings()
     except BrowserError as e:
@@ -95,6 +74,16 @@ def repeat(mode: int):
         raise HTTPException(502, str(e))
 
 
+@router.post("/play-song/{catalog_id}")
+def play_song(catalog_id: str):
+    """Start playing a catalog song by id (clears the queue)."""
+    try:
+        mk.play_song(catalog_id)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
 @router.post("/play-collection")
 def play_collection(kind: str, id: str):
     """Queue a whole album/playlist/station and play it.
@@ -103,6 +92,38 @@ def play_collection(kind: str, id: str):
         raise HTTPException(400, "kind must be album, playlist, or station")
     try:
         mk.play_collection(kind, id)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.post("/play-next")
+def play_next(catalog_id: str):
+    """Insert a catalog song to play next."""
+    try:
+        mk.queue_add(catalog_id, play_next=True)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.post("/play-later")
+def play_later(catalog_id: str):
+    """Append a catalog song to play later."""
+    try:
+        mk.queue_add(catalog_id, play_next=False)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.post("/{command}")
+def command(command: str):
+    """play | pause | toggle | next | previous."""
+    if command not in ("play", "pause", "toggle", "next", "previous"):
+        raise HTTPException(404, f"unknown playback command {command!r}")
+    try:
+        mk.playback_command(command)
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))

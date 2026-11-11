@@ -107,13 +107,17 @@ curl 'http://127.0.0.1:8188/api/amp-api/v1/me/library/songs?limit=5'
 
 ### Writes — `/api/write/…` (ALL disabled by default → `501`)
 
-`POST/DELETE /write/favorites/{id}` · `POST /write/library/add` ·
-`POST /write/playlists` · `POST/DELETE /write/playlists/{id}/tracks` ·
-`PATCH /write/playlists/{id}` · `DELETE /write/playlists/{id}` ·
-`PUT /write/ratings/songs/{id}`
+`POST/DELETE /write/favorites/{id}?library_key=` · `GET/PUT /write/ratings/songs/{id}?rating=like|none` ·
+`POST /write/library/add` (body: bare JSON array of catalog ids) ·
+`DELETE /write/library/{library_song_id}` ·
+`POST /write/playlists?name=&description=` ·
+`POST /write/playlists/{id}/tracks` (body: catalog id array — auto-adds songs to your library) ·
+`PUT /write/playlists/{id}/tracks` (body: bare JSON array of **library** ids, full ordered
+list — this is both reorder and removal) ·
+`PATCH /write/playlists/{id}?name=&description=` · `DELETE /write/playlists/{id}`
 
-Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. The stubs
-are shaped after the calls we've validated by hand against a real account.
+Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. All shapes
+above were validated live against a real account.
 
 ## Configuration (env vars)
 
@@ -143,6 +147,23 @@ have to rediscover them:
 * **Library playlists paginate via `next` links**; the web UI's DOM, by
   contrast, is virtualized and will lie to any scraper that trusts what's
   rendered.
+* **Playlist track removal and reorder are one call.** `DELETE …/tracks`
+  always 400s ("No mode supplied" — nobody knows what mode is). Instead,
+  `PUT` the *entire* ordered library-id list: omitted tracks are removed,
+  a different order is a reorder. Catalog ids don't work here — only
+  `library-songs` ids.
+* **Adding a catalog song to a library playlist silently adds it to your
+  library.** Deleting the playlist does not undo that.
+* **Library adds are 202-async** — the song appears (and can create a
+  library-album row for its single) a few seconds later. Verify with a
+  retried read, not the response code.
+* **Ratings: like or nothing.** `PUT /v1/me/ratings/songs/{id}` with
+  `{"value": 1}` = like; `DELETE` clears. A dislike value is *accepted*
+  but silently stores as 1 — so ampd doesn't expose it.
+* **MusicKit memoizes `api.music` GETs** — a read right after a mutation
+  returns the stale cached response, and cache-busting with `_=` gets
+  rejected ("Parameter '_' is not allowed"). ampd reads via raw
+  token-injected fetches instead.
 * **A favorite toggle for songs without a catalog page** (odd uploads /
   region-blocked entries) is only reachable through the library-keyed form.
 * **Leaked tabs zombify Chrome.** Dozens of automation tabs → renderers stop
@@ -152,7 +173,9 @@ have to rediscover them:
 ## Roadmap
 
 - [x] library/catalog/personal read surface
-- [ ] enable write ops: favorites, playlist add/remove, ratings
+- [x] write ops: favorites, ratings (like/clear), library add/remove,
+      playlist create/add/reorder/remove/rename/delete, queue
+      play-next/play-later — all validated live
 - [ ] library sweeps (batch re-rating, dedupe) — overnight jobs, behind the writes flag
 - [ ] now-playing metadata (transport state works; the web player's custom
       MusicKit build keeps the queue internals private — needs a hook into its

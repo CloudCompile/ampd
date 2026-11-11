@@ -30,6 +30,28 @@ def _path(resource, limit, offset, term=None, extend=None):
     return f"/v1/me/library/{resource}?{q}"
 
 
+@router.get("/playlists/{playlist_id}/tracks")
+def playlist_tracks(playlist_id: str):
+    """Every track of a library playlist (auto-paginated to the end).
+    NOTE: declared before the generic routes so it wins the match."""
+    try:
+        return {"tracks": mk.playlist_tracks(playlist_id)}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+def _path(resource, limit, offset, term=None, extend=None):
+    if resource not in RESOURCES:
+        raise HTTPException(404, f"unknown library resource {resource!r}. "
+                                 f"Valid: {sorted(RESOURCES)}")
+    q = f"limit={min(limit, 100)}&offset={offset}"
+    if term:
+        q += "&term=" + urllib.parse.quote(term)
+    if extend:
+        q += "&extend=" + urllib.parse.quote(extend)
+    return f"/v1/me/library/{resource}?{q}"
+
+
 @router.get("/search")
 def library_search(term: str, limit: int = 25):
     """Search YOUR library across songs/albums/artists/playlists."""
@@ -101,14 +123,5 @@ def get_relationship(resource: str, resource_id: str, relationship: str,
             f"?limit={min(limit, 100)}&offset={offset}")
         return {"items": [mk.item_row(t) for t in data.get("data", [])],
                 "next": data.get("next")}
-    except BrowserError as e:
-        raise HTTPException(502, str(e))
-
-
-@router.get("/playlists/{playlist_id}/tracks")
-def playlist_tracks(playlist_id: str):
-    """Every track of a library playlist (auto-paginated to the end)."""
-    try:
-        return {"tracks": mk.playlist_tracks(playlist_id)}
     except BrowserError as e:
         raise HTTPException(502, str(e))
