@@ -110,6 +110,33 @@ def remove_from_library(library_song_id: str):
         raise HTTPException(502, str(e))
 
 
+@router.post("/library/add-albums")
+def add_albums_to_library(catalog_album_ids: list[str] = None):
+    """Add catalog albums (all their tracks) to your library.
+    Body: bare JSON array of catalog album ids. 202-async."""
+    _guard()
+    if not catalog_album_ids:
+        raise HTTPException(400, "catalog_album_ids is required")
+    try:
+        status = mk.library_add_albums(catalog_album_ids)
+        return {"ok": True, "status": status,
+                "note": "accepted asynchronously — verify via /api/library/albums"}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.delete("/library/albums/{library_album_id}")
+def remove_album_from_library(library_album_id: str):
+    """Remove a whole library album (l.XXX) — all its songs go too.
+    Destructive — no undo."""
+    _guard()
+    try:
+        mk.library_remove_album(library_album_id)
+        return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
 # ---------------------------------------------------------------- playlists
 
 @router.post("/playlists")

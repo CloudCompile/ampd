@@ -50,6 +50,7 @@ python -m ampd
 | `GET /library/search?term=` | search *your* library (songs/albums/artists/playlists) |
 | `GET /library/recently-added?limit` | most recent additions |
 | `GET /library/playlists/{id}/tracks` | every track of a playlist (auto-paginated to the end) |
+| `GET /library/export` | full backup: every song + every playlist with its tracks (~3 min for a 9k library) |
 
 Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 `album`, `artwork` at 600×600, …) **and** carries Apple's full raw
@@ -64,6 +65,8 @@ Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 | `GET /catalog/{resource}?ids=` | fetch items by id |
 | `GET /catalog/{resource}/{id}?extend=` | one item (`extend=tracks` inlines its content) |
 | `GET /catalog/{resource}/{id}/{relationship}` | e.g. `artists/{id}/albums` |
+| `GET /catalog/songs/{id}/lyrics?raw=` | synced lyrics, parsed to `[{timeMs, text}]` (or `raw=1` for the TTML) |
+| `GET /catalog/hints?term=&types=` | autocomplete suggestions (what the player's search box shows) |
 
 ### Personal — `/api/personal/…`
 
@@ -84,10 +87,11 @@ Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 
 | Endpoint | Description |
 |---|---|
-| `GET /now-playing` | what's playing (transport state; metadata is best-effort) |
+| `GET /now-playing` | title/artist/album/artwork/playhead — full metadata |
 | `POST /play\|pause\|toggle\|next\|previous` | transport controls |
 | `POST /play-song/{catalog_id}` | play a catalog song |
 | `POST /play-collection?kind=album\|playlist\|station&id=` | queue and play a whole collection |
+| `POST /play-next?catalog_id=` · `POST /play-later?catalog_id=` | queue inserts |
 | `GET /queue` | current queue |
 | `GET /settings` · `GET /volume` | shuffle / repeat / volume / state |
 | `POST /volume/{0..1}` · `POST /shuffle/{on,off}` · `POST /repeat/{0,1,2}` | set them |
@@ -163,7 +167,10 @@ curl 'http://127.0.0.1:8188/api/amp-api/v1/me/library/songs?limit=5'
 
 `POST/DELETE /write/favorites/{id}?library_key=` · `GET/PUT /write/ratings/songs/{id}?rating=like|none` ·
 `POST /write/library/add` (body: bare JSON array of catalog ids) ·
+`POST /write/library/add-albums` (albums — note: Apple is flaky, the songs
+usually arrive but the album container row may never appear) ·
 `DELETE /write/library/{library_song_id}` ·
+`DELETE /write/library/albums/{library_album_id}` (whole album, all songs) ·
 `POST /write/playlists?name=&description=` ·
 `POST /write/playlists/{id}/tracks` (body: catalog id array — auto-adds songs to your library) ·
 `PUT /write/playlists/{id}/tracks` (body: bare JSON array of **library** ids, full ordered
@@ -238,6 +245,11 @@ have to rediscover them:
   rejects it (400 "Parameter 'match' is not allowed"). Filter locally.
 * **A favorite toggle for songs without a catalog page** (odd uploads /
   region-blocked entries) is only reachable through the library-keyed form.
+* **Empty playlists 404 on their tracks relationship** ("No related
+  resources found") — Apple says 'no tracks' by saying 'not found'.
+* **Album adds are half-real.** `POST /v1/me/library?ids[albums]=…` 202s,
+  the songs usually materialize, the library-album container row often
+  never does. Verify what actually landed.
 * **Leaked tabs zombify Chrome.** Dozens of automation tabs → renderers stop
   answering → evals hang for the full socket timeout. ampd reuses a single
   tab and closes sockets with a short timeout on purpose.

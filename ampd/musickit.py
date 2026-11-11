@@ -103,10 +103,18 @@ def item_row(t):
 
 
 def playlist_tracks(playlist_id):
-    """All tracks of a library playlist (handles virtualization-free paging)."""
+    """All tracks of a library playlist. Empty playlists 404 on their
+    tracks relationship (Apple treats 'no tracks' as 'no related
+    resources') — that's [], not an error."""
     def extract(data):
         return [song_row(t) for t in data.get("data", [])]
-    return paginated(f"/v1/me/library/playlists/{playlist_id}/tracks?limit=100", extract)
+    try:
+        return paginated(f"/v1/me/library/playlists/{playlist_id}/tracks?limit=100",
+                         extract)
+    except BrowserError as e:
+        if "404" in str(e):
+            return []
+        raise
 
 
 def find_library_playlist(name):
@@ -202,6 +210,24 @@ def library_remove(library_song_ids):
             raise BrowserError(f"library remove {lid} -> HTTP {res['status']}")
         out.append(lid)
     return out
+
+
+def library_add_albums(catalog_album_ids):
+    """Add catalog ALBUMS (and their tracks) to the library. 202-async."""
+    res = raw_api(f"/v1/me/library?ids[albums]={','.join(catalog_album_ids)}",
+                  method="POST")
+    if res["status"] not in (200, 202):
+        raise BrowserError(f"library add albums -> HTTP {res['status']}: "
+                           f"{res['body'][:120]}")
+    return res["status"]
+
+
+def library_remove_album(library_album_id):
+    """Remove a whole library album (l.XXX). This deletes all its songs."""
+    res = raw_api(f"/v1/me/library/albums/{library_album_id}", method="DELETE")
+    if res["status"] != 204:
+        raise BrowserError(f"library remove album -> HTTP {res['status']}")
+    return res["status"]
 
 
 # ---------------------------------------------------------------- playlists
