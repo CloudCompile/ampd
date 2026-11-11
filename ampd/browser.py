@@ -10,6 +10,7 @@ Lessons learned the hard way, encoded here:
 """
 import json
 import logging
+import os
 import subprocess
 import threading
 import time
@@ -57,12 +58,28 @@ class Browser:
             "--no-sandbox", "--disable-gpu", "--no-first-run",
             "--no-default-browser-check", "--window-size=1400,2200",
         ]
-        if config.headless:
-            cmd.append("--headless=new")
+        env = None
+        if config.audio_enabled:
+            # audible mode: chrome runs on a virtual display and its audio
+            # goes to a private pulse sink that the capture pipeline listens
+            # to. Headless chrome has no audio output, so this is required
+            # for /api/audio/stream.mp3.
+            from .audio import broadcaster
+            broadcaster.ensure_display(config.audio_display)
+            broadcaster.ensure_sink(config.audio_sink)
+            env = {
+                **os.environ,                      # merge — a bare {DISPLAY,
+                "DISPLAY": config.audio_display,   # PULSE_SINK} env strips PATH
+                "PULSE_SINK": config.audio_sink,   # and XDG_RUNTIME_DIR, leaving
+            }                                      # chrome unable to find pulse
+            cmd.append("--autoplay-policy=no-user-gesture-required")
+        else:
+            if config.headless:
+                cmd.append("--headless=new")
         cmd.append("about:blank")
-        log.info("launching chrome: %s", " ".join(cmd))
+        log.info("launching chrome: %s (audio=%s)", " ".join(cmd), config.audio_enabled)
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
+                         start_new_session=True, env=env or None)
         for _ in range(40):
             time.sleep(0.5)
             try:

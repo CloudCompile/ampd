@@ -1,7 +1,9 @@
 """ampd — a personal, self-hosted Apple Music API driven through your own
 logged-in web player session."""
+import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
@@ -9,16 +11,34 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .routes import (library, favorites, playback, passthrough, catalog,
-                     personal, writes, sweeps, stream)
+                     personal, writes, sweeps, stream, audio)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
+
+log = logging.getLogger("ampd")
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # audio pipeline starts eagerly, BEFORE the process is multithreaded:
+    # spawning subprocesses from the running event loop wedges the loop
+    # (fork-vs-GIL deadlock — found with py-spy the hard way)
+    if config.audio_enabled:
+        try:
+            from .audio import broadcaster
+            broadcaster.start()
+        except Exception as e:
+            log.error("audio pipeline failed to start: %s", e)
+    yield
+
 
 app = FastAPI(
     title="ampd",
     description="Unofficial personal Apple Music API — powered by your own "
                 "logged-in web player session. Not affiliated with Apple.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
@@ -52,6 +72,7 @@ app.include_router(passthrough.router, prefix="/api")
 app.include_router(writes.router, prefix="/api")
 app.include_router(sweeps.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
+app.include_router(audio.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)

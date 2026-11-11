@@ -69,6 +69,7 @@
   <div class="row">
     <span class="state">● <b id="link">live</b></span>
     <input type="range" id="vol" min="0" max="1" step="0.01">
+    <button id="listen" title="hear the music (streams from the server)">🔇</button>
   </div>
 
   <div class="lbl">queue</div>
@@ -112,6 +113,19 @@ $('play').onclick = () => api(playing ? 'pause' : 'play');
 $('next').onclick = () => api('next');
 $('prev').onclick = () => api('previous');
 $('vol').onchange = e => api('volume/' + e.target.value);
+// hear it: the server's audio output as a live mp3 (~1-2s behind the playhead)
+const audioEl = new Audio(); audioEl.preload = 'none';
+$('listen').onclick = () => {
+  if (!audioEl.src) {
+    audioEl.src = '/api/audio/stream.mp3';
+    audioEl.play();
+    $('listen').textContent = '🔊';
+  } else if (audioEl.paused) {
+    audioEl.play(); $('listen').textContent = '🔊';
+  } else {
+    audioEl.pause(); $('listen').textContent = '🔇';
+  }
+};
 setInterval(() => api('now-playing', 'GET'), 5000);   // keep progress fresh
 
 // live stream: one EventSource drives the whole UI
