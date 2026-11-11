@@ -70,11 +70,14 @@ def dedupe_execute(execute: int = 0):
     removed, errors = [], []
     for group in plan["groups"]:
         for row in group[1:]:
+            # library_remove needs the LIBRARY id (i.xxx) — row["id"] is the
+            # catalog id when the row has one (the 500s proved it)
+            lid = row.get("library_id") or row["id"]
             try:
-                mk.library_remove([row["id"]])
-                removed.append(row["id"])
+                mk.library_remove([lid])
+                removed.append(lid)
             except BrowserError as e:
-                errors.append({"id": row["id"], "error": str(e)[:150]})
+                errors.append({"id": lid, "error": str(e)[:150]})
     return {"ok": True, "removed": removed, "errors": errors,
             "removed_count": len(removed)}
 
