@@ -124,6 +124,28 @@ public API. ~100 lines of HTML/JS: use it, or steal it as a starting point
 for your own UI. It stays readable when `AMPD_API_KEY` is set via
 `/demo?api_key=…` and `/api/stream?api_key=…`.
 
+### Audio — `/api/audio/stream.mp3` (the actual sound)
+
+Metadata streaming is great for a remote control on the same machine — but
+if the server runs on a VPS and your UI at home wants to **hear** it, set
+`AMPD_AUDIO=1`. ampd then:
+
+1. runs Chrome on a virtual display (`AMPD_AUDIO_DISPLAY=:2`) instead of
+   headless — headless Chrome has no audio output,
+2. routes its audio into a **private** PulseAudio null sink
+   (`AMPD_AUDIO_SINK=ampd_audio`) — your desktop's audio never mixes in,
+3. captures the sink and re-serves it as a live mp3
+   (`AMPD_AUDIO_BITRATE=160k`):
+
+```html
+<audio src="http://vps:8188/api/audio/stream.mp3">
+```
+
+That's the whole client. ~1–2 s behind the reported playhead (encoder
+buffer); the demo's 🔇/🔊 button is the example. Needs `pulseaudio`,
+`pulseaudio-utils`, `ffmpeg` and `Xvfb` on the box (the Docker image has
+them). `/api/audio/status` reports pipeline state and listener count.
+
 ### The escape hatch
 
 ```
@@ -163,6 +185,10 @@ above were validated live against a real account.
 | `AMPD_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
 | `AMPD_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
 | `AMPD_FAV_PLAYLIST` | `Favorite Songs` | name of the favorites auto-playlist |
+| `AMPD_AUDIO` | `0` | stream the actual audio at `/api/audio/stream.mp3` |
+| `AMPD_AUDIO_DISPLAY` | `:2` | virtual display for audible chrome |
+| `AMPD_AUDIO_SINK` | `ampd_audio` | private pulse sink to capture |
+| `AMPD_AUDIO_BITRATE` | `160k` | mp3 bitrate of the audio stream |
 
 ## Field notes (the parts the docs won't tell you)
 

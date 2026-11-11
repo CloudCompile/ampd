@@ -10,9 +10,13 @@
 FROM python:3.12-slim
 
 # chromium (Debian) + fonts so Apple's UI renders and any screenshot isn't tofu
+# pulseaudio + xvfb + ffmpeg: audio streaming (AMPD_AUDIO=1) — chrome runs on
+# a virtual display, its output is captured from a private null sink and
+# re-served as mp3 at /api/audio/stream.mp3
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium fonts-liberation fonts-noto-color-emoji ca-certificates \
+      pulseaudio xvfb ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -26,7 +30,9 @@ COPY ampd/ ampd/
 ENV HOME=/data \
     AMPD_CHROME_BIN=/usr/bin/chromium \
     AMPD_HOST=0.0.0.0 \
-    AMPD_PORT=8188
+    AMPD_PORT=8188 \
+    XDG_RUNTIME_DIR=/tmp/pulse-run
+RUN mkdir -p /tmp/pulse-run && chmod 777 /tmp/pulse-run
 VOLUME /data
 EXPOSE 8188
 

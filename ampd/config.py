@@ -26,4 +26,13 @@ class Config:
     # Name of the auto-playlist Apple generates for favorited songs
     favorites_playlist_name: str = os.environ.get("AMPD_FAV_PLAYLIST", "Favorite Songs")
 
+    # --- audio streaming (so a UI on YOUR computer can HEAR what the server plays)
+    # AMPD_AUDIO=1 makes ampd run chrome on a virtual display, route its audio
+    # into a private PulseAudio null sink, capture that, and re-serve it as a
+    # live mp3 stream at /api/audio/stream.mp3. Requires pulse, ffmpeg, Xvfb.
+    audio_enabled: bool = os.environ.get("AMPD_AUDIO", "0") == "1"
+    audio_display: str = os.environ.get("AMPD_AUDIO_DISPLAY", ":2")
+    audio_sink: str = os.environ.get("AMPD_AUDIO_SINK", "ampd_audio")
+    audio_bitrate: str = os.environ.get("AMPD_AUDIO_BITRATE", "160k")
+
 config = Config()
