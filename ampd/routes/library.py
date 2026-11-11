@@ -16,7 +16,9 @@ from ..browser import BrowserError
 
 router = APIRouter(prefix="/library", tags=["library"])
 
-RESOURCES = {"songs", "albums", "artists", "playlists", "music-videos", "stations"}
+RESOURCES = {"songs", "albums", "artists", "playlists", "music-videos"}
+# NOTE: no "stations" — Apple's library API rejects it ("Unknown library
+# resource type"); stations exist only in the catalog.
 
 
 def _path(resource, limit, offset, term=None, extend=None):

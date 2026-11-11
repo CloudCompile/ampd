@@ -29,10 +29,21 @@ async def _events(request: Request):
         yield f"event: snapshot\ndata: {json.dumps(snap)}\n\n"
         after = 0
         last_send = time.time()
+        fails = 0
         while True:
             if await request.is_disconnected():
                 return
-            entries = await asyncio.to_thread(mk.drain_stream, after)
+            try:
+                entries = await asyncio.to_thread(mk.drain_stream, after)
+                fails = 0
+            except (BrowserError, Exception) as e:
+                # transient chrome stall — keep the connection, back off
+                fails += 1
+                if fails > 30:
+                    return
+                last_send = time.time()
+                await asyncio.sleep(min(1.0 * fails, 5.0))
+                continue
             for e in entries:
                 after = e["seq"]
                 last_send = time.time()

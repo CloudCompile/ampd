@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..config import config
 from .writes import router as writes  # noqa: F401  (write ops live in /write)
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
@@ -14,19 +15,21 @@ def favorites_playlist_id() -> str:
     global _fav_pid_cache
     if _fav_pid_cache:
         return _fav_pid_cache
-    pid = mk.find_library_playlist(mk.config.favorites_playlist_name)
+    pid = mk.find_library_playlist(config.favorites_playlist_name)
     if not pid:
         raise HTTPException(404, f"no library playlist named "
-                                 f"{mk.config.favorites_playlist_name!r}")
+                                 f"{config.favorites_playlist_name!r}")
     _fav_pid_cache = pid
     return pid
 
 
 @router.get("")
 def list_favorites():
-    """Every song in your Favorite Songs playlist (auto-paginated, with art)."""
+    """Every song in your Favorite Songs playlist (auto-paginated, with art).
+    Also returns `playlist_id` so clients can browse it like any playlist."""
     try:
-        tracks = mk.playlist_tracks(favorites_playlist_id())
-        return {"count": len(tracks), "tracks": tracks}
+        pid = favorites_playlist_id()
+        tracks = mk.playlist_tracks(pid)
+        return {"count": len(tracks), "playlist_id": pid, "tracks": tracks}
     except BrowserError as e:
         raise HTTPException(502, str(e))

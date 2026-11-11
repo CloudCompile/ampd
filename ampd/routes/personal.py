@@ -39,10 +39,10 @@ def heavy_rotation():
 
 
 @router.get("/recently-played")
-def recently_played(limit: int = 25):
-    """Your recently played items."""
+def recently_played(limit: int = 20):
+    """Your recently played items (Apple caps this at 20)."""
     try:
-        data = mk.api_music(f"/v1/me/recent/played?limit={min(limit, 50)}")
+        data = mk.api_music(f"/v1/me/recent/played?limit={min(limit, 20)}")
         return {"items": [mk.item_row(t) for t in data.get("data", [])]}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -52,7 +52,7 @@ def recently_played(limit: int = 25):
 def made_for_you():
     """Apple's auto-generated personal playlists (Favorites Mix, New Music…)."""
     try:
-        data = mk.api_music("/v1/me/library?scope=playlists&limit=100")
+        data = mk.api_music("/v1/me/library/playlists?limit=100")
         # personal mixes live in the library under predictable names; surface
         # playlists whose source is Apple's made-for-you engine
         pls = [mk.item_row(t) for t in data.get("data", [])]
