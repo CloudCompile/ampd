@@ -64,3 +64,6 @@ jobs:
           assert config.audio_enabled is False, "audio must default OFF"
           print("defaults OK — writes and audio ship disabled")
           EOF
+
+      - name: Unit tests (hermetic — read cache / coalescer)
+        run: python -m unittest discover -s tests

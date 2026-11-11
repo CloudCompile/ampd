@@ -24,7 +24,7 @@ its own renderer.*
 
 - [ ] **Renderer watchdog** — proactively ping the tab; on stall, recycle it
       and hot-recover instead of waiting for the next call to fail `M P0`
-- [ ] **Read cache + request coalescing** — TTL cache for library/catalog
+- [x] **Read cache + request coalescing** — TTL cache for library/catalog
       GETs, identical in-flight reads collapse into one CDP eval, mutations
       bust by key `M P0`
 - [ ] **Docker HEALTHCHECK** wired to `/health` + restart-policy guidance in

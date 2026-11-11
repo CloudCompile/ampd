@@ -195,6 +195,7 @@ above were validated live against a real account.
 | `AMPD_HOST` / `AMPD_PORT` | `127.0.0.1` / `8188` | bind address |
 | `AMPD_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
 | `AMPD_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
+| `AMPD_CACHE` / `AMPD_CACHE_TTL` | `1` / `30` | read cache for amp-api GETs (single-flight coalesced; catalog 10×, favorites/ratings capped at 10s; mutations bust everything and open an 8s no-cache grace window — see `ampd/cache.py`) |
 | `AMPD_FAV_PLAYLIST` | `Favorite Songs` | name of the favorites auto-playlist |
 | `AMPD_AUDIO` | `0` | stream the actual audio at `/api/audio/stream.mp3` |
 | `AMPD_AUDIO_DISPLAY` | `:2` | virtual display for audible chrome |

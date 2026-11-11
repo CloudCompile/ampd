@@ -57,11 +57,12 @@ def unfavorite(song_id: str, library_key: bool = False):
 # ---------------------------------------------------------------- ratings
 
 @router.get("/ratings/songs/{song_id}")
-def get_rating(song_id: str):
-    """Current rating of a song: null = none, 1 = like."""
+def get_rating(song_id: str, fresh: bool = False):
+    """Current rating of a song: null = none, 1 = like.
+    Ratings lag server-side after a mutation; `?fresh=1` bypasses cache."""
     _guard()
     try:
-        return {"song_id": song_id, "value": mk.get_rating(song_id)}
+        return {"song_id": song_id, "value": mk.get_rating(song_id, fresh=fresh)}
     except BrowserError as e:
         raise HTTPException(502, str(e))
 
