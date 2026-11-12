@@ -9,6 +9,7 @@ from .charts_api_catalog_charts_get_response_charts_api_catalog_charts_get impor
 from .debug_info import DebugInfo
 from .debug_info_recent_calls_item import DebugInfoRecentCallsItem
 from .debug_info_renderer import DebugInfoRenderer
+from .debug_info_webhooks_type_0 import DebugInfoWebhooksType0
 from .dedupe_plan import DedupePlan
 from .dedupe_report import DedupeReport
 from .diff_added import DiffAdded
@@ -81,12 +82,22 @@ from .stats import Stats
 from .stats_series import StatsSeries
 from .store_row import StoreRow
 from .store_row_page import StoreRowPage
+from .sweep_digest import SweepDigest
 from .top_artist import TopArtist
 from .top_track import TopTrack
 from .validation_error import ValidationError
 from .validation_error_context import ValidationErrorContext
 from .volume_state import VolumeState
 from .watchdog_state import WatchdogState
+from .webhook_create import WebhookCreate
+from .webhook_deliveries import WebhookDeliveries
+from .webhook_delivery import WebhookDelivery
+from .webhook_hook import WebhookHook
+from .webhook_hook_stats import WebhookHookStats
+from .webhook_list import WebhookList
+from .webhook_list_recent_item import WebhookListRecentItem
+from .webhook_test import WebhookTest
+from .webhook_update import WebhookUpdate
 from .write_error import WriteError
 
 __all__ = (
@@ -95,6 +106,7 @@ __all__ = (
     "DebugInfo",
     "DebugInfoRecentCallsItem",
     "DebugInfoRenderer",
+    "DebugInfoWebhooksType0",
     "DedupePlan",
     "DedupeReport",
     "DiffAdded",
@@ -165,11 +177,21 @@ __all__ = (
     "StatsSeries",
     "StoreRow",
     "StoreRowPage",
+    "SweepDigest",
     "TopArtist",
     "TopTrack",
     "ValidationError",
     "ValidationErrorContext",
     "VolumeState",
     "WatchdogState",
+    "WebhookCreate",
+    "WebhookDeliveries",
+    "WebhookDelivery",
+    "WebhookHook",
+    "WebhookHookStats",
+    "WebhookList",
+    "WebhookListRecentItem",
+    "WebhookTest",
+    "WebhookUpdate",
     "WriteError",
 )
