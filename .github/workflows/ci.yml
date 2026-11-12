@@ -87,13 +87,14 @@ jobs:
               return out
 
           # streaming / binary / raw surfaces are exempt: SSE, audio bytes,
-          # prometheus text, the demo SPA, and the amp-api raw passthrough
-          # (its shape is whatever Apple's is — typing it would be a lie).
+          # prometheus text, the demo SPA, the amp-api raw passthrough
+          # (its shape is whatever Apple's is — typing it would be a lie),
+          # and the OBS text overlay (a plain text LINE is the contract).
           # FastAPI's own docs routes (/openapi.json, /docs, /redoc) are
           # framework infrastructure, not part of the API surface.
           EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/metrics",
-                             "/demo", "/api/amp-api/", "/openapi.json",
-                             "/docs", "/redoc")
+                             "/demo", "/api/amp-api/", "/api/overlay/",
+                             "/openapi.json", "/docs", "/redoc")
 
           untyped = []
           total = 0
@@ -207,6 +208,23 @@ jobs:
           assert sum(1 for g in got if g.startswith("data:")) >= 3, \
               "SSE must replay events (snapshot + playhead updates)"
           print("SSE replay OK — snapshot + updates streamed")
+          EOF
+
+          # OBS overlay serves the state the SSE connection just emitted (#94)
+          python - <<'EOF'
+          import json, urllib.request
+          with urllib.request.urlopen(
+                  "http://127.0.0.1:8971/api/overlay/now-playing.json",
+                  timeout=10) as r:
+              j = json.loads(r.read())
+          assert r.status == 200 and j["isPlaying"] is True and j["id"], \
+              "overlay serves the stream's last emitted state: %s" % j
+          with urllib.request.urlopen(
+                  "http://127.0.0.1:8971/api/overlay/now-playing.txt",
+                  timeout=10) as r:
+              t = r.read().decode()
+          assert "None" not in t and t.strip(), t
+          print("overlay OK — json + text served from the stream state")
           EOF
           kill $(cat /tmp/mock-server.pid) 2>/dev/null || true
           sleep 1

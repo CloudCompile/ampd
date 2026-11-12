@@ -209,6 +209,22 @@ Apple, no TestClient), and every mock response is enforced against the
 typed response models, so the fixtures can't rot out of the schema
 silently.
 
+### OBS overlay — `/api/overlay`
+
+Now-playing for streamers, served from the SSE stream's last emitted state
+(zero extra Chrome evals — it piggybacks on data the stream already fetched):
+
+```
+/api/overlay/now-playing.json        typed payload (title, artist, elapsedMs, id, …)
+/api/overlay/now-playing.txt         one text line for OBS's Text source
+?format={title} by {artist} [{elapsed}]   — template the text flavor
+```
+
+Point an OBS **browser source** at the `.json` URL (with
+`Authorization: Bearer <key>` as a custom header when `AMPD_API_KEY` is
+set). Before any stream client has connected, the payload is honest nulls —
+the overlay never drives Chrome itself.
+
 ### Typed API & generated clients
 
 Every JSON route declares a Pydantic response model (enforced by a CI

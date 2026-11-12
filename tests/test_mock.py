@@ -211,5 +211,49 @@ class TestMockState(unittest.TestCase):
             self.mock.api_music("/v1/me/library/nonexistent")
 
 
+class TestOverlay(unittest.TestCase):
+    """OBS overlay (#94) — serves the stream's last emitted state."""
+
+    def setUp(self):
+        from ampd.routes import stream
+        self.stream = stream
+        self.stream._remember({"isPlaying": True, "title": "Signal 5",
+                               "artist": "Mock Artist 2", "album": None,
+                               "id": "6400017", "durationMs": 200000,
+                               "elapsedMs": 45000, "ts": int(
+                                   time.time() * 1000)})
+
+    def tearDown(self):
+        self.stream._remember({"isPlaying": False, "title": None,
+                               "artist": None, "album": None, "id": None,
+                               "durationMs": None, "elapsedMs": None})
+
+    def test_last_snapshot_roundtrip(self):
+        snap = self.stream.last_snapshot()
+        self.assertEqual(snap["title"], "Signal 5")
+        self.assertEqual(snap["artist"], "Mock Artist 2")
+
+    def test_json_payload_is_model_valid(self):
+        from ampd.routes.overlay import _payload
+        from ampd import models as M
+        M.OverlayNowPlaying.model_validate(_payload())
+
+    def test_text_template_substitution(self):
+        from ampd.routes.overlay import now_playing_txt
+        out = now_playing_txt(format="{title} by {artist} [{elapsed}]")
+        self.assertIn("Signal 5", out)
+        self.assertIn("Mock Artist 2", out)
+        self.assertIn("0:45", out)
+        self.assertIsInstance(out, str)
+
+    def test_text_template_empty_values(self):
+        from ampd.routes.overlay import now_playing_txt
+        self.stream._remember({"isPlaying": False, "title": None,
+                               "artist": None, "album": None, "id": None,
+                               "durationMs": None, "elapsedMs": None})
+        out = now_playing_txt(format="{title} — {artist}")
+        self.assertNotIn("None", out, "nulls must render as '', never 'None'")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
