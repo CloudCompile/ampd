@@ -10,6 +10,7 @@ import time
 
 from . import cache as _cache_mod
 from .browser import browser, BrowserError
+from .config import config
 from .metrics import METRICS
 
 read_cache = _cache_mod.read_cache
@@ -542,3 +543,14 @@ def play_collection(kind, resource_id):
           await mk.play();
           return true;
         }})()""", timeout=30)
+
+
+# ---------------------------------------------------------------- mock mode
+# AMPD_MOCK=1 swaps this whole surface for synthetic fixtures (see
+# ampd/mock.py). This MUST be the last thing in the module: install() needs
+# every real function defined so the swap is complete.
+if config.mock_enabled:
+    import sys as _sys
+    from .mock import install as _install_mock
+    _mock = _install_mock(_sys.modules[__name__])
+    log.info("MOCK MODE — serving synthetic fixtures, no Chrome, no Apple")

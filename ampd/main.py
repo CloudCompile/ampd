@@ -27,7 +27,7 @@ async def lifespan(app):
     # audio pipeline starts eagerly, BEFORE the process is multithreaded:
     # spawning subprocesses from the running event loop wedges the loop
     # (fork-vs-GIL deadlock — found with py-spy the hard way)
-    if config.audio_enabled:
+    if config.audio_enabled and not config.mock_enabled:
         try:
             from .audio import broadcaster
             broadcaster.start()
@@ -102,6 +102,9 @@ install_error_handlers(app)
 
 @app.get("/health", response_model=Health)
 def health():
+    if config.mock_enabled:
+        return {"status": "ok", "browser": "mock (AMPD_MOCK=1)",
+                "watchdog": None}
     wd = browser.health()
     try:
         browser.check()

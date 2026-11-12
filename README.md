@@ -190,6 +190,25 @@ buffer); the demo's 🔇/🔊 button is the example. Needs `pulseaudio`,
 `pulseaudio-utils`, `ffmpeg` and `Xvfb` on the box (the Docker image has
 them). `/api/audio/status` reports pipeline state and listener count.
 
+### Mock mode — `AMPD_MOCK=1` (no Apple account needed)
+
+```bash
+AMPD_MOCK=1 python -m ampd        # full API, zero Chrome, zero network
+```
+
+The whole surface is served from a **seeded synthetic library** ("Mock
+Artist 1" and friends — nothing recorded, nothing real ships in the repo).
+Playback is a state machine with a live playhead (the playhead advances,
+tracks end and advance the queue); writes actually mutate the fake library
+(create a playlist, heart a song — it stays). SSE replays a live event
+buffer. Audio honestly 404s (no renderer = no sound).
+
+What it's for: UI development and CI. CI runs a full route-level
+integration pass against the mock server (plain urllib — no browser, no
+Apple, no TestClient), and every mock response is enforced against the
+typed response models, so the fixtures can't rot out of the schema
+silently.
+
 ### The escape hatch
 
 ```
@@ -265,6 +284,7 @@ Every non-2xx response, from any route, is:
 | `AMPD_STORE_SYNC_INTERVAL` | `21600` | seconds between library snapshot walks (single-flight, stall-gated) |
 | `AMPD_EXPORT_INTERVAL` | `0` | seconds between scheduled full exports (`0` = off); atomic writes to `AMPD_EXPORT_DIR` |
 | `AMPD_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
+| `AMPD_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
 
 ## Field notes (the parts the docs won't tell you)
 

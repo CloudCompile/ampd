@@ -56,7 +56,8 @@ class Browser:
         self._wd = {"running": False, "last_ping_ts": None, "last_ok": None,
                     "consecutive_failures": 0, "recycles": 0,
                     "last_action": "armed, waiting for first connect"}
-        if config.watchdog:
+        if config.watchdog and not config.mock_enabled:
+            # mock mode never drives Chrome — nothing to watchdog
             threading.Thread(target=self._watchdog_loop, daemon=True,
                              name="ampd-watchdog").start()
 
