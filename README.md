@@ -497,9 +497,15 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
   snapshots, cursors), `/api/library/diff`, `/api/history/*` (recently-played
   + stats + series), scheduled exports with keep-N retention, restore
   (dry-run planner + verified executor)
-* **Next**: **Typed API** (real response models, generated clients) →
-  **Listening experience** (PWA, synced lyrics) → **Automation** (webhooks,
-  watchers) → **Multi-user** (scoped keys) → **1.0 Polish**
+* **v0.4 — Typed API — shipped**: real Pydantic response models on every
+  route, standard error envelope, generated TypeScript + Python clients,
+  mock server mode (`AMPD_MOCK=1`, no Apple account needed)
+* **v0.5 — Listening experience — shipped**: installable PWA served from
+  the API (library browse, search, queue drag, synced lyrics), opus/ogg +
+  loudnorm + playhead-aligned join on the audio stream, OBS overlay,
+  Discord Rich Presence, Last.fm scrobbling
+* **Next**: **Automation** (webhooks, watchers) → **Multi-user** (scoped
+  keys) → **1.0 Polish**
 
 ## Deploying
 
