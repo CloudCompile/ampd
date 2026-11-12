@@ -77,7 +77,7 @@ app = FastAPI(
     title="ampd",
     description="Unofficial personal Apple Music API — powered by your own "
                 "logged-in web player session. Not affiliated with Apple.",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
