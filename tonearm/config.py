@@ -74,6 +74,33 @@ class Config:
                 or os.path.join(os.path.dirname(self.store_db_path()),
                                 "lastfm.json"))
 
+    # --- outbound webhooks (v0.6 Automation, opt-in) ---
+    # Apple has no webhooks. tonearm can be the webhook: track changes,
+    # write mutations, renderer recoveries and library diffs are POSTed to
+    # user-configured URLs, with retries. The hook list is managed through
+    # /api/webhooks and persisted to a 0600 JSON file on the volume.
+    webhooks_enabled: bool = os.environ.get("TONEARM_WEBHOOKS", "0") == "1"
+    webhook_attempts: int = int(os.environ.get("TONEARM_WEBHOOK_ATTEMPTS", "5"))
+    webhook_timeout: float = float(os.environ.get("TONEARM_WEBHOOK_TIMEOUT",
+                                                 "10"))
+    # park a URL after this many consecutive dead letters (#100): it stops
+    # receiving events for a cooldown instead of retrying forever. A real
+    # success resets the streak and unparks immediately.
+    webhook_park_after: int = int(os.environ.get("TONEARM_WEBHOOK_PARK_AFTER",
+                                                "3"))
+    webhook_park_s: float = float(os.environ.get("TONEARM_WEBHOOK_PARK_S",
+                                                 "900"))
+
+    def webhooks_config_path(self):
+        return (os.environ.get("TONEARM_WEBHOOKS_FILE")
+                or os.path.join(os.path.dirname(self.store_db_path()),
+                                "webhooks.json"))
+
+    # --- scheduled sweep digests (v0.6, opt-in) ---
+    # 0 = OFF. When on (and TONEARM_WEBHOOKS=1), one dry-run dedupe/never-
+    # played digest is POSTed as a `sweep.digest` event every N seconds.
+    digest_interval: int = int(os.environ.get("TONEARM_DIGEST_INTERVAL", "0"))
+
     # --- mock mode (v0.4) ---
     # TONEARM_MOCK=1 serves the full API from seeded synthetic fixtures — no
     # Apple account, no Chrome, no network. For UI devs, contributors and

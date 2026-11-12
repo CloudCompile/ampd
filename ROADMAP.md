@@ -84,17 +84,29 @@ its own renderer.*
 
 ## v0.6 — Automation
 
-*Apple has no webhooks. tonearm can be the webhook.*
+*Apple has no webhooks. tonearm can be the webhook.* **Shipped in v0.6.0.**
 
-- [ ] **Outbound webhooks** — POST events (track change, heart, playlist
+- [x] **Outbound webhooks** — POST events (track change, heart, playlist
       mutation, stall-recovered) to user-configured URLs, with retries `M P0`
-- [ ] **New-release watcher** — poll followed artists' catalog pages,
-      notify + optionally auto-add to a playlist `M P1`
-- [ ] **Scheduled sweep digests** — dry-run dedupe/rate reports to a webhook
-      on a schedule `S P1`
+      `tonearm/webhooks.py` · `/api/webhooks` · `TONEARM_WEBHOOKS=1`.
+      At-least-once delivery, backoff 2s/10s/30s/120s/600s, non-retryable 4xx
+      dead-letter, optional HMAC-SHA256 signing (`X-Tonearm-Signature`).
+      Producers ride existing state only: the stream-hook buffer, write
+      routes, the watchdog, the snapshot walk — zero new eval kinds.
+- [x] **Scheduled sweep digests** — dry-run dedupe/never-played reports to a
+      webhook on a schedule `S P1` — `tonearm/digest.py` ·
+      `TONEARM_DIGEST_INTERVAL` (needs webhooks); on-demand twin at
+      `GET /api/write/sweeps/digest`. One walk feeds both reports.
+- [ ] **New-release watcher** — poll followed artists' catalog pages, notify
+      + optionally auto-add to a playlist `M P1`
+      *Blocked on a verify-live gate:* library artists are keyed by library
+      ids (`r.xxx`) and the mapping to catalog artist ids is not documented —
+      the lookup strategy (attributes vs search) must be validated against a
+      real account before anything ships.
 - [ ] **Smart-playlist engine** — rule sets ("added after X, artist in Y")
       materialized as live playlists `L P2`
-- [ ] **Home Assistant recipes** — media_player-style integration examples `S P2`
+- [ ] **Home Assistant recipes** — media_player-style integration examples
+      `S P2` (the webhook events above are already the payload half)
 
 ## v0.7 — Multi-user
 

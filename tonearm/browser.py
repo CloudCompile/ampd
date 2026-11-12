@@ -398,15 +398,31 @@ class Browser:
                 if fails >= config.watchdog_tries:
                     log.warning("watchdog: tab dead after %d failed pings — "
                                 "recycling", fails)
+                    self._emit_webhook("renderer.stalled",
+                                       {"consecutive_failures": fails,
+                                        "error": str(e)[:200]})
                     self._close_ws()
                     self._connect()
                     self._wd_set(recycle=True,
                                  action="recycled: tab was dead")
                     log.info("watchdog: recycled tab, renderer healthy again")
+                    self._emit_webhook("renderer.recovered",
+                                       {"recycles": self._wd["recycles"]})
             else:
                 self._wd_set(ok="ping ok")
         finally:
             self._lock.release()
+
+    @staticmethod
+    def _emit_webhook(event_type, data):
+        """Best-effort automation event. The watchdog must never fail because
+        a webhook receiver is down — emit() is already a no-op when off, and
+        this swallow keeps even an import error harmless."""
+        try:
+            from . import webhooks
+            webhooks.emit(event_type, data)
+        except Exception:
+            pass
 
 
 # module-level singleton

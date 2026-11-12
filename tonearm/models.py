@@ -391,6 +391,77 @@ class RestoreExecuted(_PassThrough):
     report: RestoreReport
 
 
+# ---- webhooks / automation (v0.6) ----
+
+class WebhookHook(_PassThrough):
+    id: str
+    url: str
+    events: list[str] = []
+    enabled: bool = True
+    has_secret: bool = False
+    created_at: float | None = None
+    stats: dict = Field(default_factory=dict)
+
+
+class WebhookList(_PassThrough):
+    enabled: bool
+    hooks: list[WebhookHook]
+    pending: int = 0
+    recent: list[dict] = []
+    note: str | None = None
+
+
+class WebhookCreate(_PassThrough):
+    url: str
+    events: list[str] | None = None
+    secret: str | None = None
+    enabled: bool = True
+
+
+class WebhookUpdate(_PassThrough):
+    url: str | None = None
+    events: list[str] | None = None
+    secret: str | None = None
+    enabled: bool | None = None
+
+
+class WebhookDelivery(_PassThrough):
+    event_id: str
+    event: str
+    hook_id: str
+    url: str
+    attempt: int
+    status: int | None = None
+    ok: bool
+    error: str | None = None
+    duration_ms: int | None = None
+    retry_scheduled: bool = False
+    at: float
+
+
+class WebhookDeliveries(_PassThrough):
+    count: int
+    items: list[WebhookDelivery]
+
+
+class WebhookTest(_PassThrough):
+    ok: bool
+    status: int | None = None
+    error: str | None = None
+    duration_ms: int | None = None
+
+
+class SweepDigest(_PassThrough):
+    generated_at: str
+    library_size: int
+    duplicate_groups: int
+    removable_rows: int
+    never_played: int
+    play_count_available: bool
+    sample_duplicates: list[list[ItemRow]] = []
+    sample_never_played: list[ItemRow] = []
+
+
 # ---- errors / system ----
 
 class ErrorBody(_PassThrough):
@@ -422,4 +493,5 @@ class DebugInfo(_PassThrough):
     tab_url: str | None = None
     renderer: dict
     recent_calls: list[dict]
+    webhooks: dict | None = None
     note: str | None = None

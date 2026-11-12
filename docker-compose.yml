@@ -14,6 +14,9 @@ services:
       TONEARM_ENABLE_WRITES: "0"
       # set this before exposing beyond localhost:
       # TONEARM_API_KEY: "change-me"
+      # automation (v0.6): outbound webhooks + scheduled sweep digests
+      # TONEARM_WEBHOOKS: "1"            # manage hooks via /api/webhooks
+      # TONEARM_DIGEST_INTERVAL: "86400" # daily sweep.digest webhook event
       # optional: attach to an existing chrome instead of launching one
       # TONEARM_CDP_URL: "http://host.docker.internal:9222"
       # TONEARM_AUTO_CHROME: "0"

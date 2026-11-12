@@ -147,9 +147,21 @@ opt-in).
 | `GET /sweeps/rate?artist=&album=&limit=` | plan: which songs a batch-heart would touch |
 | `POST /sweeps/rate?artist=creo&execute=1` | heart them (skips already-hearted; never clears) |
 | `GET /sweeps/never-played` | read-only report (Apple's API doesn't expose play counts — flagged when so) |
+| `GET /sweeps/digest` | one walk → dedupe + never-played summary; the same payload `sweep.digest` webhooks carry on schedule |
 
 Every sweep returns a PLAN unless `execute=1`. A full library walk is
 ~100 s for a 9k-song library; sweep calls are slow by design.
+
+### Automation — `/api/webhooks/…` (outbound webhooks, `TONEARM_WEBHOOKS=1` → else `501`)
+
+| Endpoint | Description |
+|---|---|
+| `GET /webhooks` | configured hooks (secrets redacted as `has_secret`), pending count, last deliveries |
+| `POST /webhooks` | add a hook: `{url, events?, secret?, enabled?}` — adding an existing URL updates it |
+| `PATCH /webhooks/{id}` | partial update (`url` / `events` / `secret` / `enabled`); `secret: ""` clears signing |
+| `DELETE /webhooks/{id}` | remove a hook |
+| `POST /webhooks/{id}/test` | deliver a `webhook.test` event right now — synchronous, no retry |
+| `GET /webhooks/deliveries?limit=` | recent delivery attempts, newest first (retries included) |
 
 ### Streaming — `/api/stream` (SSE) + `/demo`
 
@@ -313,6 +325,112 @@ marker `UNIQUE(track_id, started_at)` lives in the store's `scrobbles`
 table — restarts and buffer replays never double-scrobble. Requires
 `TONEARM_STORE=1`.
 
+### Outbound webhooks — `TONEARM_WEBHOOKS=1`
+
+Apple has no webhooks. tonearm can be the webhook: the events the server
+already observes are POSTed to URLs you configure, with retries.
+
+```bash
+TONEARM_WEBHOOKS=1 python -m tonearm
+
+# register a receiver (same URL again updates it; secrets enable signing)
+curl -X POST http://127.0.0.1:8188/api/webhooks \
+  -d '{"url": "https://your-endpoint/hook",
+       "events": ["track.change", "favorite.added"],   # omit = everything
+       "secret": "s3cret"}'
+
+# fire a test delivery right now and see the result
+curl -X POST http://127.0.0.1:8188/api/webhooks/<id>/test
+```
+
+What fires (all observed state — nothing new is asked of Chrome):
+
+| Event | When |
+|---|---|
+| `track.change` / `playback.paused` / `playback.resumed` | transitions off the stream-event buffer |
+| `favorite.added` / `favorite.removed` / `rating.changed` | write ops |
+| `library.added` / `library.removed` / `library.album.*` | write ops |
+| `playlist.created` / `playlist.tracks.added` / `playlist.tracks.replaced` / `playlist.renamed` / `playlist.deleted` / `playlist.restored` | write ops |
+| `library.changed` | a snapshot walk found adds/updates/removals (needs `TONEARM_STORE=1`) |
+| `renderer.stalled` / `renderer.recovered` | watchdog declared the tab dead / recycled it |
+| `library.deduped` / `library.rated` | sweep executions |
+| `sweep.digest` | the scheduled digest (below) |
+| `webhook.test` | the test endpoint |
+
+Delivery contract:
+
+* **Payload** is `{"id": "evt_…", "type": …, "created_at": …,
+  "tonearm_version": …, "data": {…}}`. Delivery is **at-least-once** — dedupe
+  on `id` (stable across retries). Headers: `X-Tonearm-Event`,
+  `X-Tonearm-Delivery`, `X-Tonearm-Attempt`, `X-Tonearm-Timestamp`.
+* **Signing**: with a `secret`, every delivery carries
+  `X-Tonearm-Signature: sha256=<hex>` — HMAC-SHA256 over
+  `<X-Tonearm-Timestamp>.<raw body>`. Receivers should ALSO check the
+  timestamp is fresh (say, ±300s) so an old signed body can't be replayed.
+  **Rotation**: set a new secret via `PATCH /api/webhooks/{id}` and have the
+  receiver accept either secret during the cutover — deliveries never stop.
+* **Retries**: network errors, timeouts, 429 and 5xx retry on
+  2s/10s/30s/120s/600s; other 4xx dead-letter immediately (retrying a 400
+  forever is how you become a spammer). After 3 consecutive dead letters a
+  URL is **parked** for 15 min (`TONEARM_WEBHOOK_PARK_AFTER` /
+  `TONEARM_WEBHOOK_PARK_S`) — it stops receiving events until the cooldown
+  passes; the first real success resets the streak. Pending deliveries are
+  in-memory — a restart drops them, stated plainly. Delivery status lives in
+  `GET /api/webhooks` and `/api/debug` (per-hook last attempt + parked flag).
+* **Secrets stay secret**: the management surface reports `has_secret`, never
+  the secret; the hook list is a 0600 JSON file on your volume.
+* **SSRF is yours to manage**: tonearm will POST anywhere you point it —
+  internal service URLs are a *feature* (that's how it reaches Home
+  Assistant on your LAN), just don't point it at anything you wouldn't hand
+  your library metadata to.
+
+Minimal Flask receiver that verifies the signature:
+
+```python
+import hmac, hashlib, time
+from flask import Flask, request, abort
+app = Flask(__name__)
+SECRET = b"s3cret"
+
+@app.post("/hook")
+def hook():
+    ts = request.headers.get("X-Tonearm-Timestamp", "")
+    if abs(time.time() - float(ts or 0)) > 300:          # freshness check
+        abort(400)
+    expected = "sha256=" + hmac.new(SECRET, f"{ts}.".encode() +
+                                    request.get_data(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(request.headers.get("X-Tonearm-Signature", ""),
+                               expected):
+        abort(403)
+    print(request.headers["X-Tonearm-Event"], request.json["data"])
+    return "ok"
+```
+
+| Endpoint | Description |
+|---|---|
+| `GET /webhooks` | hooks (secrets redacted) + per-hook delivery stats + recent attempts |
+| `POST /webhooks` | add a hook `{url, events?, secret?, enabled?}` — same URL updates |
+| `PATCH /webhooks/{id}` | change url/events/secret/enabled (omitted fields stay) |
+| `DELETE /webhooks/{id}` | remove a hook |
+| `POST /webhooks/{id}/test` | synchronous one-shot `webhook.test` — the answer, not a background retry |
+| `GET /webhooks/deliveries?limit=` | the last N delivery attempts, retries included |
+
+`501` (`webhooks_disabled`) until `TONEARM_WEBHOOKS=1`.
+
+### Scheduled sweep digests — `TONEARM_DIGEST_INTERVAL`
+
+Set both flags and the sweeps go ambient:
+
+```bash
+TONEARM_WEBHOOKS=1 TONEARM_DIGEST_INTERVAL=86400 python -m tonearm
+```
+
+Every N seconds one dry-run library walk becomes a `sweep.digest` webhook
+event — library size, duplicate groups + removable rows, never-played count
+with samples. The same payload is available on demand at
+`GET /api/write/sweeps/digest` (no flags needed — it's a read). One walk
+feeds both reports; the walk is stall-gated and never overlaps itself.
+
 ### OBS overlay — `/api/overlay`
 
 Now-playing for streamers, served from the SSE stream's last emitted state
@@ -400,6 +518,7 @@ Every non-2xx response, from any route, is:
 | `disabled` | feature flag off (`501`) | the hint names the env variable |
 | `writes_disabled` | mutations off | set `TONEARM_ENABLE_WRITES=1` if you accept the risk |
 | `store_disabled` | local store off | set `TONEARM_STORE=1` |
+| `webhooks_disabled` | outbound webhooks off | set `TONEARM_WEBHOOKS=1` |
 | `renderer_unavailable` | Chrome tab busy/stalled (`502`) | retry shortly — stalls usually recover in ~60s |
 | `degraded` | renderer failing watchdog checks (`503`) | see `/health`; the watchdog recycles dead tabs |
 
@@ -429,6 +548,12 @@ Every non-2xx response, from any route, is:
 | `TONEARM_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
 | `TONEARM_DISCORD` | `0` | Discord Rich Presence (needs a local Discord client) — requires `TONEARM_DISCORD_CLIENT_ID` |
 | `TONEARM_LASTFM` | `0` | Last.fm scrobbler (needs `TONEARM_STORE=1`; auth via `python -m tonearm.lastfm`) |
+| `TONEARM_WEBHOOKS` | `0` | outbound webhooks: manage via `/api/webhooks`, retries with backoff, HMAC signing |
+| `TONEARM_WEBHOOKS_FILE` | next to the store db | where the hook list lives (0600 JSON) |
+| `TONEARM_WEBHOOK_ATTEMPTS` | `5` | max delivery attempts per hook (2s/10s/30s/120s/600s backoff; 4xx dead-letters) |
+| `TONEARM_WEBHOOK_TIMEOUT` | `10` | per-attempt HTTP timeout, seconds |
+| `TONEARM_WEBHOOK_PARK_AFTER` / `TONEARM_WEBHOOK_PARK_S` | `3` / `900` | park a URL after N consecutive dead letters for this many seconds |
+| `TONEARM_DIGEST_INTERVAL` | `0` | seconds between scheduled `sweep.digest` webhooks (`0` = off; needs `TONEARM_WEBHOOKS=1`) |
 
 ## Field notes (the parts the docs won't tell you)
 
@@ -529,8 +654,12 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
   the API (library browse, search, queue drag, synced lyrics), opus/ogg +
   loudnorm + playhead-aligned join on the audio stream, OBS overlay,
   Discord Rich Presence, Last.fm scrobbling
-* **Next**: **Automation** (webhooks, watchers) → **Multi-user** (scoped
-  keys) → **1.0 Polish**
+* **v0.6 — Automation — shipped**: outbound webhooks (`/api/webhooks`,
+  `TONEARM_WEBHOOKS=1` — track changes, write mutations, renderer
+  stall/recover, library diffs; retries with backoff, HMAC-SHA256 signing)
+  and scheduled sweep digests (`TONEARM_DIGEST_INTERVAL`)
+* **Next**: **Multi-user** (scoped keys) → **1.0 Polish**; the new-release
+  watcher stays open behind a live-verification gate (see ROADMAP)
 
 ## Deploying
 

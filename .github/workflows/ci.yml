@@ -45,7 +45,8 @@ jobs:
                        "/api/catalog/songs/{song_id}/lyrics",
                        "/api/audio/stream.mp3", "/api/stream", "/demo",
                        "/api/write/sweeps/dedupe", "/api/playback/now-playing",
-                       "/api/favorites", "/metrics", "/api/debug"):
+                       "/api/favorites", "/metrics", "/api/debug",
+                       "/api/webhooks", "/api/write/sweeps/digest"):
               assert must in paths, f"missing route: {must}"
           print(f"app OK — {len(paths)} routes")
 
@@ -67,7 +68,9 @@ jobs:
           assert config.api_key == "", "no api key may ship set"
           assert config.store_enabled is False, "store must default OFF"
           assert config.export_interval == 0, "scheduled exports must default OFF"
-          print("defaults OK — writes, audio, store and scheduled exports ship disabled; bind guard warn-only")
+          assert config.webhooks_enabled is False, "webhooks must default OFF"
+          assert config.digest_interval == 0, "scheduled digests must default OFF"
+          print("defaults OK — writes, audio, store, scheduled exports, webhooks and digests ship disabled; bind guard warn-only")
           EOF
 
       - name: Response-model conformance (every JSON route is typed)

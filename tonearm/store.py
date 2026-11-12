@@ -547,6 +547,7 @@ class SnapshotScheduler(threading.Thread):
             return {"ran": False, "reason": "previous walk still running"}
         try:
             t0 = time.time()
+            previous = self.store.get_cursor("library.walk") or {}
             rows = self._walk_fn()
             # upsert in batches so one giant commit never pins the lock
             BATCH = 500
@@ -555,6 +556,28 @@ class SnapshotScheduler(threading.Thread):
             summary = {"ran": True,
                        "rows": len(rows),
                        "seconds": round(time.time() - t0, 1)}
+            # automation: what changed since the PREVIOUS completed walk.
+            # Skipped on the first walk (everything would look "added") and
+            # capped samples keep the event small on a 9k-song library.
+            since = previous.get("completed_at")
+            if since:
+                added = self.store.library_added_since(since, limit=50)
+                updated = self.store.library_updated_since(since, limit=50)
+                removed = self.store.library_removed_since(since, limit=50)
+                counts = {"added": added["total"],
+                          "updated": updated["total"],
+                          "removed": removed["total"]}
+                if any(counts.values()):
+                    try:
+                        from .webhooks import emit
+                        emit("library.changed",
+                             {"since": since, "counts": counts,
+                              "added": added["items"],
+                              "updated": updated["items"],
+                              "removed": removed["items"]})
+                    except Exception as e:
+                        log.debug("library.changed emit skipped: %s", e)
+            summary["completed_at"] = time.time()
             self.store.set_cursor("library.walk", summary)
             METRICS.inc("tonearm_store_library_walks_total",
                         help_text="completed library snapshot walks")
