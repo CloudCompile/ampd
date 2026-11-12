@@ -370,9 +370,15 @@ def queue_add(catalog_id, play_next=False):
 def queue_reorder(ids):
     """Reorder the queue to EXACTLY this list (#87: the client sends the
     whole ordered list, never deltas — last write wins, no merge states).
-    MusicKit has no public reorder: setQueue(items) rebuilds the queue, then
-    playback is moved back onto the SAME track at its new index. Best-effort
-    like every transport op — the queue internals move between builds."""
+    MusicKit has no public reorder: setQueue(songs) rebuilds the queue,
+    then playback is moved back onto the SAME track at its new index and
+    resumed if it was playing. setQueue takes the SONGS qualifier for bare
+    catalog ids ({items} with raw id strings is rejected: MKError mk-007
+    Invalid media URL — found live); setQueue STOPS the player and
+    _queueItems fills in asynchronously — so: settle, find the index,
+    changeToMediaAtIndex, play() if it was playing. The track restarts
+    from its top (a rebuilt queue has no seekable past) — best-effort,
+    like every transport op; a failed eval leaves the old queue alone."""
     id_list = ", ".join(_j(i) for i in ids)
     browser.eval(
         f"""(async () => {{
@@ -381,19 +387,30 @@ def queue_reorder(ids):
                       && (mk.nowPlayingItem.id
                           || mk.nowPlayingItem.attributes?.playParams?.id);
           const wasPlaying = !!mk.isPlaying;
-          await mk.setQueue({{items: [{id_list}]}});
-          // put the playhead back on the same track, wherever it landed
-          let idx = 0;
-          try {{
-            const q = mk._playbackController && mk._playbackController._queue;
-            const items = (q && (q._queueItems || q.items)) || [];
-            idx = Math.max(0, items.findIndex(it =>
-              (it.id || it.attributes?.playParams?.id) === cur));
-          }} catch (e) {{ /* keep 0 — top of the new queue */ }}
+          await mk.setQueue({{songs: [{id_list}]}});
+          // _queueItems fills in ASYNCHRONOUSLY (Apple fetches the songs'
+          // metadata) — poll until it settles (~3s worst case) or the
+          // index search silently mis-lands on 0 (found live)
+          let items = [];
+          for (let n = 0; n < 20; n++) {{
+            await new Promise(r => setTimeout(r, 150));
+            items = (mk._playbackController?._queue?._queueItems
+                     || mk._playbackController?._queue?.items
+                     || mk.queue?._queueItems || mk.queue?.items || []);
+            if (items.length >= {len(ids)}) break;
+          }}
+          // _queueItems entries WRAP the item (e.item || e — same unwrap
+          // the queue route uses); nowPlayingItem is the bare MediaItem
+          const key = it => {{
+            const t = it?.item || it;
+            return t?.id || t?.attributes?.playParams?.id;
+          }};
+          let idx = items.findIndex(it => key(it) === cur);
+          if (idx < 0) idx = 0;                        // unknown -> top
           if (idx > 0 && mk.changeToMediaAtIndex)
             await mk.changeToMediaAtIndex(idx);
-          if (!wasPlaying) await mk.pause();
-          return true;
+          if (wasPlaying && mk.play) await mk.play();
+          return {{idx, items: items.length, wasPlaying}};
         }})()""", timeout=30)
 
 
