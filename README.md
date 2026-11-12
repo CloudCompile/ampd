@@ -115,7 +115,7 @@ Every sweep returns a PLAN unless `execute=1`. A full library walk is
 
 ### Streaming — `/api/stream` (SSE) + `/demo`
 
-```
+```text
 GET /api/stream        # text/event-stream
   event: snapshot      # full player state on connect
   event: update        # every change: play/pause, track, ~1/s progress,
@@ -131,6 +131,22 @@ volume, shuffle/repeat), so clients are dumb renderers.
 public API. ~100 lines of HTML/JS: use it, or steal it as a starting point
 for your own UI. It stays readable when `AMPD_API_KEY` is set via
 `/demo?api_key=…` and `/api/stream?api_key=…`.
+
+### Metrics — `/metrics` (Prometheus)
+
+```prometheus
+ampd_cdp_eval_duration_seconds_bucket{le="5"} …   # renderer latency
+ampd_renderer_consecutive_failures 0              # watchdog stall state
+ampd_renderer_recycles 0                          # dead-tab recoveries
+ampd_apple_requests_total{code="2xx"} …           # Apple error rates
+ampd_stream_listeners / ampd_audio_listeners …    # live clients
+ampd_queue_depth_last …                           # last-known queue depth
+```
+
+Zero dependencies, plain text exposition. The scrape path **never touches
+the renderer** — every series is read from state the watchdog, fetch layer
+and stream gauges already maintain. Sits behind `AMPD_API_KEY` when one is
+set (scrape config: `authorization` block with `Bearer <key>`).
 
 ### Audio — `/api/audio/stream.mp3` (the actual sound)
 

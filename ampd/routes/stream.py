@@ -11,6 +11,7 @@ at it and re-render on every message. See /demo for a working example.
 """
 import asyncio
 import json
+import threading
 import time
 
 from fastapi import APIRouter, Request
@@ -18,11 +19,25 @@ from fastapi.responses import StreamingResponse
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..metrics import METRICS
 
 router = APIRouter(tags=["stream"])
 
+_listeners = 0
+_listener_lock = threading.Lock()
+
+
+def _listener_delta(d):
+    global _listeners
+    with _listener_lock:
+        _listeners = max(0, _listeners + d)
+        METRICS.gauge("ampd_stream_listeners", _listeners,
+                      help_text="Active SSE /api/stream connections")
+        return _listeners
+
 
 async def _events(request: Request):
+    _listener_delta(1)
     try:
         mk.install_stream_hook()
         snap = await asyncio.to_thread(mk.snapshot)
@@ -54,6 +69,8 @@ async def _events(request: Request):
             await asyncio.sleep(1.0)
     except (BrowserError, GeneratorExit, asyncio.CancelledError):
         return
+    finally:
+        _listener_delta(-1)
 
 
 @router.get("/stream")

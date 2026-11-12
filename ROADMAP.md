@@ -31,7 +31,7 @@ its own renderer.*
       the deploy guides `S P0`
 - [x] **Non-localhost warning** — refuse (or warn loudly) when binding
       0.0.0.0 without `AMPD_API_KEY` `S P0`
-- [ ] **Prometheus `/metrics`** — eval latency histogram, renderer-stall
+- [x] **Prometheus `/metrics`** — eval latency histogram, renderer-stall
       counter, Apple 4xx/5xx rates, stream listeners, queue depth `S P1`
 - [ ] **ARM64 images** — buildx multi-arch for RPi / Apple Silicon `S P1`
 - [ ] **`/api/debug` surface** — last-N CDP calls with durations, current

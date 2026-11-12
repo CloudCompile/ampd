@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .routes import (library, favorites, playback, passthrough, catalog,
-                     personal, writes, sweeps, stream, audio)
+                     personal, writes, sweeps, stream, audio, metrics)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -75,6 +75,7 @@ app.include_router(writes.router, prefix="/api")
 app.include_router(sweeps.router, prefix="/api")
 app.include_router(stream.router, prefix="/api")
 app.include_router(audio.router, prefix="/api")
+app.include_router(metrics.router)
 
 
 @app.get("/demo", include_in_schema=False)
