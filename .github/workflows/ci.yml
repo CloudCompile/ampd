@@ -47,7 +47,8 @@ jobs:
                        "/api/write/sweeps/dedupe", "/api/playback/now-playing",
                        "/api/favorites", "/metrics", "/api/debug",
                        "/api/webhooks", "/api/write/sweeps/digest",
-                       "/api/smartlists", "/api/watcher"):
+                       "/api/smartlists", "/api/watcher",
+                       "/ledger", "/radar", "/bench"):
               assert must in paths, f"missing route: {must}"
           print(f"app OK — {len(paths)} routes")
 
@@ -100,7 +101,8 @@ jobs:
           # framework infrastructure, not part of the API surface.
           EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/metrics",
                              "/demo", "/api/amp-api/", "/api/overlay/",
-                             "/openapi.json", "/docs", "/redoc")
+                             "/openapi.json", "/docs", "/redoc",
+                             "/ledger", "/radar", "/bench", "/sites/")
 
           untyped = []
           total = 0
@@ -276,13 +278,16 @@ jobs:
           base = "http://127.0.0.1:8971"
           for path, marker in [("/", "tonearm"), ("/app.js", ""),
                                ("/styles.css", ""), ("/sw.js", "tonearm-shell"),
-                               ("/manifest.webmanifest", "tonearm")]:
+                               ("/manifest.webmanifest", "tonearm"),
+                               ("/ledger", "Ledger"), ("/radar", "Radar"),
+                               ("/bench", "Bench"),
+                               ("/sites/common.js", "sites")]:
               with urllib.request.urlopen(base + path, timeout=10) as r:
                   body = r.read().decode(errors="replace")
               assert r.status == 200, (path, r.status)
               if marker:
                   assert marker in body, (path, body[:80])
-          print("PWA shell OK — /, app.js, styles.css, sw.js, manifest served")
+          print("PWA shell + companion pages OK")
           EOF
           kill $(cat /tmp/mock-server.pid) 2>/dev/null || true
           sleep 1

@@ -271,6 +271,45 @@ def demo():
                         media_type="text/html")
 
 
+# ---- companion pages (v0.6.2) — /ledger /radar /bench, served like /demo.
+# Keyless shell, the PWA's auth dialect: the page loads without the key and
+# the fetches carry it (Bearer from localStorage; a 401 prompts once).
+
+_SITES = os.path.join(os.path.dirname(__file__), "sites")
+
+
+@app.get("/ledger", include_in_schema=False)
+def ledger_page():
+    return FileResponse(os.path.join(_SITES, "ledger.html"),
+                        media_type="text/html")
+
+
+@app.get("/radar", include_in_schema=False)
+def radar_page():
+    return FileResponse(os.path.join(_SITES, "radar.html"),
+                        media_type="text/html")
+
+
+@app.get("/bench", include_in_schema=False)
+def bench_page():
+    return FileResponse(os.path.join(_SITES, "bench.html"),
+                        media_type="text/html")
+
+
+@app.get("/sites/{filename}", include_in_schema=False)
+def site_asset(filename: str):
+    """Static assets for the companion pages (js/css). Path-traversal safe:
+    a flat allowlist check, no subdirectories, no dots."""
+    if ("/" in filename or ".." in filename or filename.startswith(".")):
+        raise HTTPException(404)
+    path = os.path.join(_SITES, filename)
+    if not os.path.isfile(path):
+        raise HTTPException(404)
+    media = {"js": "text/javascript", "css": "text/css"}.get(
+        filename.rsplit(".", 1)[-1], "application/octet-stream")
+    return FileResponse(path, media_type=media)
+
+
 # ---- PWA static serving (#84) — LAST, so every API route above wins ----
 # web/ is built by `node web/build.mjs` (esbuild — the only npm dep) into
 # tonearm/web-dist; CI and the Docker build stage both run it (the runtime

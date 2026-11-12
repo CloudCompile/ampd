@@ -1,0 +1,55 @@
+<!doctype html>
+<!-- /ledger — listening stats + library health. Read-only except
+     confirmed sweep executions. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ledger — tonearm</title>
+<link rel="stylesheet" href="/sites/common.css">
+</head>
+<body>
+<main>
+  <section>
+    <div class="tabs" id="windows">
+      <button data-w="week">7 days</button>
+      <button data-w="month">30 days</button>
+      <button data-w="all" class="active">All time</button>
+    </div>
+    <div style="height:12px"></div>
+    <div class="cards" id="stat-cards"></div>
+  </section>
+
+  <section>
+    <h2 style="margin-top:0">Plays per day — last 30 days</h2>
+    <div id="chart"></div>
+  </section>
+
+  <section class="grid2">
+    <div>
+      <h2 style="margin-top:0">Top tracks</h2>
+      <table id="top-tracks"></table>
+    </div>
+    <div>
+      <h2 style="margin-top:0">Top artists</h2>
+      <table id="top-artists"></table>
+    </div>
+  </section>
+
+  <section>
+    <h2 style="margin-top:0">Recently played <span class="dim small">(the local archive — everything since TONEARM_STORE was enabled)</span></h2>
+    <table id="recent"></table>
+    <div style="margin-top:10px"><button class="act" id="more-recent" hidden>Load more</button></div>
+  </section>
+
+  <section>
+    <h2 style="margin-top:0">Library health <span class="dim small">(dry-run plans; executions are confirmed twice)</span></h2>
+    <div class="cards" id="digest-cards"></div>
+    <div style="height:10px"></div>
+    <div id="dedupe"></div>
+    <div id="never-played"></div>
+  </section>
+</main>
+<script type="module" src="/sites/ledger.js"></script>
+</body>
+</html>
