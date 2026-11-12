@@ -104,18 +104,22 @@ class TestScrobbler(unittest.TestCase):
                           if p["method"] == "track.scrobble"])
 
     def test_dedupe_on_restart_replay(self):
+        t0 = 1_700_000_000.0
         self.s.process_events([
-            ev(1, "a", elapsed=1_000, duration=100_000),
-            ev(2, "a", elapsed=90_000, duration=100_000),    # fires
+            ev(1, "a", elapsed=1_000, duration=100_000, ts=t0 * 1000),
+            ev(2, "a", elapsed=90_000, duration=100_000, ts=t0 * 1000),
         ])
+        # a restart replays the SAME buffer (same ts — that's what a replay
+        # is); a fresh scrobbler must not re-submit the same play
         replay = Scrobbler(self.store, self.s.creds)
         with mock.patch.object(lastfm, "_call", return_value={}):
             got = replay.process_events([
-                ev(1, "a", elapsed=90_000, duration=100_000),
-                ev(2, "b", elapsed=1_000, duration=100_000),
+                ev(1, "a", elapsed=90_000, duration=100_000, ts=t0 * 1000),
+                ev(2, "b", elapsed=1_000, duration=100_000, ts=t0 * 1000),
             ])
-        self.assertEqual(got, [], "replayed buffer after a restart must "
-                                  "never double-scrobble (scrobbles table)")
+        self.assertEqual([k for k, _ in got], ["b"],
+                         "only the genuinely NEW play scrobbles; the "
+                         "replayed one is deduped by (id, started_at)")
 
     def test_now_playing_once_per_track(self):
         self.s.process_events([
