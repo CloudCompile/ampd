@@ -19,6 +19,7 @@ import urllib.request
 import websocket
 
 from .config import config
+from .metrics import METRICS
 
 log = logging.getLogger("ampd.browser")
 
@@ -257,6 +258,9 @@ class Browser:
         res = self.call("Runtime.evaluate", expression=js, awaitPromise=True,
                         returnByValue=True, deadline_s=max(timeout, 5))
         dt = time.time() - t0
+        METRICS.observe("ampd_cdp_eval_duration_seconds", dt,
+                        help_text="CDP Runtime.evaluate latency (all evals, "
+                                  "including watchdog pings and stream drains)")
         if dt > 5:
             log.warning("slow eval (%.1fs): %s…", dt, js.strip()[:100])
         r = res.get("result", {})

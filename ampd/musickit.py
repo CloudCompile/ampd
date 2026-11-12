@@ -8,6 +8,7 @@ import re
 
 from . import cache as _cache_mod
 from .browser import browser, BrowserError
+from .metrics import METRICS
 
 read_cache = _cache_mod.read_cache
 
@@ -38,7 +39,7 @@ def _raw_api_now(path, method="GET", body=None, timeout=60):
     served the pre-mutation snapshot from cache."""
     if method != "GET":
         read_cache.after_mutation()
-    return browser.eval(
+    res = browser.eval(
         f"""(async () => {{
           const inst = MusicKit.getInstance();
           const init = {{
@@ -51,6 +52,13 @@ def _raw_api_now(path, method="GET", body=None, timeout=60):
           const res = await fetch('https://amp-api.music.apple.com' + {_j(path)}, init);
           return {{status: res.status, body: await res.text()}};
         }})()""", timeout=timeout)
+    METRICS.inc("ampd_apple_requests_total", {"code": f"{res['status'] // 100}xx"},
+                help_text="amp-api responses by status class")
+    if res["status"] == 429:
+        METRICS.inc("ampd_apple_429_total",
+                    help_text="Apple rate-limit hits (Retry-After honored in "
+                              "the fetch layer)")
+    return res
 
 
 def raw_api(path, method="GET", body=None, timeout=60, fresh=False):
@@ -455,7 +463,7 @@ def play_song(catalog_id):
 
 
 def queue():
-    return browser.eval("""(() => {
+    items = browser.eval("""(() => {
       const mk = MusicKit.getInstance();
       const q = mk._playbackController && mk._playbackController._queue;
       const items = q ? (q._queueItems || []) : [];
@@ -464,6 +472,11 @@ def queue():
         return {id: t.id, title: t.title, artist: t.artistName, kind: t.kind};
       });
     })()""", timeout=15)
+    METRICS.gauge("ampd_queue_depth_last", len(items or []),
+                  help_text="Last-known playback queue depth (updated only "
+                            "when the queue is actually read — never polled "
+                            "at scrape time)")
+    return items
 
 
 def playback_property(name):
