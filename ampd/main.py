@@ -56,11 +56,13 @@ async def auth_guard(request: Request, call_next):
 
 @app.get("/health")
 def health():
+    wd = browser.health()
     try:
         browser.check()
-        return {"status": "ok", "browser": "authorized"}
+        return {"status": "ok", "browser": "authorized", "watchdog": wd}
     except BrowserError as e:
-        return JSONResponse(status_code=503, content={"status": "degraded", "detail": str(e)})
+        return JSONResponse(status_code=503, content={
+            "status": "degraded", "detail": str(e), "watchdog": wd})
 
 
 app.include_router(library.router, prefix="/api")
