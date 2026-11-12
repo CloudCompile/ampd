@@ -32,7 +32,10 @@ jobs:
           node-version: "22"
 
       - name: Install generator tooling
-        run: pip install openapi-python-client ruff build
+        run: |
+          # the app itself (the mock server must boot) + generators
+          pip install -r requirements.txt
+          pip install openapi-python-client ruff build
         # ruff is NOT optional: the generator's post-gen hook hard-fails
         # without it (output is still written, but the step exits 2)
 
