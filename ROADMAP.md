@@ -29,7 +29,7 @@ its own renderer.*
       bust by key `M P0`
 - [x] **Docker HEALTHCHECK** wired to `/health` + restart-policy guidance in
       the deploy guides `S P0`
-- [ ] **Non-localhost warning** — refuse (or warn loudly) when binding
+- [x] **Non-localhost warning** — refuse (or warn loudly) when binding
       0.0.0.0 without `AMPD_API_KEY` `S P0`
 - [ ] **Prometheus `/metrics`** — eval latency histogram, renderer-stall
       counter, Apple 4xx/5xx rates, stream listeners, queue depth `S P1`

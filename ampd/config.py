@@ -18,6 +18,10 @@ class Config:
     port: int = int(os.environ.get("AMPD_PORT", "8188"))
     # Optional shared secret; if set, all /api routes require "Authorization: Bearer <key>"
     api_key: str = os.environ.get("AMPD_API_KEY", "")
+    # Make the unauthenticated non-localhost bind FATAL instead of a loud
+    # warning. Default warn-only because inside a container binding 0.0.0.0
+    # is normal and correct (the port mapping is the boundary).
+    strict_bind: bool = os.environ.get("AMPD_STRICT_BIND", "0") == "1"
 
     # --- behavior ---
     # WRITE OPS ARE OFF BY DEFAULT. Favorites/playlists mutations return 501 until

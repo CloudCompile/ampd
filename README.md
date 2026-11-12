@@ -194,6 +194,7 @@ above were validated live against a real account.
 | `AMPD_HEADLESS` | `1` | headless chrome (set `0` for audible playback) |
 | `AMPD_HOST` / `AMPD_PORT` | `127.0.0.1` / `8188` | bind address |
 | `AMPD_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
+| `AMPD_STRICT_BIND` | `0` | make a non-localhost bind **without** `AMPD_API_KEY` fatal instead of a loud warning (default warn-only — inside a container, binding `0.0.0.0` is normal; the port mapping is the boundary) |
 | `AMPD_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
 | `AMPD_FAV_PLAYLIST` | `Favorite Songs` | name of the favorites auto-playlist |
 | `AMPD_AUDIO` | `0` | stream the actual audio at `/api/audio/stream.mp3` |
