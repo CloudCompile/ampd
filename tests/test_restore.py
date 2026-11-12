@@ -8,7 +8,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.restore import build_plan, execute_plan
+from tonearm.restore import build_plan, execute_plan
 
 
 def export(pls):

@@ -2,7 +2,7 @@
 
 How this list thinks:
 
-* ampd rides **undocumented surfaces**. Apple can change any of them without
+* tonearm rides **undocumented surfaces**. Apple can change any of them without
   notice — items touching them carry a *verify live* gate before build.
 * **Effort**: S (< day) · M (days) · L (a week+). **Priority**: P0 (next
   phase) · P1 (soon) · P2 (when it's fun).
@@ -30,7 +30,7 @@ its own renderer.*
 - [x] **Docker HEALTHCHECK** wired to `/health` + restart-policy guidance in
       the deploy guides `S P0`
 - [x] **Non-localhost warning** — refuse (or warn loudly) when binding
-      0.0.0.0 without `AMPD_API_KEY` `S P0`
+      0.0.0.0 without `TONEARM_API_KEY` `S P0`
 - [x] **Prometheus `/metrics`** — eval latency histogram, renderer-stall
       counter, Apple 4xx/5xx rates, stream listeners, queue depth `S P1`
 - [x] **ARM64 images** — buildx multi-arch for RPi / Apple Silicon `S P1`
@@ -40,7 +40,7 @@ its own renderer.*
 
 ## v0.3 — Memory
 
-*Persistence. Apple's API forgets; ampd shouldn't.*
+*Persistence. Apple's API forgets; tonearm shouldn't.*
 
 - [x] **Backup/restore** — recreate playlists from `/api/library/export`
       (the missing half; export is already a complete restore reference) `M P0`
@@ -84,7 +84,7 @@ its own renderer.*
 
 ## v0.6 — Automation
 
-*Apple has no webhooks. ampd can be the webhook.*
+*Apple has no webhooks. tonearm can be the webhook.*
 
 - [ ] **Outbound webhooks** — POST events (track change, heart, playlist
       mutation, stall-recovered) to user-configured URLs, with retries `M P0`
@@ -124,7 +124,7 @@ its own renderer.*
 
 * Not obviously useful yet, obviously fun eventually:
   GraphQL-style batch endpoint · multi-storefront (region as a param) ·
-  "ampd bridge" for Jellyfin/Plex metadata · a tiny ESP32 now-playing
+  "tonearm bridge" for Jellyfin/Plex metadata · a tiny ESP32 now-playing
   display recipe · voice-control skill.
 
 ## Non-goals
@@ -135,4 +135,4 @@ its own renderer.*
   ToS-respecting property, not a limitation.
 * **Scraping beyond the session's entitlements** or impersonating official
   Apple clients.
-* **Being a product.** ampd is a personal tool that happens to be public.
+* **Being a product.** tonearm is a personal tool that happens to be public.

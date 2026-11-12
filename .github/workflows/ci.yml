@@ -20,12 +20,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Byte-compile every module
-        run: python -m compileall -q ampd tests
+        run: python -m compileall -q tonearm tests
 
       - name: Import smoke test (no Chrome needed at import time)
         run: |
           python - <<'EOF'
-          from ampd.main import app
+          from tonearm.main import app
 
           # newer FastAPI nests includes as _IncludedRouter objects; flatten
           def flatten(routes, prefix=""):
@@ -51,8 +51,8 @@ jobs:
 
           # no chrome connection happens without a request; ensure the
           # lifespan-pulled pieces at least exist
-          from ampd.audio import broadcaster
-          from ampd.browser import browser
+          from tonearm.audio import broadcaster
+          from tonearm.browser import browser
           assert broadcaster is not None and browser is not None
           print("singletons OK")
           EOF
@@ -60,7 +60,7 @@ jobs:
       - name: Config defaults are safe
         run: |
           python - <<'EOF'
-          from ampd.config import config
+          from tonearm.config import config
           assert config.enable_writes is False, "writes must default OFF"
           assert config.audio_enabled is False, "audio must default OFF"
           assert config.strict_bind is False, "bind guard must default to warn-only"
@@ -73,7 +73,7 @@ jobs:
       - name: Response-model conformance (every JSON route is typed)
         run: |
           python - <<'EOF'
-          from ampd.main import app
+          from tonearm.main import app
 
           # same flattening as the smoke step — _IncludedRouter hides children
           def flatten(routes, prefix=""):
@@ -121,12 +121,12 @@ jobs:
           # runtime image has none. The bundle must compile for CI to pass.
           npm ci --prefix web || npm install --prefix web --no-audit --no-fund
           node web/build.mjs
-          test -f ampd/web-dist/app.js && test -f ampd/web-dist/index.html \
+          test -f tonearm/web-dist/app.js && test -f tonearm/web-dist/index.html \
             && echo "PWA bundle OK"
 
       - name: Integration — mock mode serves the full API (no Chrome, no Apple)
         run: |
-          AMPD_MOCK=1 AMPD_AUTO_CHROME=0 AMPD_PORT=8971 python -m ampd \
+          TONEARM_MOCK=1 TONEARM_AUTO_CHROME=0 TONEARM_PORT=8971 python -m tonearm \
             > /tmp/mock-server.log 2>&1 &
           echo $! > /tmp/mock-server.pid
           python - <<'EOF'
@@ -261,9 +261,9 @@ jobs:
           python - <<'EOF'
           import urllib.request
           base = "http://127.0.0.1:8971"
-          for path, marker in [("/", "ampd"), ("/app.js", ""),
-                               ("/styles.css", ""), ("/sw.js", "ampd-shell"),
-                               ("/manifest.webmanifest", "ampd")]:
+          for path, marker in [("/", "tonearm"), ("/app.js", ""),
+                               ("/styles.css", ""), ("/sw.js", "tonearm-shell"),
+                               ("/manifest.webmanifest", "tonearm")]:
               with urllib.request.urlopen(base + path, timeout=10) as r:
                   body = r.read().decode(errors="replace")
               assert r.status == 200, (path, r.status)
@@ -276,8 +276,8 @@ jobs:
 
           # auth dialect (#90): with a key, the SHELL still loads keylessly
           # and the API 401s — then accepts BOTH dialects
-          AMPD_MOCK=1 AMPD_AUTO_CHROME=0 AMPD_PORT=8972 AMPD_API_KEY=sekrit \
-            python -m ampd > /tmp/mock-keyed.log 2>&1 &
+          TONEARM_MOCK=1 TONEARM_AUTO_CHROME=0 TONEARM_PORT=8972 TONEARM_API_KEY=sekrit \
+            python -m tonearm > /tmp/mock-keyed.log 2>&1 &
           KEYED=$!
           python - <<'EOF'
           import time, urllib.request, urllib.error

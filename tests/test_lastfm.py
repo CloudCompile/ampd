@@ -12,8 +12,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd import lastfm
-from ampd.lastfm import Scrobbler, qualifies
+from tonearm import lastfm
+from tonearm.lastfm import Scrobbler, qualifies
 
 
 def ev(seq, key, title="Song", artist="Artist", album="Album",

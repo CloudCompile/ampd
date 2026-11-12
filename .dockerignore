@@ -5,5 +5,5 @@ __pycache__/
 *.pyc
 chrome-profile/
 web/node_modules/
-ampd/web-dist/
+tonearm/web-dist/
 /data/

@@ -16,8 +16,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd import musickit as mk
-from ampd.cache import ReadCache
+from tonearm import musickit as mk
+from tonearm.cache import ReadCache
 
 
 def res429(retry_after=None):

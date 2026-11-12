@@ -1,6 +1,6 @@
 {
-  "name": "ampd",
-  "short_name": "ampd",
+  "name": "tonearm",
+  "short_name": "tonearm",
   "description": "Your Apple Music session, self-hosted — library, search, queue, synced lyrics.",
   "start_url": "/",
   "display": "standalone",

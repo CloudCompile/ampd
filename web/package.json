@@ -1,8 +1,8 @@
 {
-  "name": "ampd-web",
+  "name": "tonearm-web",
   "private": true,
   "version": "1.0.0",
-  "description": "ampd PWA — built with esbuild (the only dev dependency), no framework runtime",
+  "description": "tonearm PWA — built with esbuild (the only dev dependency), no framework runtime",
   "type": "module",
   "scripts": {
     "build": "node build.mjs"

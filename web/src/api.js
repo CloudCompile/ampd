@@ -1,7 +1,7 @@
 // API access (#90): the key lives in localStorage and rides EVERYWHERE —
 // as ?api_key= (EventSource cannot send headers) and as a Bearer header
 // (every fetch). The server accepts either.
-const KEY = () => localStorage.getItem("ampd_key") || "";
+const KEY = () => localStorage.getItem("tonearm_key") || "";
 
 export function needsKey() { return !!KEY(); }
 

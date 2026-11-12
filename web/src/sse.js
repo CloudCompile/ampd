@@ -13,7 +13,7 @@ export function currentState() { return state; }
 function connect() {
   // the key dialect (#90): EventSource cannot send headers, so the key
   // rides the query string — the server accepts either dialect
-  const key = localStorage.getItem("ampd_key") || "";
+  const key = localStorage.getItem("tonearm_key") || "";
   es = new EventSource("/api/stream" + (key ? `?api_key=${encodeURIComponent(key)}` : ""));
   es.addEventListener("snapshot", (e) => {
     state = JSON.parse(e.data);

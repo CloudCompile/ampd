@@ -9,12 +9,12 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.store import Store
-from ampd.exporter import build_export, write_atomic, prune, ExportScheduler
+from tonearm.store import Store
+from tonearm.exporter import build_export, write_atomic, prune, ExportScheduler
 
 
 def temp_store():
-    d = tempfile.mkdtemp(prefix="ampd-stats-test-")
+    d = tempfile.mkdtemp(prefix="tonearm-stats-test-")
     return Store(path=os.path.join(d, "test.db"), enabled=True)
 
 

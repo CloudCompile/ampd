@@ -1,15 +1,15 @@
-# ampd 🎧
+# tonearm 🎧
 
-[![CI](https://github.com/CloudCompile/ampd/actions/workflows/ci.yml/badge.svg)](https://github.com/CloudCompile/ampd/actions/workflows/ci.yml)
+[![CI](https://github.com/CloudCompile/tonearm/actions/workflows/ci.yml/badge.svg)](https://github.com/CloudCompile/tonearm/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](requirements.txt)
 
-**A personal, self-hosted Apple Music API.** ampd drives your own logged-in
+**A personal, self-hosted Apple Music API.** tonearm drives your own logged-in
 Apple Music web player session through Chrome DevTools and exposes it as a
 clean local REST API — including corners of Apple's API that aren't officially
 documented.
 
-> ⚠️ **Unofficial.** Not affiliated with Apple. ampd automates *your own*
+> ⚠️ **Unofficial.** Not affiliated with Apple. tonearm automates *your own*
 > account, for *your own* use — it holds your session the same way your
 > browser does. That's a gray zone in Apple's ToS; use your judgment and keep
 > it private/local.
@@ -17,14 +17,14 @@ documented.
 ## How it works
 
 ```
-your code ──HTTP──▶ ampd (FastAPI, localhost) ──CDP──▶ Chrome (your session)
+your code ──HTTP──▶ tonearm (FastAPI, localhost) ──CDP──▶ Chrome (your session)
                                                           │
                                                           ▼
                                                 amp-api.music.apple.com
                                           (MusicKit, your auth tokens)
 ```
 
-The web player ships a full MusicKit client with your auth. ampd attaches to
+The web player ships a full MusicKit client with your auth. tonearm attaches to
 that page over CDP and evaluates calls in it — so there are **no tokens to
 manage**: your session lives in a Chrome profile, exactly like a normal login.
 Sign in once, and everything the web player can do becomes an API.
@@ -35,10 +35,10 @@ Sign in once, and everything the web player can do becomes an API.
 pip install -r requirements.txt
 
 # 1. one-time: sign in (opens a visible Chrome window)
-python -m ampd.login
+python -m tonearm.login
 
 # 2. serve (headless by default)
-python -m ampd
+python -m tonearm
 # → API docs at http://127.0.0.1:8188/docs
 ```
 
@@ -55,13 +55,13 @@ python -m ampd
 | `GET /library/recently-added?limit` | most recent additions |
 | `GET /library/playlists/{id}/tracks` | every track of a playlist (auto-paginated to the end) |
 | `GET /library/export` | full backup: every song + every playlist with its tracks (~3 min for a 9k library) |
-| `GET /library/diff?since=&what=` | what changed since a unix timestamp (added/updated/removed) — computed from the local store's snapshot walks; `501` unless `AMPD_STORE=1` |
+| `GET /library/diff?since=&what=` | what changed since a unix timestamp (added/updated/removed) — computed from the local store's snapshot walks; `501` unless `TONEARM_STORE=1` |
 
 Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 `album`, `artwork` at 600×600, …) **and** carries Apple's full raw
 `attributes` blob, so nothing the API exposes is hidden.
 
-### History — `/api/history/…` (the local archive, `AMPD_STORE=1` → else `501`)
+### History — `/api/history/…` (the local archive, `TONEARM_STORE=1` → else `501`)
 
 Apple's recently-played caps at ~20 items and erodes; the local store keeps
 everything from the moment you enable it (no backfill — coverage starts at
@@ -69,7 +69,7 @@ opt-in).
 
 | Endpoint | Description |
 |---|---|
-| `GET /history/recently-played?limit&offset` | every play since `AMPD_STORE=1` was first enabled, newest first |
+| `GET /history/recently-played?limit&offset` | every play since `TONEARM_STORE=1` was first enabled, newest first |
 | `GET /history/stats?window=day\|week\|month\|all` | top tracks + artists from YOUR play archive (SQL aggregation, no Apple calls) |
 | `GET /history/stats/series?days=` | plays per UTC day — chart-ready |
 
@@ -142,23 +142,23 @@ volume, shuffle/repeat), so clients are dumb renderers.
 **A working demo ships at `/demo`** — a single-file remote control
 (now-playing card, transport, volume, queue) built on nothing but the
 public API. ~100 lines of HTML/JS: use it, or steal it as a starting point
-for your own UI. It stays readable when `AMPD_API_KEY` is set via
+for your own UI. It stays readable when `TONEARM_API_KEY` is set via
 `/demo?api_key=…` and `/api/stream?api_key=…`.
 
 ### Metrics — `/metrics` (Prometheus)
 
 ```prometheus
-ampd_cdp_eval_duration_seconds_bucket{le="5"} …   # renderer latency
-ampd_renderer_consecutive_failures 0              # watchdog stall state
-ampd_renderer_recycles 0                          # dead-tab recoveries
-ampd_apple_requests_total{code="2xx"} …           # Apple error rates
-ampd_stream_listeners / ampd_audio_listeners …    # live clients
-ampd_queue_depth_last …                           # last-known queue depth
+tonearm_cdp_eval_duration_seconds_bucket{le="5"} …   # renderer latency
+tonearm_renderer_consecutive_failures 0              # watchdog stall state
+tonearm_renderer_recycles 0                          # dead-tab recoveries
+tonearm_apple_requests_total{code="2xx"} …           # Apple error rates
+tonearm_stream_listeners / tonearm_audio_listeners …    # live clients
+tonearm_queue_depth_last …                           # last-known queue depth
 ```
 
 Zero dependencies, plain text exposition. The scrape path **never touches
 the renderer** — every series is read from state the watchdog, fetch layer
-and stream gauges already maintain. Sits behind `AMPD_API_KEY` when one is
+and stream gauges already maintain. Sits behind `TONEARM_API_KEY` when one is
 set (scrape config: `authorization` block with `Bearer <key>`).
 
 ### Debug — `/api/debug` (what just happened in there?)
@@ -172,14 +172,14 @@ read from memory or Chrome's socket-free HTTP API.
 
 Metadata streaming is great for a remote control on the same machine — but
 if the server runs on a VPS and your UI at home wants to **hear** it, set
-`AMPD_AUDIO=1`. ampd then:
+`TONEARM_AUDIO=1`. tonearm then:
 
-1. runs Chrome on a virtual display (`AMPD_AUDIO_DISPLAY=:2`) instead of
+1. runs Chrome on a virtual display (`TONEARM_AUDIO_DISPLAY=:2`) instead of
    headless — headless Chrome has no audio output,
 2. routes its audio into a **private** PulseAudio null sink
-   (`AMPD_AUDIO_SINK=ampd_audio`) — your desktop's audio never mixes in,
+   (`TONEARM_AUDIO_SINK=tonearm_audio`) — your desktop's audio never mixes in,
 3. captures the sink and re-serves it as a live mp3
-   (`AMPD_AUDIO_BITRATE=160k`):
+   (`TONEARM_AUDIO_BITRATE=160k`):
 
 ```html
 <audio src="http://vps:8188/api/audio/stream.mp3">
@@ -200,12 +200,12 @@ lists (only the visible window renders), one EventSource driving
 everything — it polls nothing the stream already pushes.
 
 ```
-node web/build.mjs        # bundle -> ampd/web-dist (gitignored, built in
+node web/build.mjs        # bundle -> tonearm/web-dist (gitignored, built in
                           # CI and the Docker image's node stage)
 ```
 
 Serve it by just running the server — the app mounts at `/` when
-`ampd/web-dist/` exists, and the API keeps every `/api/…` path.
+`tonearm/web-dist/` exists, and the API keeps every `/api/…` path.
 
 - **Auth dialect** (#90): the shell loads without a key (a locked-down
   server must still serve its login page); the key you enter is stored in
@@ -220,10 +220,10 @@ Serve it by just running the server — the app mounts at `/` when
 - **Lyrics** (#89): implements `docs/lyrics-contract.md` verbatim, with
   the ±100 ms offset nudge and a quiet instrumental state on 404.
 
-### Mock mode — `AMPD_MOCK=1` (no Apple account needed)
+### Mock mode — `TONEARM_MOCK=1` (no Apple account needed)
 
 ```bash
-AMPD_MOCK=1 python -m ampd        # full API, zero Chrome, zero network
+TONEARM_MOCK=1 python -m tonearm        # full API, zero Chrome, zero network
 ```
 
 The whole surface is served from a **seeded synthetic library** ("Mock
@@ -251,34 +251,34 @@ per listener**:
 /api/audio/stream.opus   Opus in Ogg (48 kHz) — smallest bandwidth
 ?bitrate=96k             any <bits>k value per request
 ?loudnorm=1              EBU R128 loudness normalization (-16 LUFS), or
-                         AMPD_AUDIO_LOUDNORM=1 to default it on
+                         TONEARM_AUDIO_LOUDNORM=1 to default it on
 ```
 
-Join alignment for mid-song listeners (`X-AMPD-Join-*` response headers):
-the feed starts with a pre-encoded silence pad (`AMPD_AUDIO_JOIN_PAD=0`
+Join alignment for mid-song listeners (`X-Tonearm-Join-*` response headers):
+the feed starts with a pre-encoded silence pad (`TONEARM_AUDIO_JOIN_PAD=0`
 disables) so clients get a deterministic alignment point, and the headers
-state the playhead position at join — `X-AMPD-Join-Playhead-Ms` plus
-`X-AMPD-Join-Stale`, which is `1` when that claim rests on stale stream
+state the playhead position at join — `X-Tonearm-Join-Playhead-Ms` plus
+`X-Tonearm-Join-Stale`, which is `1` when that claim rests on stale stream
 state. Degrades loudly, never silently pretends. The capture is a live
 pipe: there is no seekable buffer to rewind into.
 
-### Discord Rich Presence — `AMPD_DISCORD=1`
+### Discord Rich Presence — `TONEARM_DISCORD=1`
 
-Running ampd on a desktop with Discord? Set `AMPD_DISCORD=1` and
-`AMPD_DISCORD_CLIENT_ID=<your app id>` and the session's now-playing shows
+Running tonearm on a desktop with Discord? Set `TONEARM_DISCORD=1` and
+`TONEARM_DISCORD_CLIENT_ID=<your app id>` and the session's now-playing shows
 in your presence — track change pushed, progress ticked by Discord's own
 end-timestamp, **paused or stalled clears the presence** instead of
 freezing a wrong track. Zero new dependencies (raw local IPC); on a
 headless box it logs the missing socket and idles harmlessly.
 
-### Last.fm scrobbling — `AMPD_LASTFM=1`
+### Last.fm scrobbling — `TONEARM_LASTFM=1`
 
 One-time auth, then it just scrobbles:
 
 ```bash
-AMPD_LASTFM_API_KEY=… AMPD_LASTFM_SECRET=… python -m ampd.lastfm
+TONEARM_LASTFM_API_KEY=… TONEARM_LASTFM_SECRET=… python -m tonearm.lastfm
 #   -> open the URL, approve, Enter — creds saved 0600 next to the store
-AMPD_LASTFM=1 python -m ampd      # now playing + scrobbles
+TONEARM_LASTFM=1 python -m tonearm      # now playing + scrobbles
 ```
 
 The **50 % / 4-min rule** is computed from the same event buffer the store
@@ -286,7 +286,7 @@ drains (elapsedMs/durationMs ride along — nothing extra is asked of Chrome),
 each scrobble carries the play's actual **start time**, and the dedupe
 marker `UNIQUE(track_id, started_at)` lives in the store's `scrobbles`
 table — restarts and buffer replays never double-scrobble. Requires
-`AMPD_STORE=1`.
+`TONEARM_STORE=1`.
 
 ### OBS overlay — `/api/overlay`
 
@@ -300,7 +300,7 @@ Now-playing for streamers, served from the SSE stream's last emitted state
 ```
 
 Point an OBS **browser source** at the `.json` URL (with
-`Authorization: Bearer <key>` as a custom header when `AMPD_API_KEY` is
+`Authorization: Bearer <key>` as a custom header when `TONEARM_API_KEY` is
 set). Before any stream client has connected, the payload is honest nulls —
 the overlay never drives Chrome itself.
 
@@ -313,11 +313,11 @@ the fallback EventSource needs since it cannot send headers).
 
 On every release tag, CI regenerates clients from that schema into
 [`clients/`](clients/) — TypeScript (`clients/ts/schema.ts`, openapi-typescript)
-and Python (`clients/python/`, the `ampd-client` package):
+and Python (`clients/python/`, the `tonearm-client` package):
 
 ```python
-from ampd_client import AuthenticatedClient
-from ampd_client.api.library import list_resource_api_library_resource_get as songs
+from tonearm_client import AuthenticatedClient
+from tonearm_client.api.library import list_resource_api_library_resource_get as songs
 
 client = AuthenticatedClient(base_url="http://127.0.0.1:8188", token="<key>")
 page = songs.sync(client=client, resource="songs", limit=10)
@@ -355,7 +355,7 @@ list — this is both reorder and removal) ·
 `POST /write/restore` (body: a `/library/export` JSON — **dry-run plan by default**, `?execute=1` applies:
 creates missing playlists, adds tracks, verifies counts async; every un-restorable row is listed with a reason)
 
-Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. All shapes
+Every mutation returns `501` until you set `TONEARM_ENABLE_WRITES=1`. All shapes
 above were validated live against a real account.
 
 ### Errors — one shape everywhere
@@ -371,10 +371,10 @@ Every non-2xx response, from any route, is:
 | `bad_request` | missing/invalid parameters | fix the request; the hint names the problem |
 | `unauthorized` | bad or missing API key | send `Authorization: Bearer <key>` (`?api_key=` for EventSource) |
 | `not_found` | no such resource or route | don't retry — nothing is there |
-| `rate_limited` | Apple rate-limited a read | honor `Retry-After`; ampd already backs off internally |
+| `rate_limited` | Apple rate-limited a read | honor `Retry-After`; tonearm already backs off internally |
 | `disabled` | feature flag off (`501`) | the hint names the env variable |
-| `writes_disabled` | mutations off | set `AMPD_ENABLE_WRITES=1` if you accept the risk |
-| `store_disabled` | local store off | set `AMPD_STORE=1` |
+| `writes_disabled` | mutations off | set `TONEARM_ENABLE_WRITES=1` if you accept the risk |
+| `store_disabled` | local store off | set `TONEARM_STORE=1` |
 | `renderer_unavailable` | Chrome tab busy/stalled (`502`) | retry shortly — stalls usually recover in ~60s |
 | `degraded` | renderer failing watchdog checks (`503`) | see `/health`; the watchdog recycles dead tabs |
 
@@ -382,28 +382,28 @@ Every non-2xx response, from any route, is:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `AMPD_PROFILE` | `~/.config/ampd/chrome-profile` | Chrome profile used for your session |
-| `AMPD_CDP_URL` | `http://127.0.0.1:9222` | Chrome debug endpoint (attach or launch) |
-| `AMPD_AUTO_CHROME` | `1` | launch Chrome automatically if not reachable |
-| `AMPD_HEADLESS` | `1` | headless chrome (set `0` for audible playback) |
-| `AMPD_HOST` / `AMPD_PORT` | `127.0.0.1` / `8188` | bind address |
-| `AMPD_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
-| `AMPD_STRICT_BIND` | `0` | make a non-localhost bind **without** `AMPD_API_KEY` fatal instead of a loud warning (default warn-only — inside a container, binding `0.0.0.0` is normal; the port mapping is the boundary) |
-| `AMPD_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
-| `AMPD_CACHE` / `AMPD_CACHE_TTL` | `1` / `30` | read cache for amp-api GETs (single-flight coalesced; catalog 10×, favorites/ratings capped at 10s; mutations bust everything and open an 8s no-cache grace window — see `ampd/cache.py`) |
-| `AMPD_FAV_PLAYLIST` | `Favorite Songs` | name of the favorites auto-playlist |
-| `AMPD_AUDIO` | `0` | stream the actual audio at `/api/audio/stream.mp3` |
-| `AMPD_AUDIO_DISPLAY` | `:2` | virtual display for audible chrome |
-| `AMPD_AUDIO_SINK` | `ampd_audio` | private pulse sink to capture |
-| `AMPD_AUDIO_BITRATE` | `160k` | mp3 bitrate of the audio stream |
-| `AMPD_STORE` | `0` | local sqlite store: play archive, library snapshots, diff/stats (`/api/history/…`, `/api/library/diff`) |
-| `AMPD_STORE_PATH` | `/data/ampd.db` in docker, else `~/.local/share/ampd/` | where the store db lives |
-| `AMPD_STORE_SYNC_INTERVAL` | `21600` | seconds between library snapshot walks (single-flight, stall-gated) |
-| `AMPD_EXPORT_INTERVAL` | `0` | seconds between scheduled full exports (`0` = off); atomic writes to `AMPD_EXPORT_DIR` |
-| `AMPD_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
-| `AMPD_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
-| `AMPD_DISCORD` | `0` | Discord Rich Presence (needs a local Discord client) — requires `AMPD_DISCORD_CLIENT_ID` |
-| `AMPD_LASTFM` | `0` | Last.fm scrobbler (needs `AMPD_STORE=1`; auth via `python -m ampd.lastfm`) |
+| `TONEARM_PROFILE` | `~/.config/tonearm/chrome-profile` | Chrome profile used for your session |
+| `TONEARM_CDP_URL` | `http://127.0.0.1:9222` | Chrome debug endpoint (attach or launch) |
+| `TONEARM_AUTO_CHROME` | `1` | launch Chrome automatically if not reachable |
+| `TONEARM_HEADLESS` | `1` | headless chrome (set `0` for audible playback) |
+| `TONEARM_HOST` / `TONEARM_PORT` | `127.0.0.1` / `8188` | bind address |
+| `TONEARM_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
+| `TONEARM_STRICT_BIND` | `0` | make a non-localhost bind **without** `TONEARM_API_KEY` fatal instead of a loud warning (default warn-only — inside a container, binding `0.0.0.0` is normal; the port mapping is the boundary) |
+| `TONEARM_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
+| `TONEARM_CACHE` / `TONEARM_CACHE_TTL` | `1` / `30` | read cache for amp-api GETs (single-flight coalesced; catalog 10×, favorites/ratings capped at 10s; mutations bust everything and open an 8s no-cache grace window — see `tonearm/cache.py`) |
+| `TONEARM_FAV_PLAYLIST` | `Favorite Songs` | name of the favorites auto-playlist |
+| `TONEARM_AUDIO` | `0` | stream the actual audio at `/api/audio/stream.mp3` |
+| `TONEARM_AUDIO_DISPLAY` | `:2` | virtual display for audible chrome |
+| `TONEARM_AUDIO_SINK` | `tonearm_audio` | private pulse sink to capture |
+| `TONEARM_AUDIO_BITRATE` | `160k` | mp3 bitrate of the audio stream |
+| `TONEARM_STORE` | `0` | local sqlite store: play archive, library snapshots, diff/stats (`/api/history/…`, `/api/library/diff`) |
+| `TONEARM_STORE_PATH` | `/data/tonearm.db` in docker, else `~/.local/share/tonearm/` | where the store db lives |
+| `TONEARM_STORE_SYNC_INTERVAL` | `21600` | seconds between library snapshot walks (single-flight, stall-gated) |
+| `TONEARM_EXPORT_INTERVAL` | `0` | seconds between scheduled full exports (`0` = off); atomic writes to `TONEARM_EXPORT_DIR` |
+| `TONEARM_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
+| `TONEARM_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
+| `TONEARM_DISCORD` | `0` | Discord Rich Presence (needs a local Discord client) — requires `TONEARM_DISCORD_CLIENT_ID` |
+| `TONEARM_LASTFM` | `0` | Last.fm scrobbler (needs `TONEARM_STORE=1`; auth via `python -m tonearm.lastfm`) |
 
 ## Field notes (the parts the docs won't tell you)
 
@@ -432,22 +432,22 @@ have to rediscover them:
   retried read, not the response code.
 * **Ratings: like or nothing.** `PUT /v1/me/ratings/songs/{id}` with
   `{"value": 1}` = like; `DELETE` clears. A dislike value is *accepted*
-  but silently stores as 1 — so ampd doesn't expose it.
+  but silently stores as 1 — so tonearm doesn't expose it.
 * **A heart IS a rating.** Favoriting a song is just `value: 1` on the
   ratings endpoint — so `DELETE` on a rating *removes a heart the user
   set*. Never clear a rating "to verify"; read the prior value first.
   (This bit us once: a test cleared a pre-existing favorite.)
 * **No favorites sync needed.** Apple auto-collects hearts into a
   "Favorite Songs" library playlist within seconds of hearting, and
-  un-hearts leave just as fast. ampd only reads it.
+  un-hearts leave just as fast. tonearm only reads it.
 * **MusicKit memoizes `api.music` GETs** — a read right after a mutation
   returns the stale cached response, and cache-busting with `_=` gets
-  rejected ("Parameter '_' is not allowed"). ampd reads via raw
+  rejected ("Parameter '_' is not allowed"). tonearm reads via raw
   token-injected fetches instead.
 * **Apple's `next` links drop the `limit` param.** Follow them as-is and
   every page after the first silently shrinks to 25 rows — and a naive
   page cap makes you believe the library ends long before it does
-  (ampd's author thought 1,325 songs; the truth was 9,045). ampd
+  (tonearm's author thought 1,325 songs; the truth was 9,045). tonearm
   re-applies the original limit on every page.
 * **`match=` is a MusicKit-client-only extension** — the raw amp-api
   rejects it (400 "Parameter 'match' is not allowed"). Filter locally.
@@ -459,11 +459,11 @@ have to rediscover them:
   the songs usually materialize, the library-album container row often
   never does. Verify what actually landed.
 * **Leaked tabs zombify Chrome.** Dozens of automation tabs → renderers stop
-  answering → evals hang for the full socket timeout. ampd reuses a single
+  answering → evals hang for the full socket timeout. tonearm reuses a single
   tab and closes sockets with a short timeout on purpose.
 * **A stalled renderer stalls evals.** Under heavy parallel load Apple's page
   can stop answering `Runtime.evaluate` for ~60s (it recovers on its own).
-  ampd's CDP layer is built for that: reconnects are flat (never recursive —
+  tonearm's CDP layer is built for that: reconnects are flat (never recursive —
   a recursive reconnect once starved the whole thread pool, `/health` with
   it), every eval is hard-bounded, lock waiters fast-fail with 502 instead of
   queueing behind a zombie eval, and SSE clients ride out stalls with backoff
@@ -472,7 +472,7 @@ have to rediscover them:
   tab every 20s (`/health` carries its snapshot). Only 3 *consecutive* failed
   pings (~60s — the length of a recoverable stall) count as a dead tab; then
   it recycles and hot-reconnects, so the first call after a zombie event
-  succeeds instead of failing. Disable with `AMPD_WATCHDOG=0`.
+  succeeds instead of failing. Disable with `TONEARM_WATCHDOG=0`.
 * **Apple's rate limit is honored, with hard limits of its own.** A 429 on a
   GET retries up to twice, sleeping `min(Retry-After, 5s)` — outside the
   browser lock, so other callers proceed while we wait. Mutations never
@@ -499,7 +499,7 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
   (dry-run planner + verified executor)
 * **v0.4 — Typed API — shipped**: real Pydantic response models on every
   route, standard error envelope, generated TypeScript + Python clients,
-  mock server mode (`AMPD_MOCK=1`, no Apple account needed)
+  mock server mode (`TONEARM_MOCK=1`, no Apple account needed)
 * **v0.5 — Listening experience — shipped**: installable PWA served from
   the API (library browse, search, queue drag, synced lyrics), opus/ogg +
   loudnorm + playhead-aligned join on the audio stream, OBS overlay,
@@ -509,7 +509,7 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
 
 ## Deploying
 
-ampd is a long-lived process driving a real, logged-in Chrome — that rules
+tonearm is a long-lived process driving a real, logged-in Chrome — that rules
 out serverless (Vercel, Lambda, Cloud Run *jobs*): there is no way to keep a
 persistent browser session there. Everything else works:
 
@@ -524,19 +524,19 @@ curl localhost:8188/health   # -> {"status":"ok","browser":"authorized"}
 publish to ghcr.io on every release tag. On an arm64 host, skip the build:
 
 ```bash
-docker run -d --name ampd -p 8188:8188 -v ampd-data:/data \
-  ghcr.io/cloudcompile/ampd:latest
+docker run -d --name tonearm -p 8188:8188 -v tonearm-data:/data \
+  ghcr.io/cloudcompile/tonearm:latest
 ```
 
-(or set `image: ghcr.io/cloudcompile/ampd:latest` in compose instead of
+(or set `image: ghcr.io/cloudcompile/tonearm:latest` in compose instead of
 `build: .` — everything else, profile volume and login flow included, is
 identical).
 
 **Healthchecks.** The image ships with a `HEALTHCHECK` polling `GET /health`
-(every 30s, 5s timeout, 3 retries — `/health` is exempt from `AMPD_API_KEY`,
+(every 30s, 5s timeout, 3 retries — `/health` is exempt from `TONEARM_API_KEY`,
 so it works with a key set). Docker only *marks* the container unhealthy; it
 never restarts it on its own. On a VPS, if you want wedged containers to
-self-heal, run an autoheal sidecar next to ampd:
+self-heal, run an autoheal sidecar next to tonearm:
 
 ```bash
 docker run -d --name autoheal \
@@ -546,18 +546,18 @@ docker run -d --name autoheal \
 ```
 
 Note what "unhealthy" means here: a stalled renderer usually recovers on its
-own (ampd fast-fails 502s during the stall and heals), so don't wire a
+own (tonearm fast-fails 502s during the stall and heals), so don't wire a
 restart loop tighter than the watchdog can ride out — 3 failed checks in a
 row (~90s) is the image's threshold, and that's a good minimum.
 
-The Chrome profile lives on the `ampd-data` volume. To sign in, make a
+The Chrome profile lives on the `tonearm-data` volume. To sign in, make a
 profile on any machine with a screen, then drop it into the volume:
 
 ```bash
 # on any desktop with a screen, from a source checkout:
-AMPD_PROFILE=$HOME/ampd-profile python -m ampd.login   # sign in, press Enter
+TONEARM_PROFILE=$HOME/tonearm-profile python -m tonearm.login   # sign in, press Enter
 # then, from the compose project on the server:
-tar -C $HOME/ampd-profile -c . | docker compose exec -T ampd tar -x -C /data/.config/ampd/chrome-profile
+tar -C $HOME/tonearm-profile -c . | docker compose exec -T tonearm tar -x -C /data/.config/tonearm/chrome-profile
 ```
 
 (The profile is just a Chrome user-data-dir — copying it copies the session.
@@ -567,7 +567,7 @@ which is rare.)
 ### Railway / fly.io
 
 Same image, same volume mount at `/data` (Railway: "Volumes", fly:
-`fly volumes create`). Set `AMPD_API_KEY` before exposing publicly.
+`fly volumes create`). Set `TONEARM_API_KEY` before exposing publicly.
 
 ### Render
 
@@ -576,9 +576,9 @@ tier's ephemeral filesystem wipes your Apple session on every deploy.
 
 ### Tunnels (optional)
 
-A tunnel is just a reverse proxy in front of port 8188 — nothing in ampd
+A tunnel is just a reverse proxy in front of port 8188 — nothing in tonearm
 depends on it. If you want one, run cloudflared as a second container with
-`--url http://ampd:8188` and set `AMPD_API_KEY` first. ampd itself never
+`--url http://tonearm:8188` and set `TONEARM_API_KEY` first. tonearm itself never
 needs to know.
 
 ## License

@@ -1,4 +1,4 @@
-// ampd PWA entry — wires the shell: SSE -> now-playing card (#88) + queue
+// tonearm PWA entry — wires the shell: SSE -> now-playing card (#88) + queue
 // (#87) + lyrics (#89); tabs -> virtualized library (#85); one search box
 // (#86); the key dialect (#90). The demo page was the proof; this is the
 // product.
@@ -67,7 +67,7 @@ function maybePromptKey(err) {
 }
 window.addEventListener("unhandledrejection", (e) => maybePromptKey(e.reason));
 $("keysave").onclick = () => {
-  localStorage.setItem("ampd_key", $("key").value.trim());
+  localStorage.setItem("tonearm_key", $("key").value.trim());
   $("keyprompt").hidden = true;
   location.reload();               // re-fetch everything with the key
 };

@@ -1,8 +1,8 @@
-/* ampd service worker (#90) — cache the SHELL, never the API.
+/* tonearm service worker (#90) — cache the SHELL, never the API.
    The shell is precached on install and re-fetched stale-while-revalidate;
    every /api request goes straight to the network (it is live data — an
    audio stream or a playhead snapshot served from cache is a lie). */
-const CACHE = "ampd-shell-v1";
+const CACHE = "tonearm-shell-v1";
 const SHELL = ["/", "/app.js", "/styles.css", "/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {

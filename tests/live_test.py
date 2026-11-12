@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""ampd live test suite — runs against a REAL logged-in account.
+"""tonearm live test suite — runs against a REAL logged-in account.
 
-    AMPD_ENABLE_WRITES=1 python3 tests/live_test.py [stage ...]
+    TONEARM_ENABLE_WRITES=1 python3 tests/live_test.py [stage ...]
 
 Stages: baseline reads playback stream audio writes edge netzero
 Run with no args for everything. Every mutation follows the net-zero
@@ -21,7 +21,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-B = os.environ.get("AMPD_URL", "http://127.0.0.1:8189")
+B = os.environ.get("TONEARM_URL", "http://127.0.0.1:8189")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 RESULTS = []
@@ -100,7 +100,7 @@ def baseline():
             break
     state["playlist_count"] = total_pl
     state["test_playlists"] = [i["name"] for i in pl
-                               if "ampd" in (i.get("name") or "").lower()]
+                               if "tonearm" in (i.get("name") or "").lower()]
     check("playlists walk", total_pl > 0, f"{total_pl} playlists")
 
 
@@ -112,7 +112,7 @@ def reads():
         s, j = call("GET", f"/api/library/{res}?limit=5")
         check(f"library {res}", s == 200 and "items" in j, f"{len(j.get('items', []))} rows")
 
-    # Apple's library API has no stations resource — ampd must say so cleanly
+    # Apple's library API has no stations resource — tonearm must say so cleanly
     s, j = call("GET", "/api/library/stations?limit=5")
     check("library stations -> clean 404", s == 404, j if isinstance(j, dict) else "")
 
@@ -491,7 +491,7 @@ def writes():
     check("album test UNDONE", clean, f"residue={residue} left={left}")
 
     # --- playlist lifecycle
-    s, j = call("POST", "/api/write/playlists?name=" + urllib.parse.quote("ampd-live-test"))
+    s, j = call("POST", "/api/write/playlists?name=" + urllib.parse.quote("tonearm-live-test"))
     check("playlist create", s == 200 and j.get("playlist_id"))
     pid = j.get("playlist_id")
 
@@ -517,10 +517,10 @@ def writes():
     check("track removed", len(tracks.get("tracks", [])) == 2,
           len(tracks.get("tracks", [])))
 
-    s, j = call("PATCH", f"/api/write/playlists/{pid}?name=" + urllib.parse.quote("ampd-live-test-renamed"))
+    s, j = call("PATCH", f"/api/write/playlists/{pid}?name=" + urllib.parse.quote("tonearm-live-test-renamed"))
     check("rename", s == 200)
     s, j = call("GET", f"/api/library/playlists/{pid}")
-    check("rename verified", j.get("name") == "ampd-live-test-renamed", j.get("name"))
+    check("rename verified", j.get("name") == "tonearm-live-test-renamed", j.get("name"))
 
     s, j = call("DELETE", f"/api/write/playlists/{pid}")
     check("playlist delete", s == 200)
@@ -535,7 +535,7 @@ def writes():
     check("playlist gone", gone, f"last status {s}, name {j.get('name')!r}")
 
     # unicode playlist name round-trip
-    s, j = call("POST", "/api/write/playlists?name=" + urllib.parse.quote("ampd-日本語-test"))
+    s, j = call("POST", "/api/write/playlists?name=" + urllib.parse.quote("tonearm-日本語-test"))
     upid = j.get("playlist_id")
     check("unicode playlist create", s == 200 and upid)
     if upid:
@@ -651,7 +651,7 @@ def netzero():
           f"{state['favorites_count']} -> {fav.get('count')}")
 
     s, j = call("GET", "/api/library/playlists?limit=100")
-    names = [i["name"] for i in j.get("items", []) if "ampd" in (i.get("name") or "").lower()]
+    names = [i["name"] for i in j.get("items", []) if "tonearm" in (i.get("name") or "").lower()]
     check("no test playlists left", not names, names)
 
     # side effects: playback state paused (restored), chrome alive, no zombie procs

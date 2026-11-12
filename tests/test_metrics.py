@@ -10,19 +10,19 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.metrics import Registry
+from tonearm.metrics import Registry
 
 
 class TestCounters(unittest.TestCase):
     def test_inc_and_labels(self):
         r = Registry()
-        r.inc("ampd_apple_requests_total", {"code": "2xx"})
-        r.inc("ampd_apple_requests_total", {"code": "2xx"})
-        r.inc("ampd_apple_requests_total", {"code": "4xx"}, value=5)
+        r.inc("tonearm_apple_requests_total", {"code": "2xx"})
+        r.inc("tonearm_apple_requests_total", {"code": "2xx"})
+        r.inc("tonearm_apple_requests_total", {"code": "4xx"}, value=5)
         out = r.render()
-        self.assertIn('ampd_apple_requests_total{code="2xx"} 2', out)
-        self.assertIn('ampd_apple_requests_total{code="4xx"} 5', out)
-        self.assertIn("# TYPE ampd_apple_requests_total counter", out)
+        self.assertIn('tonearm_apple_requests_total{code="2xx"} 2', out)
+        self.assertIn('tonearm_apple_requests_total{code="4xx"} 5', out)
+        self.assertIn("# TYPE tonearm_apple_requests_total counter", out)
 
     def test_label_escaping(self):
         r = Registry()
@@ -41,10 +41,10 @@ class TestHistogram(unittest.TestCase):
     def test_buckets_monotonic_with_inf(self):
         r = Registry()
         for v in (0.01, 0.3, 4.0, 90.0):
-            r.observe("ampd_cdp_eval_duration_seconds", v)
+            r.observe("tonearm_cdp_eval_duration_seconds", v)
         out = r.render()
         buckets = [line for line in out.splitlines()
-                   if line.startswith("ampd_cdp_eval_duration_seconds_bucket")]
+                   if line.startswith("tonearm_cdp_eval_duration_seconds_bucket")]
         counts = []
         for line in buckets:
             le, c = line.rsplit(" ", 1)
@@ -52,8 +52,8 @@ class TestHistogram(unittest.TestCase):
                 self.assertEqual(c, "4", "+Inf must equal total count")
             counts.append(int(c))
         self.assertEqual(counts, sorted(counts), "buckets must be monotonic")
-        self.assertIn("ampd_cdp_eval_duration_seconds_sum 94.31", out)
-        self.assertIn("ampd_cdp_eval_duration_seconds_count 4", out)
+        self.assertIn("tonearm_cdp_eval_duration_seconds_sum 94.31", out)
+        self.assertIn("tonearm_cdp_eval_duration_seconds_count 4", out)
 
     def test_empty_histogram_renders(self):
         r = Registry()

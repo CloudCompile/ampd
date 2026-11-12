@@ -3,7 +3,7 @@
 No pulse, no ffmpeg, no subprocesses: these cover the pure decision layers
 (format recipes, bitrate validation, join-playhead state, loudnorm filter
 args). The subprocess plumbing itself is exercised only on a real box with
-AMPD_AUDIO=1 (or the Docker image).
+TONEARM_AUDIO=1 (or the Docker image).
 """
 import os
 import sys
@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.audio import FORMATS, BITRATE_RE, Pipeline, join_playhead, \
+from tonearm.audio import FORMATS, BITRATE_RE, Pipeline, join_playhead, \
     note_playhead
 
 
@@ -62,7 +62,7 @@ class TestJoinPlayhead(unittest.TestCase):
     def test_stale_when_the_stream_went_quiet(self):
         note_playhead(45000, True)
         # rewind the timestamp — the join must declare staleness loudly
-        import ampd.audio as A
+        import tonearm.audio as A
         import time
         with A._playhead_lock:
             A._playhead["ts"] = time.time() - 60
@@ -71,7 +71,7 @@ class TestJoinPlayhead(unittest.TestCase):
         self.assertTrue(stale)
 
     def test_never_played_is_none_not_zero(self):
-        import ampd.audio as A
+        import tonearm.audio as A
         with A._playhead_lock:
             A._playhead.update(elapsed_ms=None, ts=0)
         ms, _ = join_playhead()

@@ -13,8 +13,8 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.browser import Browser, BrowserError
-from ampd.config import config
+from tonearm.browser import Browser, BrowserError
+from tonearm.config import config
 
 
 class WatchdogTestBase(unittest.TestCase):
