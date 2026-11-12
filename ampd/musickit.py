@@ -4,13 +4,17 @@ Every snippet is IIFE-wrapped (Chrome persists top-level declarations between
 evals — a redeclaration is fatal). Async snippets are awaited by the CDP layer.
 """
 import json
+import logging
 import re
+import time
 
 from . import cache as _cache_mod
 from .browser import browser, BrowserError
 from .metrics import METRICS
 
 read_cache = _cache_mod.read_cache
+
+log = logging.getLogger("ampd.musickit")
 
 
 def _j(value):
@@ -50,7 +54,9 @@ def _raw_api_now(path, method="GET", body=None, timeout=60):
           }};
           {f'init.body = {_j(json.dumps(body))};' if body is not None else ''}
           const res = await fetch('https://amp-api.music.apple.com' + {_j(path)}, init);
-          return {{status: res.status, body: await res.text()}};
+          return {{status: res.status,
+                   retryAfter: res.headers.get('Retry-After'),
+                   body: await res.text()}};
         }})()""", timeout=timeout)
     METRICS.inc("ampd_apple_requests_total", {"code": f"{res['status'] // 100}xx"},
                 help_text="amp-api responses by status class")
@@ -63,11 +69,43 @@ def _raw_api_now(path, method="GET", body=None, timeout=60):
 
 def raw_api(path, method="GET", body=None, timeout=60, fresh=False):
     """raw_api with the read cache in front of GETs (single-flight coalesced;
-    never applied to mutations)."""
-    if method == "GET" and read_cache.enabled and not fresh:
-        return read_cache.coalesce(
-            path, lambda: _raw_api_now(path, method, body, timeout))
-    return _raw_api_now(path, method, body, timeout)
+    never applied to mutations — and only 200s are ever cached: a cached 404
+    or 429 would serve a not-yet-applied snapshot across Apple's async
+    mutation window). GETs that hit Apple's 429 rate limit back off honoring
+    Retry-After, bounded. Mutations NEVER auto-retry: a wrong-key favorites
+    DELETE returns 204 and does NOTHING — blind retries would mask state."""
+    if method != "GET":
+        return _raw_api_now(path, method, body, timeout)
+    fetch = lambda: _get_with_backoff(path, body, timeout)
+    if not read_cache.enabled or fresh:
+        return fetch()
+    return read_cache.coalesce(path, fetch,
+                               cache_when=lambda res: res.get("status") == 200)
+
+
+_BACKOFF_TRIES = 3
+_BACKOFF_CAP_S = 5.0          # Retry-After can be huge; the eval timeout
+                              # bounds total latency, this bounds the sleeps
+
+
+def _get_with_backoff(path, body, timeout):
+    """Bounded 429 backoff for GETs. FLAT — a loop of independent evals, each
+    acquiring the browser lock fresh; never a nested/reconnect cascade.
+    Sleeps happen OUTSIDE the lock, so other callers proceed while we wait."""
+    res = _raw_api_now(path, "GET", body, timeout)
+    for attempt in range(_BACKOFF_TRIES - 1):
+        if res["status"] != 429:
+            return res
+        try:
+            ra = float(res.get("retryAfter") or 0)
+        except (TypeError, ValueError):
+            ra = 0.0
+        delay = min(ra, _BACKOFF_CAP_S) if ra else 0.5 * (attempt + 1)
+        time.sleep(delay)
+        log.warning("apple 429 on %s — retry %d/%d after %.1fs",
+                    path[:90], attempt + 1, _BACKOFF_TRIES - 1, delay)
+        res = _raw_api_now(path, "GET", body, timeout)
+    return res
 
 
 # ---------------------------------------------------------------- library
