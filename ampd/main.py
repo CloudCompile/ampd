@@ -14,7 +14,7 @@ from .errors import ApiError, install_error_handlers
 from .models import Health
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
-                     history)
+                     history, overlay)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -152,6 +152,7 @@ app.include_router(audio.router, prefix="/api")
 app.include_router(metrics.router)
 app.include_router(debug.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
+app.include_router(overlay.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)

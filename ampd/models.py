@@ -239,6 +239,12 @@ class NowPlaying(_PassThrough):
     elapsedMs: int | None = None
 
 
+class OverlayNowPlaying(NowPlaying):
+    """OBS overlay payload — NowPlaying + the playing item's id (what the
+    SSE `update` events carry), so overlays can also resolve lyrics/art."""
+    id: str | None = None
+
+
 class QueueItem(_PassThrough):
     id: str | None = None
     title: str | None = None

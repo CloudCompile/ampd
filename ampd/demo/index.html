@@ -50,6 +50,13 @@
   #queue div.now { background: #2a2a30; color: #fff; }
   .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
          color: #66666e; margin-top: 16px; }
+  /* lyrics panel (#91 reference implementation) */
+  #lyrics { margin-top: 12px; max-height: 220px; overflow-y: auto;
+            font-size: 14px; line-height: 1.9; color: #55555e; }
+  #lyrics .active { color: #fff; font-weight: 600; transition: color .25s; }
+  .lyrrow { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .lyrrow button { padding: 4px 8px; font-size: 11px; }
+  .lyrrow span { font-size: 11px; color: #77777f; font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -74,6 +81,14 @@
 
   <div class="lbl">queue</div>
   <div id="queue"></div>
+
+  <div class="lyrrow">
+    <div class="lbl" style="margin-top:0">lyrics</div>
+    <button id="lyricsToggle" title="synced lyrics — see docs/lyrics-contract.md">show</button>
+    <span>offset <b id="off">0</b>ms</span>
+    <button id="offMinus">−</button><button id="offPlus">+</button>
+  </div>
+  <div id="lyrics" hidden></div>
 </div>
 
 <script>
@@ -131,8 +146,10 @@ setInterval(() => api('now-playing', 'GET'), 5000);   // keep progress fresh
 // live stream: one EventSource drives the whole UI
 function connect() {
   const es = new EventSource('/api/stream');
-  es.addEventListener('snapshot', e => render(JSON.parse(e.data)));
-  es.addEventListener('update',   e => render(JSON.parse(e.data)));
+  es.addEventListener('snapshot', e => { sseState = JSON.parse(e.data);
+    render(sseState); loadLyrics(sseState.id); });
+  es.addEventListener('update',   e => { sseState = JSON.parse(e.data);
+    render(sseState); loadLyrics(sseState.id); });
   es.onerror = () => {
     $('link').textContent = 'reconnecting…';
     $('link').style.color = '#f87171';
@@ -141,6 +158,87 @@ function connect() {
   es.onopen = () => { $('link').textContent = 'live'; $('link').style.color = '#4ade80'; };
 }
 connect();
+
+/* ---------------- lyrics — reference implementation of the contract
+   documented in docs/lyrics-contract.md (#91). The math:
+   active_line = last line with timeMs <= interpolatedElapsed + offsetMs.
+   The SSE events carry (id, elapsedMs, durationMs, ts, isPlaying); the
+   client interpolates between events and only fetches lyrics per id. */
+
+let sseState = null;          // last SSE snapshot/update event
+let lines = [];               // [{text, timeMs, endTimeMs}]
+let linesId = null;           // which id they belong to
+let offsetMs = 0;             // sink lag compensation + user nudge
+let renderedLine = -2;        // currently highlighted index (-2 = unset)
+const lyricCache = new Map(); // id -> lines[] (or null = honest 404)
+
+window.addEventListener('error', () => {}); // keep the demo resilient
+
+// toggle + offset UI
+$('lyricsToggle').onclick = () => {
+  const el = $('lyrics');
+  el.hidden = !el.hidden;
+  $('lyricsToggle').textContent = el.hidden ? 'show' : 'hide';
+};
+const setOffset = v => { offsetMs = v; $('off').textContent = v; };
+$('offMinus').onclick = () => setOffset(Math.max(offsetMs - 100, -5000));
+$('offPlus').onclick = () => setOffset(Math.min(offsetMs + 100, 5000));
+
+// the contract, verbatim
+function activeLineIndex(ls, elapsed, off) {
+  let active = -1;
+  for (let i = 0; i < ls.length; i++)
+    if (ls[i].timeMs <= elapsed + off) active = i;
+    else break;
+  return active;
+}
+
+function interpolatedElapsed(st) {
+  if (!st || st.elapsedMs == null) return 0;
+  const drift = st.isPlaying ? Math.max(0, Date.now() - (st.ts || Date.now())) : 0;
+  return Math.min(st.elapsedMs + drift, st.durationMs ?? Infinity);
+}
+
+async function loadLyrics(id) {
+  if (id === linesId) return;              // fetch per id change ONLY
+  linesId = id; lines = []; renderedLine = -2;
+  if (!id) { $('lyrics').textContent = 'nothing playing'; return; }
+  if (lyricCache.has(id)) { lines = lyricCache.get(id) || []; renderLyrics(); return; }
+  $('lyrics').textContent = '…';
+  try {
+    const r = await fetch('/api/catalog/songs/' + encodeURIComponent(id) + '/lyrics');
+    if (r.status === 404) { lyricCache.set(id, null);              // normal!
+      $('lyrics').textContent = 'instrumental / no lyrics available'; return; }
+    const j = await r.json();
+    lines = (j.lines || []).filter(l => l.timeMs != null);
+    lyricCache.set(id, lines);
+  } catch { $('lyrics').textContent = 'lyrics unavailable'; return; }
+  renderLyrics();
+}
+
+function renderLyrics() {
+  if (!lines.length) return;
+  $('lyrics').innerHTML = lines.map(l =>
+    `<div>${l.text || '♪'}</div>`).join('');
+}
+
+// render loop: recompute the active line at animation pace; touch the DOM
+// only when the line actually changes
+function lyricsTick() {
+  if (!$('lyrics').hidden && lines.length) {
+    const i = activeLineIndex(lines, interpolatedElapsed(sseState), offsetMs);
+    if (i !== renderedLine) {
+      renderedLine = i;
+      const kids = $('lyrics').children;
+      for (let k = 0; k < kids.length; k++)
+        kids[k].className = k === i ? 'active' : '';
+      if (i >= 0 && kids[i]) kids[i].scrollIntoView({ block: 'center',
+                                                      behavior: 'smooth' });
+    }
+  }
+  requestAnimationFrame(lyricsTick);
+}
+requestAnimationFrame(lyricsTick);
 </script>
 </body>
 </html>

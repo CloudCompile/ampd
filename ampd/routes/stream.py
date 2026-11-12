@@ -26,6 +26,26 @@ router = APIRouter(tags=["stream"])
 _listeners = 0
 _listener_lock = threading.Lock()
 
+# the last state this SSE generator emitted (snapshot or any update) — the
+# OBS overlay route serves from here, so streamers trigger ZERO extra
+# Chrome evals: the overlay piggybacks on data the stream already fetched
+_last = {"isPlaying": False, "state": 0, "title": None, "artist": None,
+         "album": None, "id": None, "durationMs": None, "elapsedMs": None,
+         "progress": None, "volume": None, "shuffle": None, "repeat": None,
+         "artworkUrl": None}
+_last_lock = threading.Lock()
+
+
+def last_snapshot():
+    """Copy of the most recent player state the SSE stream emitted."""
+    with _last_lock:
+        return dict(_last)
+
+
+def _remember(d):
+    with _last_lock:
+        _last.update(d)
+
 
 def _listener_delta(d):
     global _listeners
@@ -41,6 +61,7 @@ async def _events(request: Request):
     try:
         mk.install_stream_hook()
         snap = await asyncio.to_thread(mk.snapshot)
+        _remember(snap)
         yield f"event: snapshot\ndata: {json.dumps(snap)}\n\n"
         after = 0
         last_send = time.time()
@@ -62,6 +83,7 @@ async def _events(request: Request):
             for e in entries:
                 after = e["seq"]
                 last_send = time.time()
+                _remember(e)
                 yield f"event: update\ndata: {json.dumps(e)}\n\n"
             if time.time() - last_send > 15:
                 yield ": hb\n\n"
