@@ -48,4 +48,31 @@ class Config:
     audio_sink: str = os.environ.get("AMPD_AUDIO_SINK", "ampd_audio")
     audio_bitrate: str = os.environ.get("AMPD_AUDIO_BITRATE", "160k")
 
+    # --- local store (v0.3 "Memory") ---
+    # OFF by default: every store-backed surface answers 501 honestly until
+    # you opt in. The db holds listening history + library snapshots on YOUR
+    # volume; nothing leaves the machine.
+    store_enabled: bool = os.environ.get("AMPD_STORE", "0") == "1"
+    # How often (seconds) the background library snapshot walk runs. The walk
+    # is ~1 eval/page of ~100 songs — slow cadence by design, skipped while
+    # the watchdog reports a renderer stall.
+    store_sync_interval: int = int(os.environ.get("AMPD_STORE_SYNC_INTERVAL",
+                                                  "21600"))
+    # Keep this many play-history rows at most (0 = unbounded); the archive
+    # is the point of the store, so the default is generous.
+    store_history_max: int = int(os.environ.get("AMPD_STORE_HISTORY_MAX",
+                                                "200000"))
+
+    @classmethod
+    def store_db_path(cls):
+        """Where the sqlite file lives. Explicit env wins; else the /data
+        volume (docker convention, HOME=/data there anyway); else under the
+        user's local state dir."""
+        env = os.environ.get("AMPD_STORE_PATH", "")
+        if env:
+            return env
+        if os.path.isdir("/data"):
+            return "/data/ampd.db"
+        return str(Path.home() / ".local" / "share" / "ampd" / "store.db")
+
 config = Config()

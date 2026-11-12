@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .routes import (library, favorites, playback, passthrough, catalog,
-                     personal, writes, sweeps, stream, audio, metrics, debug)
+                     personal, writes, sweeps, stream, audio, metrics, debug,
+                     history)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -30,7 +31,27 @@ async def lifespan(app):
             broadcaster.start()
         except Exception as e:
             log.error("audio pipeline failed to start: %s", e)
+    # local store (v0.3 Memory): opens the db and arms the history writer —
+    # one flat daemon thread that drains the stream-hook buffer. Never
+    # started when AMPD_STORE is unset; everything history answers 501 then.
+    if config.store_enabled:
+        try:
+            from .store import store, HistoryWriter
+            from .browser import browser as _b
+            from . import musickit as _mk
+            store.start()
+            _writer = HistoryWriter(store, _b, _mk)
+            _writer.start()
+            import ampd.store as _store_mod
+            _store_mod.history_writer = _writer
+        except Exception as e:
+            log.error("store failed to start (continuing without it): %s", e)
     yield
+    try:
+        from .store import store
+        store.close()
+    except Exception:
+        pass
 
 
 app = FastAPI(
@@ -77,6 +98,7 @@ app.include_router(stream.router, prefix="/api")
 app.include_router(audio.router, prefix="/api")
 app.include_router(metrics.router)
 app.include_router(debug.router, prefix="/api")
+app.include_router(history.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)
