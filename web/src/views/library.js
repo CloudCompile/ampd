@@ -11,7 +11,10 @@ function rowHtml(item) {
   const sub = [item.artist, item.album].filter(Boolean).join(" — ");
   const badge = item.play_count != null ? `${item.play_count} plays` :
                 (item.type || "").replace(/^library-/, "");
-  return `<div class="t"><b>${esc(item.name)}</b>` +
+  const art = item.artwork
+    ? `<img class="thumb" src="${esc(item.artwork)}" alt="" decoding="async">`
+    : `<span class="thumb thumb-empty">♫</span>`;
+  return `${art}<div class="t"><b>${esc(item.name)}</b>` +
          `<span>${esc(sub)}</span></div><span class="badge">${esc(badge)}</span>`;
 }
 
