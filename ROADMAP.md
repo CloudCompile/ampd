@@ -36,7 +36,7 @@ its own renderer.*
 - [x] **ARM64 images** — buildx multi-arch for RPi / Apple Silicon `S P1`
 - [x] **`/api/debug` surface** — last-N CDP calls with durations, current
       tab URL, renderer health snapshot `S P1`
-- [ ] **Apple 429/backoff handling** in the in-page fetch layer `M P1`
+- [x] **Apple 429/backoff handling** in the in-page fetch layer `M P1`
 
 ## v0.3 — Memory
 

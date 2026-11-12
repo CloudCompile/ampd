@@ -294,6 +294,13 @@ have to rediscover them:
   pings (~60s — the length of a recoverable stall) count as a dead tab; then
   it recycles and hot-reconnects, so the first call after a zombie event
   succeeds instead of failing. Disable with `AMPD_WATCHDOG=0`.
+* **Apple's rate limit is honored, with hard limits of its own.** A 429 on a
+  GET retries up to twice, sleeping `min(Retry-After, 5s)` — outside the
+  browser lock, so other callers proceed while we wait. Mutations never
+  auto-retry: a wrong-key favorites DELETE returns `204` and does NOTHING,
+  so a blind retry would just mask state (verify externally instead). And
+  only HTTP 200s are ever cached — a cached 404/429 would serve a
+  not-yet-applied snapshot across Apple's async mutation window.
 
 ## Roadmap
 

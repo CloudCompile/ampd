@@ -85,10 +85,11 @@ class ReadCache:
         while len(self._entries) > MAX_ENTRIES:
             self._entries.pop(next(iter(self._entries)))   # oldest inserted
 
-    def coalesce(self, key, fetch, fresh=False):
+    def coalesce(self, key, fetch, fresh=False, cache_when=None):
         """TTL cache + single-flight: identical in-flight GETs collapse into
         ONE upstream fetch; waiters share the leader's result. If the leader
-        fails, a waiter re-fetches itself (no error caching)."""
+        fails, a waiter re-fetches itself (no error caching). `cache_when`
+        filters what gets stored (e.g. only HTTP 200s — never a 404/429)."""
         if not self.enabled or fresh or self.blocked():
             return fetch()
         hit = self.get(key)
@@ -106,7 +107,8 @@ class ReadCache:
         if leader:
             try:
                 value = fetch()
-                self.put(key, value)
+                if cache_when is None or cache_when(value):
+                    self.put(key, value)
                 return value
             finally:
                 with self._lock:
