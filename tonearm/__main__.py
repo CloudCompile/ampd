@@ -48,6 +48,14 @@ def bind_guard():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    # `python -m tonearm login` → the one-time sign-in helper (the README
+    # documented this for three releases; the dispatch never existed —
+    # the argument was silently ignored and the server just started,
+    # which is a confusing way to learn the port is taken).
+    if len(sys.argv) > 1 and sys.argv[1] == "login":
+        from .login import main as login_main
+        login_main()
+        raise SystemExit(0)
     bind_guard()
     uvicorn.run("tonearm.main:app", host=config.host, port=config.port,
                 log_level="info")
