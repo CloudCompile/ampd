@@ -114,13 +114,25 @@ jobs:
 
       - name: Commit generated clients (release tags only)
         if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # main is protected — a bot push is declined; the generated change
+          # goes up as a PR instead (fast-forward usually, often empty: the
+          # generated clients only differ when the API or version changed)
           git config user.name "ampd-clients-bot"
           git config user.email "noreply@github.com"
+          git checkout -q -b clients/regen
           git add clients/
-          git commit -m "clients: generated from ${GITHUB_REF_NAME} [skip ci]" || \
-            echo "no client changes"
-          git push origin HEAD:main || echo "push skipped (no changes)"
+          if git diff --cached --quiet; then
+            echo "no client changes — the generated code is current"
+            exit 0
+          fi
+          git commit -m "clients: generated from ${GITHUB_REF_NAME} [skip ci]"
+          git push -q origin clients/regen
+          gh pr create --head clients/regen --base main \
+            --title "clients: generated from ${GITHUB_REF_NAME}" \
+            --body "Automated regeneration by \`clients.yml\` on the \`${GITHUB_REF_NAME}\` tag. GENERATED code — do not hand-edit. [skip ci]"
 
       - name: Attach to the release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
