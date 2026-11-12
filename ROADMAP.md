@@ -68,19 +68,19 @@ its own renderer.*
 
 ## v0.5 — Listening experience
 
-*For the UI at home.*
+*For the UI at home.* **Shipped in v0.5.0.**
 
-- [ ] **Proper web UI (PWA)** — library browse, search, queue drag, synced
+- [x] **Proper web UI (PWA)** — library browse, search, queue drag, synced
       lyrics; the demo was a proof, this is a product `L P0`
-- [ ] **Synced-lyrics contract** — pair `/catalog/songs/{id}/lyrics` lines
+- [x] **Synced-lyrics contract** — pair `/catalog/songs/{id}/lyrics` lines
       with the SSE playhead; publish the client recipe `S P0`
-- [ ] **Audio options** — opus/ogg in addition to mp3, bitrate profiles,
+- [x] **Audio options** — opus/ogg in addition to mp3, bitrate profiles,
       loudness normalization `M P1`
-- [ ] **OBS overlay endpoint** — now-playing as JSON/text for streamers `S P2`
-- [ ] **Per-listener join offset** — audio clients start at the current
+- [x] **OBS overlay endpoint** — now-playing as JSON/text for streamers `S P2`
+- [x] **Per-listener join offset** — audio clients start at the current
       playhead instead of wherever the encoder ring is `M P2`
-- [ ] **Discord Rich Presence bridge** — now-playing as activity status `M P2`
-- [ ] **Last.fm scrobble bridge** — opt-in, from the local history store `M P2`
+- [x] **Discord Rich Presence bridge** — now-playing as activity status `M P2`
+- [x] **Last.fm scrobble bridge** — opt-in, from the local history store `M P2`
 
 ## v0.6 — Automation
 
