@@ -42,16 +42,16 @@ its own renderer.*
 
 *Persistence. Apple's API forgets; ampd shouldn't.*
 
-- [ ] **Backup/restore** — recreate playlists from `/api/library/export`
+- [x] **Backup/restore** — recreate playlists from `/api/library/export`
       (the missing half; export is already a complete restore reference) `M P0`
-- [ ] **Local SQLite store (opt-in)** — durable play history (poll
+- [x] **Local SQLite store (opt-in)** — durable play history (poll
       now-playing), library snapshot, sync state `L P0`
-- [ ] **Incremental library sync + `GET /api/library/diff?since=`** —
+- [x] **Incremental library sync + `GET /api/library/diff?since=`** —
       return only rows changed since a timestamp `M P1`
-- [ ] **Recently-played archive** — Apple only ever returns ~20 items;
+- [x] **Recently-played archive** — Apple only ever returns ~20 items;
       keep everything from here on `S P1`
-- [ ] **Scheduled exports** — cron inside the container, retention policy `S P1`
-- [ ] **Listening stats** — top artists/tracks/plays per day/week/all-time
+- [x] **Scheduled exports** — cron inside the container, retention policy `S P1`
+- [x] **Listening stats** — top artists/tracks/plays per day/week/all-time
       from the local store `M P2`
 
 ## v0.4 — Typed API & clients
