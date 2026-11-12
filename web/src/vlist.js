@@ -1,7 +1,7 @@
 // Virtualized list (#85): the DOM lies — only the visible window renders.
 // Pages append from the API's next_offset contract as the scroll nears the
-// end. rowHeight is fixed (52px, styles.css) — absolute positioning math
-// stays trivial.
+// end. rowHeight is fixed (56px, styles.css must match) — absolute
+// positioning math stays trivial.
 export class VList {
   constructor(container, renderRow) {
     this.el = container;
@@ -9,7 +9,7 @@ export class VList {
     this.rows = [];               // loaded items
     this.nextOffset = 0;          // next page offset to fetch
     this.eof = false;             // no more pages
-    this.rowH = 52;
+    this.rowH = 56;
     this._fetching = false;
     this._onScroll = this.onScroll.bind(this);
     this.el.addEventListener("scroll", this._onScroll, { passive: true });

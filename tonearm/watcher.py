@@ -32,6 +32,7 @@ Design rules, the encoded kind:
 * Never raises: a failed pass logs and waits for the next cadence.
 """
 import logging
+import re
 import threading
 import time
 import unicodedata
@@ -44,6 +45,23 @@ FIRST_RUN_DELAY_S = 60       # let the renderer come up before the first pass
 
 ALBUMS_PER_ARTIST = 10       # newest-N albums fetched per artist per pass
 TRACKS_PER_ADD_CAP = 100     # auto-add never POSTs more than a page
+
+# library "artists" are often COLLABORATIONS ("Alan Walker & Ava Max") —
+# no catalog artist has that name. The release page a collab lands on is
+# the PRIMARY (first-listed) artist's, so the mapping falls back to the
+# first segment (verified live: solo names map ~always; bare full-name
+# search mapped 55/100 — nearly every miss was an "&"/"," string)
+_COLLAB_SPLIT = re.compile(r"\s*(?:&|,|feat\.?|ft\.?|with|x)\s+", re.I)
+
+
+def name_candidates(name):
+    """Full name first, then the primary (first-listed) artist of a collab
+    string — nothing else: segments after the first are guests."""
+    parts = _COLLAB_SPLIT.split(name or "", 1)
+    out = [name] if (name or "").strip() else []
+    if len(parts) > 1 and parts[0].strip():
+        out.append(parts[0].strip())
+    return out
 
 
 def norm_name(s):
@@ -159,21 +177,24 @@ class ReleaseWatcher(threading.Thread):
     def _catalog_artist(self, artist_id, name):
         """The mapping, cached in the store (negative results are retried
         next pass — a name search can fail on a blip; a WRONG match must
-        not be cached: only a strict name match lands)."""
+        not be cached: only a strict name match lands). Collab strings
+        fall back to their primary artist (see name_candidates)."""
         state = self.store.watcher_artist(artist_id)
         if state and state.get("catalog_artist_id"):
             return state["catalog_artist_id"]
-        hits = self._mk.api_music(
-            f"/v1/catalog/us/search?term={_urlquote(name)}"
-            f"&types=artists&limit=5").get("results", {}).get("artists", {})\
-            .get("data", [])
-        want = norm_name(name)
-        for h in hits:
-            if norm_name((h.get("attributes") or {}).get("name")) == want:
-                self.store.watcher_upsert_artist(
-                    artist_id, name, catalog_artist_id=h["id"],
-                    catalog_artist_name=(h.get("attributes") or {}).get("name"))
-                return h["id"]
+        for candidate in name_candidates(name):
+            hits = self._mk.api_music(
+                f"/v1/catalog/us/search?term={_urlquote(candidate)}"
+                f"&types=artists&limit=5").get("results", {})\
+                .get("artists", {}).get("data", [])
+            want = norm_name(candidate)
+            for h in hits:
+                if norm_name((h.get("attributes") or {}).get("name")) == want:
+                    self.store.watcher_upsert_artist(
+                        artist_id, name, catalog_artist_id=h["id"],
+                        catalog_artist_name=(h.get("attributes") or {})
+                        .get("name"))
+                    return h["id"]
         # honest miss: record the attempt so /api/watcher can show it
         self.store.watcher_upsert_artist(artist_id, name)
         return None

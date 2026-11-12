@@ -114,7 +114,10 @@ class Config:
                                                "86400"))
     # Bound the catalog work per pass: at most this many artists get a
     # catalog lookup each pass (walked in library order); mappings are
-    # cached, so later passes rotate through the rest.
+    # cached, so later passes rotate through the rest. Verified live:
+    # ~2 catalog calls/artist, and Apple's 429 wall sits at a few hundred
+    # searches in a window — 100/pass daily sweeps a 1.4k-artist library
+    # in ~2 weeks WITHOUT tripping it. Raise it and you'll meet the wall.
     watcher_max_artists: int = int(os.environ.get("TONEARM_WATCHER_MAX_ARTISTS",
                                                   "100"))
     # Optional auto-add (#108): newest release's tracks are appended to this
