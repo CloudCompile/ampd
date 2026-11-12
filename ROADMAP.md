@@ -58,12 +58,12 @@ its own renderer.*
 
 *The OpenAPI page currently lies by omission (untyped dicts). Make it truth.*
 
-- [ ] **Pydantic response models for every route** — real schema, real
+- [x] **Pydantic response models for every route** — real schema, real
       validation `L P0`
-- [ ] **Generated clients** — TypeScript + Python, published from CI `M P1`
-- [ ] **Standard error envelope** — `{error: {code, hint}}` everywhere, with
+- [x] **Generated clients** — TypeScript + Python, published from CI `M P1`
+- [x] **Standard error envelope** — `{error: {code, hint}}` everywhere, with
       a table in the README `S P1`
-- [ ] **Mock server mode** — replay recorded fixtures so UI devs never need
+- [x] **Mock server mode** — seeded synthetic fixtures so UI devs never need
       an Apple account `M P1`
 
 ## v0.5 — Listening experience

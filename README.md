@@ -209,6 +209,28 @@ Apple, no TestClient), and every mock response is enforced against the
 typed response models, so the fixtures can't rot out of the schema
 silently.
 
+### Typed API & generated clients
+
+Every JSON route declares a Pydantic response model (enforced by a CI
+conformance check), so `/openapi.json` is real: 60 schemas, and the auth
+dialect documented (`Authorization: Bearer <key>` **or** `?api_key=<key>` —
+the fallback EventSource needs since it cannot send headers).
+
+On every release tag, CI regenerates clients from that schema into
+[`clients/`](clients/) — TypeScript (`clients/ts/schema.ts`, openapi-typescript)
+and Python (`clients/python/`, the `ampd-client` package):
+
+```python
+from ampd_client import AuthenticatedClient
+from ampd_client.api.library import list_resource_api_library_resource_get as songs
+
+client = AuthenticatedClient(base_url="http://127.0.0.1:8188", token="<key>")
+page = songs.sync(client=client, resource="songs", limit=10)
+```
+
+Generated code is GENERATED — banners mark it, hand-edits are rejected.
+Client versions track the server release.
+
 ### The escape hatch
 
 ```
