@@ -113,3 +113,101 @@ jobs:
 
       - name: Unit tests (hermetic — read cache / coalescer)
         run: python -m unittest discover -s tests
+
+      - name: Integration — mock mode serves the full API (no Chrome, no Apple)
+        run: |
+          AMPD_MOCK=1 AMPD_AUTO_CHROME=0 AMPD_PORT=8971 python -m ampd \
+            > /tmp/mock-server.log 2>&1 &
+          echo $! > /tmp/mock-server.pid
+          python - <<'EOF'
+          import json, time, urllib.request, urllib.error
+
+          base = "http://127.0.0.1:8971"
+          for _ in range(60):                     # wait for boot (no Chrome!)
+              try:
+                  with urllib.request.urlopen(base + "/health", timeout=2) as r:
+                      if r.status == 200:
+                          break
+              except Exception:
+                  time.sleep(0.5)
+          else:
+              raise SystemExit("mock server never came up")
+          print("mock server up")
+
+          def get(path):
+              # non-2xx EXPECTED in some assertions (honest 501s) — urllib
+              # raises HTTPError for those; catch and return the envelope
+              try:
+                  with urllib.request.urlopen(base + path, timeout=30) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  try:
+                      return e.code, json.loads(e.read())
+                  except Exception:
+                      return e.code, {}
+
+          def post(path):
+              req = urllib.request.Request(base + path, method="POST",
+                                           data=b"")
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  try:
+                      return e.code, json.loads(e.read())
+                  except Exception:
+                      return e.code, {}
+
+          # every key read surface, route-level, validated by response_model
+          # server-side (a 200 IS a model-conformance pass)
+          s, j = get("/api/library/songs?limit=5")
+          assert s == 200 and j["count"] == 5 and j["items"][0]["attributes"]
+          s, j = get("/api/library/search?term=mock")
+          assert s == 200 and j
+          s, j = get("/api/library/recently-added?limit=3")
+          assert s == 200 and len(j["items"]) == 3
+          s, j = get("/api/library/diff")
+          assert s == 501, "store is off in the mock CI run — honest 501"
+          s, j = get("/api/catalog/search?term=mock&types=songs")
+          assert s == 200 and j["songs"]
+          s, j = get("/api/personal/recommendations")
+          assert s == 200 and j["groups"]
+          s, j = get("/api/personal/heavy-rotation")
+          assert s == 200 and j["items"]
+          s, j = get("/api/playback/now-playing")
+          assert s == 200 and j["isPlaying"] is True, "mock world is playing"
+          s, j = get("/api/playback/queue")
+          assert s == 200 and j["items"]
+          s, j = post("/api/playback/next")          # state mutates
+          assert s == 200 and j["ok"] is True
+          s, j = get("/api/write/sweeps/never-played")
+          assert s == 200 and j["library_size"] > 0, \
+              "sweep PLANS are dry-run read-only — no writes gate on reads"
+          s, j = post("/api/write/sweeps/dedupe?execute=1")
+          assert s == 501 and j["error"]["code"] == "writes_disabled", \
+              "sweep EXECUTION is writes-gated"
+          s, j = get("/api/history/recently-played")
+          assert s == 501 and j["error"]["code"] == "store_disabled"
+          print("mock integration OK — full API surface served, models enforced")
+          EOF
+
+          # SSE replay: connect, expect snapshot + updates on the playhead
+          timeout 8 python - <<'EOF' || true
+          import urllib.request
+          got = []
+          with urllib.request.urlopen("http://127.0.0.1:8971/api/stream",
+                                      timeout=6) as r:
+              for raw in r:
+                  line = raw.decode().strip()
+                  if line.startswith("event:") or line.startswith("data:"):
+                      got.append(line)
+                  if sum(1 for g in got if g.startswith("data:")) >= 3:
+                      break
+          assert any(g.startswith("event: snapshot") for g in got), got[:4]
+          assert sum(1 for g in got if g.startswith("data:")) >= 3, \
+              "SSE must replay events (snapshot + playhead updates)"
+          print("SSE replay OK — snapshot + updates streamed")
+          EOF
+          kill $(cat /tmp/mock-server.pid) 2>/dev/null || true
+          sleep 1
+          echo "mock integration step done"

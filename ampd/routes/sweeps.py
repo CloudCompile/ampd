@@ -16,6 +16,21 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..config import config
+from ..errors import ApiError
+
+
+def _guard():
+    """Execution paths ONLY — the dry-run plans are pure reads and stay
+    open. This was a real gap (execute bypassed the writes flag); the
+    README's promise is /api/write/* mutations are 501 until
+    AMPD_ENABLE_WRITES=1."""
+    if not config.enable_writes:
+        raise ApiError(
+            501, "writes_disabled",
+            "batch sweeps mutate your library — they ship off like every "
+            "other write. To enable, set AMPD_ENABLE_WRITES=1 in the "
+            "environment.")
 from ..models import (DedupePlan, DedupeReport, NeverPlayedPlan, RatePlan,
                       RateReport)
 
@@ -68,6 +83,7 @@ def dedupe_execute(execute: int = 0):
     Pass ?execute=1 to actually run it."""
     if not execute:
         return dedupe_plan()
+    _guard()
     plan = dedupe_plan()
     removed, errors = [], []
     for group in plan["groups"]:
@@ -113,6 +129,7 @@ def rate_execute(artist: str = None, album: str = None, limit: int = 500,
     already have a rating. Pass ?execute=1 to actually run it."""
     if not execute:
         return rate_plan(artist, album, limit)
+    _guard()
     plan = rate_plan(artist, album, limit)
     done, skipped, errors = [], [], []
     for song in plan["songs"]:

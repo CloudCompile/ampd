@@ -48,6 +48,12 @@ class Config:
     audio_sink: str = os.environ.get("AMPD_AUDIO_SINK", "ampd_audio")
     audio_bitrate: str = os.environ.get("AMPD_AUDIO_BITRATE", "160k")
 
+    # --- mock mode (v0.4) ---
+    # AMPD_MOCK=1 serves the full API from seeded synthetic fixtures — no
+    # Apple account, no Chrome, no network. For UI devs, contributors and
+    # CI integration tests (plain urllib, no TestClient needed).
+    mock_enabled: bool = os.environ.get("AMPD_MOCK", "0") == "1"
+
     # --- local store (v0.3 "Memory") ---
     # OFF by default: every store-backed surface answers 501 honestly until
     # you opt in. The db holds listening history + library snapshots on YOUR
