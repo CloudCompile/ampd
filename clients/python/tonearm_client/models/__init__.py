@@ -77,6 +77,16 @@ from .restore_verified import RestoreVerified
 from .search_hints import SearchHints
 from .search_hints_hints_item import SearchHintsHintsItem
 from .series_point import SeriesPoint
+from .smartlist import Smartlist
+from .smartlist_create import SmartlistCreate
+from .smartlist_create_rules_item import SmartlistCreateRulesItem
+from .smartlist_preview import SmartlistPreview
+from .smartlist_preview_items_item import SmartlistPreviewItemsItem
+from .smartlist_refresh import SmartlistRefresh
+from .smartlist_rules_item import SmartlistRulesItem
+from .smartlist_update import SmartlistUpdate
+from .smartlist_update_rules_type_0_item import SmartlistUpdateRulesType0Item
+from .smartlists import Smartlists
 from .song_row import SongRow
 from .stats import Stats
 from .stats_series import StatsSeries
@@ -89,6 +99,10 @@ from .validation_error import ValidationError
 from .validation_error_context import ValidationErrorContext
 from .volume_state import VolumeState
 from .watchdog_state import WatchdogState
+from .watcher_artist import WatcherArtist
+from .watcher_info import WatcherInfo
+from .watcher_info_last_pass_type_0 import WatcherInfoLastPassType0
+from .watcher_pass import WatcherPass
 from .webhook_create import WebhookCreate
 from .webhook_deliveries import WebhookDeliveries
 from .webhook_delivery import WebhookDelivery
@@ -172,6 +186,16 @@ __all__ = (
     "SearchHints",
     "SearchHintsHintsItem",
     "SeriesPoint",
+    "Smartlist",
+    "SmartlistCreate",
+    "SmartlistCreateRulesItem",
+    "SmartlistPreview",
+    "SmartlistPreviewItemsItem",
+    "SmartlistRefresh",
+    "SmartlistRulesItem",
+    "Smartlists",
+    "SmartlistUpdate",
+    "SmartlistUpdateRulesType0Item",
     "SongRow",
     "Stats",
     "StatsSeries",
@@ -184,6 +208,10 @@ __all__ = (
     "ValidationErrorContext",
     "VolumeState",
     "WatchdogState",
+    "WatcherArtist",
+    "WatcherInfo",
+    "WatcherInfoLastPassType0",
+    "WatcherPass",
     "WebhookCreate",
     "WebhookDeliveries",
     "WebhookDelivery",

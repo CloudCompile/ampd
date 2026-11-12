@@ -687,17 +687,17 @@ export interface paths {
             cookie?: never;
         };
         /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__post"];
+        get: operations["passthrough_api_amp_api__path__put"];
         /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__post"];
+        put: operations["passthrough_api_amp_api__path__put"];
         /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__post"];
+        post: operations["passthrough_api_amp_api__path__put"];
         /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__post"];
+        delete: operations["passthrough_api_amp_api__path__put"];
         options?: never;
         head?: never;
         /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__post"];
+        patch: operations["passthrough_api_amp_api__path__put"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -1359,6 +1359,139 @@ export interface paths {
          *     No background retry — this is a diagnostic, not an event.
          */
         post: operations["test_hook_api_webhooks__hook_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/smartlists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Smartlists
+         * @description All smart-playlist definitions with their last evaluation/sync state.
+         */
+        get: operations["list_smartlists_api_smartlists_get"];
+        put?: never;
+        /**
+         * Create Smartlist
+         * @description Define a smart playlist. Rules are validated eagerly — a bad rule is
+         *     a 400 here, never a silent empty list later.
+         */
+        post: operations["create_smartlist_api_smartlists_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/smartlists/{list_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Smartlist */
+        get: operations["get_smartlist_api_smartlists__list_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Smartlist */
+        delete: operations["delete_smartlist_api_smartlists__list_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update Smartlist
+         * @description Partial update. Replaces whichever fields are present; rules are
+         *     re-validated in full whenever they appear.
+         */
+        patch: operations["update_smartlist_api_smartlists__list_id__patch"];
+        trace?: never;
+    };
+    "/api/smartlists/{list_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview
+         * @description The evaluation, served from the store — no Apple calls at all.
+         */
+        get: operations["preview_api_smartlists__list_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/smartlists/{list_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh
+         * @description Evaluate + materialize: find-or-create the live playlist, then one
+         *     full-list PUT so Apple matches the evaluation exactly. Requires
+         *     TONEARM_ENABLE_WRITES=1 (evaluation-only? use /preview).
+         */
+        post: operations["refresh_api_smartlists__list_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/watcher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Info
+         * @description Watcher state. Artists that have never resolved to a catalog id are
+         *     reported honestly (`mapped` vs `watched`) — a bad mapping is data, not
+         *     a silent zero.
+         */
+        get: operations["info_api_watcher_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/watcher/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh
+         * @description One bounded pass, synchronously. Same code the scheduler runs —
+         *     useful for the live verification (and for cron'ing it yourself).
+         */
+        post: operations["refresh_api_watcher_refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2062,6 +2195,144 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** Smartlist */
+        Smartlist: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Rules */
+            rules: {
+                [key: string]: unknown;
+            }[];
+            /** Sort */
+            sort?: string | null;
+            /**
+             * Limit
+             * @default 0
+             */
+            limit: number;
+            /**
+             * Refresh S
+             * @default 0
+             */
+            refresh_s: number;
+            /** Playlist Id */
+            playlist_id?: string | null;
+            /** Last Eval */
+            last_eval?: number | null;
+            /** Last Sync */
+            last_sync?: number | null;
+            /** Last Count */
+            last_count?: number | null;
+            /** Created At */
+            created_at?: number | null;
+            /** Updated At */
+            updated_at?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** SmartlistCreate */
+        SmartlistCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string | null;
+            /**
+             * Rules
+             * @default []
+             */
+            rules: {
+                [key: string]: unknown;
+            }[];
+            /** Sort */
+            sort?: string | null;
+            /** Limit */
+            limit?: number | null;
+            /** Refresh S */
+            refresh_s?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SmartlistPreview
+         * @description The local evaluation — store rows only, no Apple touched.
+         */
+        SmartlistPreview: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Total */
+            total: number;
+            /** Count */
+            count: number;
+            /** Items */
+            items: {
+                [key: string]: unknown;
+            }[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** SmartlistRefresh */
+        SmartlistRefresh: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Playlist Id */
+            playlist_id: string;
+            /**
+             * Created
+             * @default false
+             */
+            created: boolean;
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** SmartlistUpdate */
+        SmartlistUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Rules */
+            rules?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Sort */
+            sort?: string | null;
+            /** Limit */
+            limit?: number | null;
+            /** Refresh S */
+            refresh_s?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** Smartlists */
+        Smartlists: {
+            /** Enabled */
+            enabled: boolean;
+            /** Items */
+            items: components["schemas"]["Smartlist"][];
+            /**
+             * Scheduler Interval
+             * @default 0
+             */
+            scheduler_interval: number;
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * SongRow
          * @description mk.song_row — the normalized song shape.
@@ -2229,6 +2500,121 @@ export interface components {
             recycles?: number | null;
             /** Last Action */
             last_action?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * WatcherArtist
+         * @description One row of watcher state: the mapping cache + newest release seen.
+         */
+        WatcherArtist: {
+            /** Artist Id */
+            artist_id: string;
+            /** Artist Name */
+            artist_name?: string | null;
+            /** Catalog Artist Id */
+            catalog_artist_id?: string | null;
+            /** Catalog Artist Name */
+            catalog_artist_name?: string | null;
+            /** Last Album Id */
+            last_album_id?: string | null;
+            /** Last Album Name */
+            last_album_name?: string | null;
+            /** Last Release Date */
+            last_release_date?: string | null;
+            /** Checked At */
+            checked_at?: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** WatcherInfo */
+        WatcherInfo: {
+            /** Enabled */
+            enabled: boolean;
+            /** Interval */
+            interval: number;
+            /**
+             * Max Artists Per Pass
+             * @default 100
+             */
+            max_artists_per_pass: number;
+            /** Auto Playlist */
+            auto_playlist?: string | null;
+            /**
+             * Auto Add Active
+             * @default false
+             */
+            auto_add_active: boolean;
+            /**
+             * Watched
+             * @default 0
+             */
+            watched: number;
+            /**
+             * Mapped
+             * @default 0
+             */
+            mapped: number;
+            /**
+             * Unmapped
+             * @default 0
+             */
+            unmapped: number;
+            /**
+             * Artists
+             * @default []
+             */
+            artists: components["schemas"]["WatcherArtist"][];
+            /** Last Pass */
+            last_pass?: {
+                [key: string]: unknown;
+            } | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** WatcherPass */
+        WatcherPass: {
+            /**
+             * Ran
+             * @default true
+             */
+            ran: boolean;
+            /**
+             * Artists Seen
+             * @default 0
+             */
+            artists_seen: number;
+            /**
+             * Checked
+             * @default 0
+             */
+            checked: number;
+            /**
+             * Mapped
+             * @default 0
+             */
+            mapped: number;
+            /**
+             * Unmapped
+             * @default 0
+             */
+            unmapped: number;
+            /**
+             * New Releases
+             * @default 0
+             */
+            new_releases: number;
+            /**
+             * Auto Added
+             * @default 0
+             */
+            auto_added: number;
+            /** Skipped Budget */
+            skipped_budget?: boolean | null;
+            /** Seconds */
+            seconds?: number | null;
+            /** Completed At */
+            completed_at?: number | null;
         } & {
             [key: string]: unknown;
         };
@@ -3393,7 +3779,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3424,7 +3810,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3455,7 +3841,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3486,7 +3872,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -3517,7 +3903,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -4682,6 +5068,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_smartlists_api_smartlists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Smartlists"];
+                };
+            };
+        };
+    };
+    create_smartlist_api_smartlists_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartlistCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Smartlist"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_smartlist_api_smartlists__list_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Smartlist"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_smartlist_api_smartlists__list_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_smartlist_api_smartlists__list_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartlistUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Smartlist"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_api_smartlists__list_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartlistPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_api_smartlists__list_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                list_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartlistRefresh"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    info_api_watcher_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatcherInfo"];
+                };
+            };
+        };
+    };
+    refresh_api_watcher_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WatcherPass"];
                 };
             };
         };
