@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .errors import ApiError, install_error_handlers
+from .models import Health
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
                      history)
@@ -99,7 +100,7 @@ async def auth_guard(request: Request, call_next):
 install_error_handlers(app)
 
 
-@app.get("/health")
+@app.get("/health", response_model=Health)
 def health():
     wd = browser.health()
     try:

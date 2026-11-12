@@ -13,6 +13,7 @@ import time
 from fastapi import APIRouter, HTTPException
 
 from ..errors import ApiError
+from ..models import RecentlyPlayed, Stats, StatsSeries
 from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/history", tags=["history (local store)"])
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/history", tags=["history (local store)"])
 _WINDOWS = {"day": 86400.0, "week": 604800.0, "month": 2592000.0}
 
 
-@router.get("/recently-played")
+@router.get("/recently-played", response_model=RecentlyPlayed)
 def recently_played(limit: int = 50, offset: int = 0):
     """Everything you've played since AMPD_STORE=1 was first enabled,
     newest first. No backfill: Apple only ever exposed ~20 recent items,
@@ -31,7 +32,7 @@ def recently_played(limit: int = 50, offset: int = 0):
         raise ApiError(501, "store_disabled", str(e))
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=Stats)
 def stats(window: str = "all", limit: int = 25):
     """Top artists / tracks from the LOCAL play archive (not Apple's).
     window: day | week | month | all. Plays dedupe on (track_id, started_at)
@@ -45,7 +46,7 @@ def stats(window: str = "all", limit: int = 25):
         raise ApiError(501, "store_disabled", str(e))
 
 
-@router.get("/stats/series")
+@router.get("/stats/series", response_model=StatsSeries)
 def stats_series(days: int = 30):
     """Plays per day, last N days — bucketed in SQL, ready for a chart."""
     since = time.time() - min(days, 3650) * 86400.0

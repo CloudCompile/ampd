@@ -3,11 +3,12 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..models import ItemList, MadeForYou, Recommendations
 
 router = APIRouter(prefix="/personal", tags=["personal"])
 
 
-@router.get("/recommendations")
+@router.get("/recommendations", response_model=Recommendations)
 def recommendations():
     """'Listen Now' / For You recommendations (albums & playlists, grouped)."""
     try:
@@ -28,7 +29,7 @@ def recommendations():
         raise HTTPException(502, str(e))
 
 
-@router.get("/heavy-rotation")
+@router.get("/heavy-rotation", response_model=ItemList)
 def heavy_rotation():
     """Albums and playlists you've had in heavy rotation."""
     try:
@@ -38,7 +39,7 @@ def heavy_rotation():
         raise HTTPException(502, str(e))
 
 
-@router.get("/recently-played")
+@router.get("/recently-played", response_model=ItemList)
 def recently_played(limit: int = 20):
     """Your recently played items (Apple caps this at 20)."""
     try:
@@ -48,7 +49,7 @@ def recently_played(limit: int = 20):
         raise HTTPException(502, str(e))
 
 
-@router.get("/made-for-you")
+@router.get("/made-for-you", response_model=MadeForYou)
 def made_for_you():
     """Apple's auto-generated personal playlists (Favorites Mix, New Music…)."""
     try:

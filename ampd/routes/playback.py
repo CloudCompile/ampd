@@ -2,12 +2,15 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..models import (NowPlaying, Ok, OkPlaylist, OkRating, OkRepeat,
+                      OkShuffle, OkStatus, OkVolume, PlaybackSettings, Queue,
+                      QueueItem, VolumeState)
 
 router = APIRouter(prefix="/playback", tags=["playback"])
 
 # NOTE: specific routes MUST be declared before the generic /{command} route.
 
-@router.get("/now-playing")
+@router.get("/now-playing", response_model=NowPlaying)
 def now_playing():
     try:
         return mk.now_playing()
@@ -15,7 +18,7 @@ def now_playing():
         raise HTTPException(502, str(e))
 
 
-@router.get("/queue")
+@router.get("/queue", response_model=Queue)
 def queue():
     try:
         return {"items": mk.queue()}
@@ -23,7 +26,7 @@ def queue():
         raise HTTPException(502, str(e))
 
 
-@router.get("/volume")
+@router.get("/volume", response_model=VolumeState)
 def get_volume():
     try:
         return {"volume": mk.playback_property("volume")}
@@ -31,7 +34,7 @@ def get_volume():
         raise HTTPException(502, str(e))
 
 
-@router.post("/volume/{value}")
+@router.post("/volume/{value}", response_model=OkVolume)
 def set_volume(value: float):
     if not 0 <= value <= 1:
         raise HTTPException(400, "volume is 0.0 – 1.0")
@@ -42,7 +45,7 @@ def set_volume(value: float):
         raise HTTPException(502, str(e))
 
 
-@router.get("/settings")
+@router.get("/settings", response_model=PlaybackSettings)
 def settings():
     """shuffle / repeat / volume / playing state in one shot."""
     try:
@@ -51,7 +54,7 @@ def settings():
         raise HTTPException(502, str(e))
 
 
-@router.post("/shuffle/{mode}")
+@router.post("/shuffle/{mode}", response_model=OkShuffle)
 def shuffle(mode: str):
     if mode not in ("on", "off"):
         raise HTTPException(400, "shuffle is 'on' or 'off'")
@@ -62,7 +65,7 @@ def shuffle(mode: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/repeat/{mode}")
+@router.post("/repeat/{mode}", response_model=OkRepeat)
 def repeat(mode: int):
     # MusicKit repeat modes: 0 none, 1 one, 2 all
     if mode not in (0, 1, 2):
@@ -74,7 +77,7 @@ def repeat(mode: int):
         raise HTTPException(502, str(e))
 
 
-@router.post("/play-song/{catalog_id}")
+@router.post("/play-song/{catalog_id}", response_model=Ok)
 def play_song(catalog_id: str):
     """Start playing a catalog song by id (clears the queue)."""
     try:
@@ -84,7 +87,7 @@ def play_song(catalog_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/play-collection")
+@router.post("/play-collection", response_model=Ok)
 def play_collection(kind: str, id: str):
     """Queue a whole album/playlist/station and play it.
     kind: album | playlist | station  (catalog ids)"""
@@ -97,7 +100,7 @@ def play_collection(kind: str, id: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/play-next")
+@router.post("/play-next", response_model=Ok)
 def play_next(catalog_id: str):
     """Insert a catalog song to play next."""
     try:
@@ -107,7 +110,7 @@ def play_next(catalog_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/play-later")
+@router.post("/play-later", response_model=Ok)
 def play_later(catalog_id: str):
     """Append a catalog song to play later."""
     try:
@@ -117,7 +120,7 @@ def play_later(catalog_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/{command}")
+@router.post("/{command}", response_model=Ok)
 def command(command: str):
     """play | pause | toggle | next | previous."""
     if command not in ("play", "pause", "toggle", "next", "previous"):
