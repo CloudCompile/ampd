@@ -220,6 +220,134 @@ class TestHistoryWriter(unittest.TestCase):
         w2 = HistoryWriter(FakeStore(), OkBrowser(), None)
         self.assertFalse(w2._stalled())
 
+    def test_cold_renderer_counts_as_available(self):
+        class ColdBrowser:
+            def health(self):
+                return {"running": False, "last_ping_ts": None,
+                        "last_ok": None, "consecutive_failures": 0}
+        w = HistoryWriter(FakeStore(), ColdBrowser(), None)
+        self.assertFalse(w._stalled(),
+                         "a never-connected renderer must let background "
+                         "work trigger the first connect — otherwise every "
+                         "thread politely waits on the watchdog forever")
+
+
+class TestSnapshotScheduler(unittest.TestCase):
+    def _sched(self, store, walk_rows_fn, browser=None):
+        from ampd.store import SnapshotScheduler
+        return SnapshotScheduler(store, browser or FakeOkBrowser(), None,
+                                 interval=3600, walk_fn=walk_rows_fn)
+
+    def test_walk_upserts_and_records_cursor(self):
+        s = temp_store()
+        s.start()
+        try:
+            rows = [dict(library_id="i.1", name="A", artist="x", album="l",
+                         catalog_id=None, duration_ms=1, type="library-songs",
+                         attributes={}),
+                    dict(library_id="i.2", name="B", artist="x", album="l",
+                         catalog_id="99", duration_ms=2, type="library-songs",
+                         attributes={})]
+            sched = self._sched(s, lambda: rows)
+            out = sched.run_walk()
+            self.assertTrue(out["ran"])
+            self.assertEqual(out["rows"], 2)
+            self.assertEqual(s.library_count(), 2)
+            self.assertEqual(s.get_cursor("library.walk")["rows"], 2,
+                             "cursor records the completed walk")
+        finally:
+            s.close()
+
+    def test_walk_never_overlaps_itself(self):
+        import threading
+        s = temp_store()
+        s.start()
+        try:
+            gate = threading.Event()
+            def slow_walk():
+                gate.wait(5)          # first walk still running
+                return []
+            sched = self._sched(s, slow_walk)
+            t = threading.Thread(target=sched.run_walk, daemon=True)
+            t.start()
+            time.sleep(0.2)
+            out = sched.run_walk()    # second call while first is in flight
+            self.assertFalse(out["ran"], "single-flight: must refuse to overlap")
+            gate.set()
+            t.join(5)
+        finally:
+            s.close()
+
+    def test_removal_visible_after_next_walk(self):
+        s = temp_store()
+        s.start()
+        try:
+            def mkrows(ids):
+                return [dict(library_id=i, name=f"n{i}", artist="x", album="l",
+                             catalog_id=None, duration_ms=1,
+                             type="library-songs", attributes={})
+                        for i in ids]
+            sched = self._sched(s, lambda: mkrows(["i.1", "i.2", "i.3"]))
+            sched.run_walk()
+            after_walk1 = s.library_rows()
+            since = max(r["last_seen"] for r in after_walk1)
+
+            sched._walk_fn = lambda: mkrows(["i.1"])   # 2 and 3 vanished
+            sched.run_walk()
+            diff = {"added": s.library_added_since(since)["items"],
+                    "removed": s.library_removed_since(since)["items"]}
+            self.assertEqual([r["library_id"] for r in diff["removed"]],
+                             ["i.2", "i.3"],
+                             "gone rows keep their old last_seen — the diff "
+                             "sees the removal")
+            self.assertEqual(diff["added"], [])
+        finally:
+            s.close()
+
+
+class FakeOkBrowser:
+    def health(self):
+        return {"running": True, "last_ok": True, "consecutive_failures": 0}
+
+
+class TestDiffQueries(unittest.TestCase):
+    def test_added_updated_removed_queries(self):
+        s = temp_store()
+        s.start()
+        try:
+            # seed directly with controlled watermarks
+            s.upsert_library_rows([
+                dict(library_id="i.a", name="old", artist="x", album="l",
+                     catalog_id=None, duration_ms=1, type=None,
+                     attributes={})])
+            first = s.library_rows()[0]
+            time.sleep(0.01)
+            boundary = time.time()
+            time.sleep(0.01)
+            # brand new row + a change to the old one
+            s.upsert_library_rows([
+                dict(library_id="i.a", name="old!", artist="x", album="l",
+                     catalog_id=None, duration_ms=1, type=None,
+                     attributes={}),
+                dict(library_id="i.b", name="new", artist="x", album="l",
+                     catalog_id=None, duration_ms=1, type=None,
+                     attributes={})])
+            self.assertEqual(
+                [r["library_id"] for r in
+                 s.library_added_since(boundary)["items"]], ["i.b"])
+            self.assertEqual(
+                [r["library_id"] for r in
+                 s.library_updated_since(boundary)["items"]], ["i.a"],
+                 "changed row is an update, not an add")
+            self.assertEqual(
+                [r["library_id"] for r in
+                 s.library_removed_since(0)["items"]], [],
+                "nothing predates zero — no removals")
+            # since=0 -> everything is an add
+            self.assertEqual(s.library_added_since(0)["total"], 2)
+        finally:
+            s.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -248,6 +248,40 @@ class Store:
         with self._lock:
             return conn.execute("SELECT COUNT(*) FROM library").fetchone()[0]
 
+    # ---- diff queries (watermark-driven; see module docstring) ----
+
+    def _rows_where(self, where, args, limit, offset):
+        conn = self._require_conn()
+        with self._lock:
+            rows = conn.execute(
+                f"SELECT library_id, catalog_id, name, artist, album, "
+                f"duration_ms, kind, first_seen, last_seen, last_changed "
+                f"FROM library WHERE {where} ORDER BY last_changed DESC, "
+                f"library_id LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM library WHERE {where}", args).fetchone()[0]
+        out = [{"library_id": r[0], "catalog_id": r[1], "name": r[2],
+                "artist": r[3], "album": r[4], "duration_ms": r[5],
+                "kind": r[6], "first_seen": r[7], "last_seen": r[8],
+                "last_changed": r[9]} for r in rows]
+        nxt = offset + len(out)
+        return {"total": total, "count": len(out), "items": out,
+                "next_offset": nxt if nxt < total and out else None}
+
+    def library_added_since(self, since, limit=100, offset=0):
+        """Rows first seen after `since`. since=0 -> the whole library."""
+        return self._rows_where("first_seen > ?", (since,), limit, offset)
+
+    def library_updated_since(self, since, limit=100, offset=0):
+        """Rows that CHANGED after `since` (not counting brand-new ones)."""
+        return self._rows_where("last_changed > ? AND first_seen <= ?",
+                                (since, since), limit, offset)
+
+    def library_removed_since(self, since, limit=100, offset=0):
+        """Rows whose most recent walk predates `since` — gone from the
+        library as of the last completed snapshot walk."""
+        return self._rows_where("last_seen <= ?", (since,), limit, offset)
+
     # ------------------------------------------------------------- cursors
 
     def set_cursor(self, name, value):
@@ -313,6 +347,22 @@ def diff_rows(rows_before, rows_after, before_ts, after_ts):
             "since": before_ts, "until": after_ts}
 
 
+def _renderer_available(browser_instance):
+    """False only on an ACTIVE stall (failed pings / failing renderer).
+    A COLD renderer (never connected — last_ping_ts is None) counts as
+    available: background work must be able to trigger the first connect,
+    or every thread would politely defer to the watchdog while the watchdog
+    waits for a first connect — a deadlock of politeness where the archive
+    never starts."""
+    try:
+        wd = browser_instance.health()
+    except Exception:
+        return False
+    if wd.get("last_ok") is False or (wd.get("consecutive_failures") or 0) > 0:
+        return False
+    return True
+
+
 # ---------------------------------------------------------------- history
 # the history writer: ONE flat daemon thread, drains the stream-hook buffer
 # the SSE listeners already use, persists track starts. Skips ticks when the
@@ -336,17 +386,7 @@ class HistoryWriter(threading.Thread):
         self._stop.set()
 
     def _stalled(self):
-        """True when the watchdog says the renderer is unhealthy right now.
-        A tick that can't run cleanly must never become the straw that
-        kills the tab (the watchdog-recycle lesson)."""
-        try:
-            wd = self._browser.health()
-        except Exception:
-            return True
-        if not wd.get("running"):
-            return True
-        return bool(wd.get("last_ok") is False or
-                    (wd.get("consecutive_failures") or 0) > 0)
+        return not _renderer_available(self._browser)
 
     def process_events(self, entries):
         """Pure event -> play rows. Split from the loop so tests can feed it
@@ -409,6 +449,88 @@ class HistoryWriter(threading.Thread):
                 log.warning("history write failed (kept alive): %s", e)
 
 
+# ------------------------------------------------------------- snapshots
+# the periodic library walk: ONE bounded thread, single-flight (never overlaps
+# itself), stall-gated (a full walk is ~1 eval per 100 songs — it must never
+# fight a limping renderer for the eval lock). Records its runs in cursors.
+
+class SnapshotScheduler(threading.Thread):
+    """Periodically walks /v1/me/library/songs and upserts the store.
+    `walk_fn` is injected so tests can drive it without any renderer."""
+
+    def __init__(self, store, browser_instance, mk_mod, interval=None,
+                 walk_fn=None):
+        super().__init__(daemon=True, name="ampd-store-snapshot")
+        self.store = store
+        self._browser = browser_instance
+        self._mk = mk_mod
+        self.interval = interval or config.store_sync_interval
+        self._walk_fn = walk_fn or self._walk_library
+        self._busy = threading.Lock()      # single-flight: walk never overlaps
+        self._stop = threading.Event()
+
+    def stop(self):
+        self._stop.set()
+
+    def _stalled(self):
+        return not _renderer_available(self._browser)
+
+    def _walk_library(self):
+        """The real walk: every library song, normalized rows, in batches.
+        ~1 eval per 100 songs (Apple's page cap)."""
+        def extract(data):
+            return [self._mk.item_row(t) for t in data.get("data", [])]
+        return self._mk.paginated("/v1/me/library/songs?limit=100", extract,
+                                  fresh=True)
+
+    def run_walk(self):
+        """One complete walk. Returns a summary dict; safe to call directly
+        (the thread calls this too)."""
+        if not self._busy.acquire(timeout=0.1):
+            return {"ran": False, "reason": "previous walk still running"}
+        try:
+            t0 = time.time()
+            rows = self._walk_fn()
+            # upsert in batches so one giant commit never pins the lock
+            BATCH = 500
+            for i in range(0, len(rows), BATCH):
+                self.store.upsert_library_rows(rows[i:i + BATCH])
+            summary = {"ran": True,
+                       "rows": len(rows),
+                       "seconds": round(time.time() - t0, 1)}
+            self.store.set_cursor("library.walk", summary)
+            METRICS.inc("ampd_store_library_walks_total",
+                        help_text="completed library snapshot walks")
+            METRICS.gauge("ampd_store_library_rows", len(rows),
+                          help_text="library rows in the last completed walk")
+            return summary
+        finally:
+            self._busy.release()
+
+    def run(self):
+        log.info("snapshot scheduler armed: full library walk every %ds "
+                 "(stall-gated, single-flight)", self.interval)
+        # first run shortly after boot (renderer still fresh), then on cadence
+        waited = 0.0
+        while waited < 90 and not self._stop.wait(5):
+            waited += 5
+        while not self._stop.is_set():
+            if self.store.enabled and not self._stalled():
+                try:
+                    summary = self.run_walk()
+                    if summary.get("ran"):
+                        log.info("library walk: %d rows in %.1fs",
+                                 summary["rows"], summary["seconds"])
+                except Exception as e:
+                    log.warning("library walk failed (kept alive): %s", e)
+            # park in 5s slices so stop() stays responsive
+            slept = 0.0
+            while slept < self.interval and not self._stop.is_set():
+                self._stop.wait(min(5, self.interval - slept))
+                slept += 5
+
+
 # module-level singleton (routes import this; main.py owns its lifecycle)
 store = Store()
 history_writer: HistoryWriter | None = None   # set by main.py lifespan
+snapshot_scheduler: SnapshotScheduler | None = None
