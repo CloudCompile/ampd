@@ -54,6 +54,13 @@ class Config:
     # silence so clients get a deterministic alignment point. 0 disables.
     audio_join_pad: bool = os.environ.get("AMPD_AUDIO_JOIN_PAD", "1") == "1"
 
+    # --- Discord Rich Presence (v0.5, opt-in) ---
+    # AMPD_DISCORD=1 + AMPD_DISCORD_CLIENT_ID put the session's now-playing
+    # into a LOCAL Discord client's presence. Zero new deps (raw IPC);
+    # paused/stalled clears presence instead of freezing a wrong track.
+    discord_enabled: bool = os.environ.get("AMPD_DISCORD", "0") == "1"
+    discord_client_id: str = os.environ.get("AMPD_DISCORD_CLIENT_ID", "")
+
     # --- mock mode (v0.4) ---
     # AMPD_MOCK=1 serves the full API from seeded synthetic fixtures — no
     # Apple account, no Chrome, no network. For UI devs, contributors and
