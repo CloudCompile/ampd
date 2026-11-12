@@ -45,11 +45,13 @@ from .ok_repeat import OkRepeat
 from .ok_shuffle import OkShuffle
 from .ok_status import OkStatus
 from .ok_volume import OkVolume
+from .overlay_now_playing import OverlayNowPlaying
 from .play_row import PlayRow
 from .playback_settings import PlaybackSettings
 from .playlist_track_list import PlaylistTrackList
 from .queue import Queue
 from .queue_item import QueueItem
+from .queue_reorder import QueueReorder
 from .rate_plan import RatePlan
 from .rate_report import RateReport
 from .rating_state import RatingState
@@ -127,11 +129,13 @@ __all__ = (
     "OkShuffle",
     "OkStatus",
     "OkVolume",
+    "OverlayNowPlaying",
     "PlaybackSettings",
     "PlaylistTrackList",
     "PlayRow",
     "Queue",
     "QueueItem",
+    "QueueReorder",
     "RatePlan",
     "RateReport",
     "RatingState",

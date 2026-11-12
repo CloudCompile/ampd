@@ -46,6 +46,9 @@ def sync_detailed(
 ) -> Response[Queue]:
     """Queue
 
+     The current queue (also pushed by the SSE stream — prefer the
+    stream; this is the one-shot read).
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx2.TimeoutException: If the request takes longer than Client.timeout.
@@ -69,6 +72,9 @@ def sync(
 ) -> Queue | None:
     """Queue
 
+     The current queue (also pushed by the SSE stream — prefer the
+    stream; this is the one-shot read).
+
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
         httpx2.TimeoutException: If the request takes longer than Client.timeout.
@@ -87,6 +93,9 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
 ) -> Response[Queue]:
     """Queue
+
+     The current queue (also pushed by the SSE stream — prefer the
+    stream; this is the one-shot read).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -108,6 +117,9 @@ async def asyncio(
     client: AuthenticatedClient | Client,
 ) -> Queue | None:
     """Queue
+
+     The current queue (also pushed by the SSE stream — prefer the
+    stream; this is the one-shot read).
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
