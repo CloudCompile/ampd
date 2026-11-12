@@ -135,8 +135,16 @@ jobs:
           print("mock server up")
 
           def get(path):
-              with urllib.request.urlopen(base + path, timeout=30) as r:
-                  return r.status, json.loads(r.read())
+              # non-2xx EXPECTED in some assertions (honest 501s) — urllib
+              # raises HTTPError for those; catch and return the envelope
+              try:
+                  with urllib.request.urlopen(base + path, timeout=30) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  try:
+                      return e.code, json.loads(e.read())
+                  except Exception:
+                      return e.code, {}
 
           # every key read surface, route-level, validated by response_model
           # server-side (a 200 IS a model-conformance pass)
