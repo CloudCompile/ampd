@@ -82,6 +82,31 @@ app = FastAPI(
 )
 
 
+# the auth dialect is enforced by middleware, not a FastAPI dependency, so
+# OpenAPI can't see it — document it explicitly. Generated clients (CI on
+# release tags) read this and speak both flavors out of the box.
+def _openapi_with_auth():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(title=app.title, version=app.version,
+                         description=app.description, routes=app.routes)
+    schema["components"]["securitySchemes"] = {
+        "bearerAuth": {"type": "http", "scheme": "bearer",
+                       "description": "Authorization: Bearer <AMPD_API_KEY>"},
+        "apiKeyQuery": {"type": "apiKey", "in": "query", "name": "api_key",
+                        "description": "?api_key=<AMPD_API_KEY> — the "
+                                       "fallback EventSource needs (it "
+                                       "cannot send headers)"},
+    }
+    schema["security"] = [{"bearerAuth": []}, {"apiKeyQuery": []}]
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = _openapi_with_auth
+
+
 @app.middleware("http")
 async def auth_guard(request: Request, call_next):
     if config.api_key and request.url.path not in ("/health", "/demo"):
