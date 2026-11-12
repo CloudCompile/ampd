@@ -64,7 +64,8 @@ jobs:
           assert config.audio_enabled is False, "audio must default OFF"
           assert config.strict_bind is False, "bind guard must default to warn-only"
           assert config.api_key == "", "no api key may ship set"
-          print("defaults OK — writes and audio ship disabled, bind guard warn-only")
+          assert config.store_enabled is False, "store must default OFF"
+          print("defaults OK — writes, audio and the store ship disabled; bind guard warn-only")
           EOF
 
       - name: Unit tests (hermetic — read cache / coalescer)
