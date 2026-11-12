@@ -241,6 +241,23 @@ end-timestamp, **paused or stalled clears the presence** instead of
 freezing a wrong track. Zero new dependencies (raw local IPC); on a
 headless box it logs the missing socket and idles harmlessly.
 
+### Last.fm scrobbling — `AMPD_LASTFM=1`
+
+One-time auth, then it just scrobbles:
+
+```bash
+AMPD_LASTFM_API_KEY=… AMPD_LASTFM_SECRET=… python -m ampd.lastfm
+#   -> open the URL, approve, Enter — creds saved 0600 next to the store
+AMPD_LASTFM=1 python -m ampd      # now playing + scrobbles
+```
+
+The **50 % / 4-min rule** is computed from the same event buffer the store
+drains (elapsedMs/durationMs ride along — nothing extra is asked of Chrome),
+each scrobble carries the play's actual **start time**, and the dedupe
+marker `UNIQUE(track_id, started_at)` lives in the store's `scrobbles`
+table — restarts and buffer replays never double-scrobble. Requires
+`AMPD_STORE=1`.
+
 ### OBS overlay — `/api/overlay`
 
 Now-playing for streamers, served from the SSE stream's last emitted state
@@ -356,6 +373,7 @@ Every non-2xx response, from any route, is:
 | `AMPD_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
 | `AMPD_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
 | `AMPD_DISCORD` | `0` | Discord Rich Presence (needs a local Discord client) — requires `AMPD_DISCORD_CLIENT_ID` |
+| `AMPD_LASTFM` | `0` | Last.fm scrobbler (needs `AMPD_STORE=1`; auth via `python -m ampd.lastfm`) |
 
 ## Field notes (the parts the docs won't tell you)
 

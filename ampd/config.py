@@ -61,6 +61,19 @@ class Config:
     discord_enabled: bool = os.environ.get("AMPD_DISCORD", "0") == "1"
     discord_client_id: str = os.environ.get("AMPD_DISCORD_CLIENT_ID", "")
 
+    # --- Last.fm scrobbler (v0.5, opt-in) ---
+    # AMPD_LASTFM=1 scrobbles from the store's play history (50%/4-min rule,
+    # dedupe persisted on (id, started_at)). One-time auth: python -m
+    # ampd.lastfm — creds land in a 0600 file.
+    lastfm_enabled: bool = os.environ.get("AMPD_LASTFM", "0") == "1"
+    lastfm_api_key: str = os.environ.get("AMPD_LASTFM_API_KEY", "")
+    lastfm_secret: str = os.environ.get("AMPD_LASTFM_SECRET", "")
+
+    def lastfm_creds_path(self):
+        return (os.environ.get("AMPD_LASTFM_CREDS")
+                or os.path.join(os.path.dirname(self.store_db_path()),
+                                "lastfm.json"))
+
     # --- mock mode (v0.4) ---
     # AMPD_MOCK=1 serves the full API from seeded synthetic fixtures — no
     # Apple account, no Chrome, no network. For UI devs, contributors and

@@ -72,6 +72,20 @@ async def lifespan(app):
         discord.start()
     except Exception as e:
         log.error("discord bridge failed to start: %s", e)
+    # Last.fm scrobbler (opt-in: AMPD_LASTFM=1) — needs the store (the
+    # dedupe marker lives there); rides the same event buffer as the writer
+    if config.lastfm_enabled:
+        try:
+            from .lastfm import Scrobbler, load_creds
+            from .store import store
+            creds = load_creds()
+            if creds and creds.get("sk"):
+                Scrobbler(store, creds).start()
+            else:
+                log.warning("lastfm: AMPD_LASTFM=1 but no session key — "
+                            "run `python -m ampd.lastfm` first")
+        except Exception as e:
+            log.error("lastfm scrobbler failed to start: %s", e)
     yield
     try:
         from .store import store
