@@ -12,6 +12,7 @@ import urllib.parse
 from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
+from .. import exporter
 from ..browser import BrowserError
 from ..store import StoreDisabled, store
 
@@ -51,21 +52,7 @@ def export_library(songs_limit: int = 100000):
     Point a cron at this for backups; the output is a complete restore
     reference (ids) if the library is ever lost."""
     try:
-        songs = mk.paginated("/v1/me/library/songs?limit=100",
-                             lambda d: d.get("data", []))[:songs_limit]
-        playlists = mk.paginated("/v1/me/library/playlists?limit=100",
-                                 lambda d: d.get("data", []))
-        return {
-            "exported_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "song_count": len(songs),
-            "songs": [mk.song_row(s) for s in songs],
-            "playlist_count": len(playlists),
-            "playlists": [{"id": p["id"],
-                           "name": p.get("attributes", {}).get("name"),
-                           "tracks": [mk.song_row(t) for t in
-                                      mk.playlist_tracks(p["id"])]}
-                          for p in playlists],
-        }
+        return exporter.build_export(mk, songs_limit=songs_limit)
     except BrowserError as e:
         raise HTTPException(502, str(e))
 

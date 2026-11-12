@@ -63,6 +63,12 @@ class Config:
     store_history_max: int = int(os.environ.get("AMPD_STORE_HISTORY_MAX",
                                                 "200000"))
 
+    # --- scheduled exports (v0.3 #28) ---
+    # 0 = OFF (default — a full export walk is heavy). When on: one full
+    # /api/library/export every N seconds, keep-N files in the export dir.
+    export_interval: int = int(os.environ.get("AMPD_EXPORT_INTERVAL", "0"))
+    export_keep: int = int(os.environ.get("AMPD_EXPORT_KEEP", "7"))
+
     @classmethod
     def store_db_path(cls):
         """Where the sqlite file lives. Explicit env wins; else the /data

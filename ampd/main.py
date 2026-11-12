@@ -49,6 +49,20 @@ async def lifespan(app):
             _store_mod.snapshot_scheduler = _snap
         except Exception as e:
             log.error("store failed to start (continuing without it): %s", e)
+    # scheduled exports (heavy walks — OFF unless AMPD_EXPORT_INTERVAL>0;
+    # independent of the store: its outputs are files on the volume)
+    if config.export_interval > 0:
+        try:
+            from .exporter import ExportScheduler
+            from .browser import browser as _b
+            from . import musickit as _mk
+            from .store import store as _store
+            _exp = ExportScheduler(_b, _mk, store=_store)
+            _exp.start()
+            import ampd.exporter as _exp_mod
+            _exp_mod.export_scheduler = _exp
+        except Exception as e:
+            log.error("export scheduler failed to start: %s", e)
     yield
     try:
         from .store import store

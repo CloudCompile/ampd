@@ -282,6 +282,44 @@ class Store:
         library as of the last completed snapshot walk."""
         return self._rows_where("last_seen <= ?", (since,), limit, offset)
 
+    # ------------------------------------------------------------- stats
+    # Pure local computation — no Apple calls. Aggregation in SQL, never
+    # Python loops over the whole table. Plays dedupe on (track_id,
+    # started_at) is the writer's guarantee; stats just read.
+
+    def stats(self, since=0.0, limit=25):
+        conn = self._require_conn()
+        with self._lock:
+            tracks = conn.execute(
+                "SELECT track_id, title, artist, COUNT(*) AS plays "
+                "FROM plays WHERE started_at >= ? GROUP BY track_id "
+                "ORDER BY plays DESC, MAX(started_at) DESC LIMIT ?",
+                (since, limit)).fetchall()
+            artists = conn.execute(
+                "SELECT artist, COUNT(*) AS plays FROM plays "
+                "WHERE started_at >= ? AND artist IS NOT NULL "
+                "GROUP BY artist ORDER BY plays DESC LIMIT ?",
+                (since, limit)).fetchall()
+            total = conn.execute(
+                "SELECT COUNT(*) FROM plays WHERE started_at >= ?",
+                (since,)).fetchone()[0]
+        return {"window_since": since,
+                "total_plays": total,
+                "top_tracks": [{"id": r[0], "title": r[1], "artist": r[2],
+                                "plays": r[3]} for r in tracks],
+                "top_artists": [{"artist": r[0], "plays": r[1]}
+                                for r in artists]}
+
+    def plays_series(self, since=0.0):
+        """Plays per UTC day — bucketed in SQL for charts."""
+        conn = self._require_conn()
+        with self._lock:
+            rows = conn.execute(
+                "SELECT date(started_at, 'unixepoch') AS day, COUNT(*) "
+                "FROM plays WHERE started_at >= ? GROUP BY day ORDER BY day",
+                (since,)).fetchall()
+        return [{"day": r[0], "plays": r[1]} for r in rows]
+
     # ------------------------------------------------------------- cursors
 
     def set_cursor(self, name, value):
@@ -534,3 +572,4 @@ class SnapshotScheduler(threading.Thread):
 store = Store()
 history_writer: HistoryWriter | None = None   # set by main.py lifespan
 snapshot_scheduler: SnapshotScheduler | None = None
+export_scheduler = None   # ampd/exporter.ExportScheduler (set in main.py)
