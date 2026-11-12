@@ -222,6 +222,26 @@ creates missing playlists, adds tracks, verifies counts async; every un-restorab
 Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. All shapes
 above were validated live against a real account.
 
+### Errors — one shape everywhere
+
+Every non-2xx response, from any route, is:
+
+```json
+{"error": {"code": "renderer_unavailable", "hint": "the renderer is busy or stalled — it usually recovers on its own; retry shortly"}}
+```
+
+| Code | Meaning | What a client should do |
+|---|---|---|
+| `bad_request` | missing/invalid parameters | fix the request; the hint names the problem |
+| `unauthorized` | bad or missing API key | send `Authorization: Bearer <key>` (`?api_key=` for EventSource) |
+| `not_found` | no such resource or route | don't retry — nothing is there |
+| `rate_limited` | Apple rate-limited a read | honor `Retry-After`; ampd already backs off internally |
+| `disabled` | feature flag off (`501`) | the hint names the env variable |
+| `writes_disabled` | mutations off | set `AMPD_ENABLE_WRITES=1` if you accept the risk |
+| `store_disabled` | local store off | set `AMPD_STORE=1` |
+| `renderer_unavailable` | Chrome tab busy/stalled (`502`) | retry shortly — stalls usually recover in ~60s |
+| `degraded` | renderer failing watchdog checks (`503`) | see `/health`; the watchdog recycles dead tabs |
+
 ## Configuration (env vars)
 
 | Variable | Default | Meaning |

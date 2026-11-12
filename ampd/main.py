@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, FileResponse
 
 from .config import config
 from .browser import browser, BrowserError
+from .errors import ApiError, install_error_handlers
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
                      history)
@@ -88,8 +89,14 @@ async def auth_guard(request: Request, call_next):
         auth = request.headers.get("Authorization", "")
         key = request.query_params.get("api_key", "")
         if auth != f"Bearer {config.api_key}" and key != config.api_key:
-            return JSONResponse(status_code=401, content={"detail": "bad api key"})
+            return JSONResponse(status_code=401, content={
+                "error": {"code": "unauthorized",
+                          "hint": "pass 'Authorization: Bearer <key>' "
+                                  "(or ?api_key= for EventSource)"}})
     return await call_next(request)
+
+
+install_error_handlers(app)
 
 
 @app.get("/health")
