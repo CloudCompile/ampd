@@ -24,6 +24,9 @@ log = logging.getLogger("ampd.browser")
 
 MUSIC_URL = "https://music.apple.com/"
 
+# dead-simple liveness probe for the renderer (bounded by deadline_s)
+PING_JS = "(() => 1 + 1)()"
+
 
 class BrowserError(RuntimeError):
     pass
@@ -37,6 +40,40 @@ class Browser:
         self._ws = None
         self._target_id = None
         self._n = 0
+        # --- renderer watchdog state (flat dict, guarded by its own lock) ---
+        # the thread starts at import but WAITS for the first successful
+        # connect — importing this module must never touch Chrome (CI has
+        # none). Set config.watchdog=0 to never arm it.
+        self._watchdog_armed = threading.Event()
+        self._wd_lock = threading.Lock()
+        self._wd = {"running": False, "last_ping_ts": None, "last_ok": None,
+                    "consecutive_failures": 0, "recycles": 0,
+                    "last_action": "armed, waiting for first connect"}
+        if config.watchdog:
+            threading.Thread(target=self._watchdog_loop, daemon=True,
+                             name="ampd-watchdog").start()
+
+    def health(self):
+        """Watchdog snapshot — surfaced in /health."""
+        with self._wd_lock:
+            return dict(self._wd)
+
+    def _wd_set(self, *, ok=None, action=None, recycle=False, fail=None):
+        with self._wd_lock:
+            self._wd["running"] = self._watchdog_armed.is_set()
+            self._wd["last_ping_ts"] = time.time()
+            if fail is not None:
+                self._wd["consecutive_failures"] += 1
+                self._wd["last_ok"] = False
+                self._wd["last_action"] = fail
+            if ok is not None:
+                self._wd["consecutive_failures"] = 0
+                self._wd["last_ok"] = True
+                self._wd["last_action"] = ok
+            if recycle:
+                self._wd["recycles"] += 1
+                self._wd["consecutive_failures"] = 0
+                self._wd["last_action"] = action
 
     # ------------------------------------------------------------- lifecycle
 
@@ -132,6 +169,7 @@ class Browser:
                 st = self._raw_call("Runtime.evaluate", expression=self.READY_JS,
                                     returnByValue=True)
                 if (st.get("result", {}).get("value") or {}).get("ready"):
+                    self._watchdog_armed.set()   # first live tab arms the watchdog
                     return
             except BrowserError:
                 pass
@@ -255,6 +293,69 @@ class Browser:
         """Health probe: raises if the tab is not usable."""
         self.eval("(() => 1 + 1)()", timeout=10)
         self.wait_ready(timeout=10)
+
+    # ------------------------------------------------------------- watchdog
+    # Proactive liveness so the FIRST call after a zombie event succeeds
+    # instead of eating the failure. Stall-vs-dead heuristic (the hard-won
+    # part): under concurrent eval load Apple's page can stop answering for
+    # ~60s AND RECOVER — so only N consecutive failed pings (default 3,
+    # ~60s) count as death. A tick that can't take the lock is load, not a
+    # zombie — skipped, never counted.
+    # The CDP layer stays flat: the watchdog pings through _raw_call under
+    # the same lock as every request, recycles via _connect (bounded, no
+    # nested reconnects). Never make this recursive.
+
+    def _watchdog_loop(self):
+        log.info("renderer watchdog armed: ping every %ds, recycle after %d "
+                 "consecutive failures", config.watchdog_interval,
+                 config.watchdog_tries)
+        while True:
+            self._watchdog_armed.wait()          # sleeps until first connect
+            time.sleep(config.watchdog_interval)
+            if not self._watchdog_armed.is_set():
+                continue
+            try:
+                self._watchdog_tick()
+            except Exception as e:               # the watchdog must never die
+                log.error("watchdog tick crashed (kept alive): %s", e)
+
+    def _watchdog_tick(self):
+        if not self._lock.acquire(timeout=0.5):
+            self._wd_set(ok="skipped: request in flight")   # load, not death
+            return
+        try:
+            if self._ws is None:
+                # socket already discarded (post-failure or idle drop):
+                # hot-recover now so the next call doesn't cold-start it
+                try:
+                    self._connect()
+                except Exception as e:
+                    log.warning("watchdog: reconnect attempt failed (%s)", e)
+                    self._wd_set(fail=f"reconnect failed: {e}")
+                    return
+                self._wd_set(ok="reconnected: socket was down")
+                log.info("watchdog: reconnected (socket was down)")
+                return
+            try:
+                self._raw_call("Runtime.evaluate", expression=PING_JS,
+                               returnByValue=True, deadline_s=10)
+            except Exception as e:
+                fails = self._wd["consecutive_failures"] + 1
+                log.warning("watchdog: ping %d/%d failed (%s)", fails,
+                            config.watchdog_tries, e)
+                self._wd_set(fail=f"ping failed: {e}")
+                if fails >= config.watchdog_tries:
+                    log.warning("watchdog: tab dead after %d failed pings — "
+                                "recycling", fails)
+                    self._close_ws()
+                    self._connect()
+                    self._wd_set(recycle=True,
+                                 action="recycled: tab was dead")
+                    log.info("watchdog: recycled tab, renderer healthy again")
+            else:
+                self._wd_set(ok="ping ok")
+        finally:
+            self._lock.release()
 
 
 # module-level singleton

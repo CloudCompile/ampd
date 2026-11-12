@@ -30,6 +30,15 @@ class Config:
     # Name of the auto-playlist Apple generates for favorited songs
     favorites_playlist_name: str = os.environ.get("AMPD_FAV_PLAYLIST", "Favorite Songs")
 
+    # --- renderer watchdog ---
+    # Background pinger for the music tab. A stalled renderer usually recovers
+    # on its own within ~60s — so a tab is only "dead" after watchdog_tries
+    # CONSECUTIVE failed pings; then it's recycled and hot-recovered instead
+    # of waiting for the next request to fail.
+    watchdog: bool = os.environ.get("AMPD_WATCHDOG", "1") == "1"
+    watchdog_interval: int = int(os.environ.get("AMPD_WATCHDOG_INTERVAL", "20"))
+    watchdog_tries: int = int(os.environ.get("AMPD_WATCHDOG_TRIES", "3"))
+
     # --- audio streaming (so a UI on YOUR computer can HEAR what the server plays)
     # AMPD_AUDIO=1 makes ampd run chrome on a virtual display, route its audio
     # into a private PulseAudio null sink, capture that, and re-serve it as a

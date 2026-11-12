@@ -266,6 +266,11 @@ have to rediscover them:
   it), every eval is hard-bounded, lock waiters fast-fail with 502 instead of
   queueing behind a zombie eval, and SSE clients ride out stalls with backoff
   instead of dropping. Expect a burst of 502s, then full recovery — not a hang.
+* **The watchdog heals while you're idle.** A background pinger touches the
+  tab every 20s (`/health` carries its snapshot). Only 3 *consecutive* failed
+  pings (~60s — the length of a recoverable stall) count as a dead tab; then
+  it recycles and hot-reconnects, so the first call after a zombie event
+  succeeds instead of failing. Disable with `AMPD_WATCHDOG=0`.
 
 ## Roadmap
 

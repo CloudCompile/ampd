@@ -22,7 +22,7 @@ guides, live test suite, CI.
 *Reliability and operations. The server must survive Apple's flakiness and
 its own renderer.*
 
-- [ ] **Renderer watchdog** — proactively ping the tab; on stall, recycle it
+- [x] **Renderer watchdog** — proactively ping the tab; on stall, recycle it
       and hot-recover instead of waiting for the next call to fail `M P0`
 - [x] **Read cache + request coalescing** — TTL cache for library/catalog
       GETs, identical in-flight reads collapse into one CDP eval, mutations
