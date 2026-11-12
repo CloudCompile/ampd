@@ -17,6 +17,7 @@ from .. import musickit as mk
 from .. import restore as restore_mod
 from ..browser import BrowserError
 from ..config import config
+from ..errors import ApiError
 
 
 def _norm(s):
@@ -27,11 +28,11 @@ router = APIRouter(prefix="/write", tags=["writes (disabled by default)"])
 
 def _guard():
     if not config.enable_writes:
-        raise HTTPException(
-            501,
-            "Write operations are disabled. ampD ships with mutations off so it "
-            "can never touch your library by accident. To enable, set "
-            "AMPD_ENABLE_WRITES=1 in the environment.")
+        raise ApiError(
+            501, "writes_disabled",
+            "ampd ships with mutations off so it can never touch your "
+            "library by accident. To enable, set AMPD_ENABLE_WRITES=1 in "
+            "the environment.")
 
 
 # ---------------------------------------------------------------- favorites

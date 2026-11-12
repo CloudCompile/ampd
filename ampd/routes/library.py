@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from .. import musickit as mk
 from .. import exporter
 from ..browser import BrowserError
+from ..errors import ApiError
 from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/library", tags=["library"])
@@ -83,7 +84,7 @@ def library_diff(since: float = 0.0, what: str = "all",
                 "removed": store.library_removed_since(since, limit, offset),
                 "walk": store.get_cursor("library.walk")}
     except StoreDisabled as e:
-        raise HTTPException(501, str(e))
+        raise ApiError(501, "store_disabled", str(e))
 
 
 def _path(resource, limit, offset, term=None, extend=None):

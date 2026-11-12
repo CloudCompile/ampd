@@ -3,7 +3,8 @@
 Apple's recently-played endpoint caps at ~20 items and erodes forever.
 The local store (ampd/store.py) persists every track start as it happens,
 riding the stream-hook buffer — zero new eval kinds. This router serves the
-REAL archive, and answers 501 when the store is off (honest opt-in).
+REAL archive, and answers 501/store_disabled when the store is off (honest
+opt-in).
 
 Stats are pure local computation — no Apple calls, aggregation in SQL.
 """
@@ -11,6 +12,7 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
+from ..errors import ApiError
 from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/history", tags=["history (local store)"])
@@ -26,7 +28,7 @@ def recently_played(limit: int = 50, offset: int = 0):
     try:
         return store.recently_played(limit=limit, offset=offset)
     except StoreDisabled as e:
-        raise HTTPException(501, str(e))
+        raise ApiError(501, "store_disabled", str(e))
 
 
 @router.get("/stats")
@@ -40,7 +42,7 @@ def stats(window: str = "all", limit: int = 25):
     try:
         return store.stats(since=since, limit=min(limit, 100))
     except StoreDisabled as e:
-        raise HTTPException(501, str(e))
+        raise ApiError(501, "store_disabled", str(e))
 
 
 @router.get("/stats/series")
@@ -51,4 +53,4 @@ def stats_series(days: int = 30):
         return {"days": days,
                 "series": store.plays_series(since=since)}
     except StoreDisabled as e:
-        raise HTTPException(501, str(e))
+        raise ApiError(501, "store_disabled", str(e))
