@@ -176,7 +176,10 @@ class MockKit:
         self.qi = 0
         self.is_playing = True
         self.volume = 0.7
-        self.shuffle = False
+        # MusicKit's real types: shuffle is a string enum ("songs"|"off"),
+        # repeatMode is an int enum — the mock must speak the same types
+        # or the response models (rightly) reject it
+        self.shuffle = "off"
         self.repeat = 0
         self._track_started = time.time()
         self._push("playbackStateDidChange")
@@ -340,7 +343,9 @@ class MockKit:
             self.volume = float(value)
             self._push("volumeDidChange")
         elif name == "shuffle":
-            self.shuffle = bool(value)
+            # route sends "on"|"off"; MusicKit's enum is "songs"|"off"
+            self.shuffle = "songs" if value in ("on", "songs", True, 1) \
+                else "off"
             self._push("shuffleModeDidChange")
         elif name == "repeat":
             self.repeat = int(value)

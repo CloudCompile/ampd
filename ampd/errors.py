@@ -21,6 +21,7 @@ STATUS_CODES = {
     401: "unauthorized",
     403: "forbidden",
     404: "not_found",
+    405: "method_not_allowed",
     429: "rate_limited",
     500: "internal_error",
     501: "disabled",
