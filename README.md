@@ -190,6 +190,36 @@ buffer); the demo's 🔇/🔊 button is the example. Needs `pulseaudio`,
 `pulseaudio-utils`, `ffmpeg` and `Xvfb` on the box (the Docker image has
 them). `/api/audio/status` reports pipeline state and listener count.
 
+### The web app (PWA) — served at `/`
+
+The API ships with its own installable web app — library browse, search,
+queue with drag-reorder, now-playing transport, synced lyrics. It is the
+same contract the demo page proved, productized: **no framework runtime**
+(the only npm dependency is esbuild, used at build time), virtualized
+lists (only the visible window renders), one EventSource driving
+everything — it polls nothing the stream already pushes.
+
+```
+node web/build.mjs        # bundle -> ampd/web-dist (gitignored, built in
+                          # CI and the Docker image's node stage)
+```
+
+Serve it by just running the server — the app mounts at `/` when
+`ampd/web-dist/` exists, and the API keeps every `/api/…` path.
+
+- **Auth dialect** (#90): the shell loads without a key (a locked-down
+  server must still serve its login page); the key you enter is stored in
+  `localStorage` and rides **everywhere** — `?api_key=` for EventSource
+  (which cannot send headers) and `Authorization: Bearer` for fetch.
+- **Service worker** (#90): caches the shell for installability and
+  offline starts — and **never** caches `/api/` (a cached playhead or
+  audio stream would be a lie).
+- **Queue drag** (#87): maps to the whole-list contract —
+  `PUT /api/playback/queue` with `{ids: […]}`; the full ordered list,
+  last write wins, no deltas.
+- **Lyrics** (#89): implements `docs/lyrics-contract.md` verbatim, with
+  the ±100 ms offset nudge and a quiet instrumental state on 404.
+
 ### Mock mode — `AMPD_MOCK=1` (no Apple account needed)
 
 ```bash

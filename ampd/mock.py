@@ -310,6 +310,18 @@ class MockKit:
         self._queue.insert(1 if play_next else len(self._queue), s)
         self._push("queueItemsDidChange")
 
+    def queue_reorder(self, ids):
+        """Whole-list PUT semantics (#87): the queue becomes EXACTLY this
+        order; the playhead stays on the same track (at its new index)."""
+        by_id = {s.get("id"): s for s in self._queue}
+        missing = [i for i in ids if i not in by_id]
+        if missing:
+            raise BrowserErrorMock(f"no such queue item(s): {missing[:3]}")
+        cur = self._queue[self.qi]["id"] if self._queue else None
+        self._queue = [by_id[i] for i in ids]
+        self.qi = self._queue.index(by_id[cur]) if cur in by_id else 0
+        self._push("queueItemsDidChange")
+
     def playback_command(self, cmd):
         """Same verb contract as the real layer (routes allow exactly
         play | pause | toggle | next | previous — anything else raises)."""
@@ -696,6 +708,7 @@ def install(mk_module):
     mk_module.playlist_rename = _mock_playlist_rename(mock)
     mk_module.playlist_delete = _mock_playlist_delete(mock)
     mk_module.queue_add = mock.queue_add
+    mk_module.queue_reorder = mock.queue_reorder
     mk_module.playback_command = mock.playback_command
     mk_module.now_playing = mock.now_playing
     mk_module.install_stream_hook = mock.install_stream_hook

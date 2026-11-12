@@ -170,6 +170,23 @@ class TestMockState(unittest.TestCase):
                           method="DELETE")
         self.assertIsNone(pl["attributes"]["name"])
         self.assertTrue(pl.get("_deleted"))
+
+    def test_queue_reorder_keeps_the_playhead(self):
+        """#87: whole-list PUT semantics — the queue becomes EXACTLY the
+        sent order and the playhead stays on the SAME track."""
+        ids = [t["id"] for t in self.mock.queue()]
+        self.assertGreaterEqual(len(ids), 3)
+        before = self.mock.snapshot()
+        reordered = list(reversed(ids))
+        self.mock.queue_reorder(reordered)
+        self.assertEqual([t["id"] for t in self.mock.queue()], reordered)
+        # the now-playing item is unchanged — same id, new index
+        after = self.mock.snapshot()
+        self.assertEqual(after["title"], before["title"])
+        # a missing id is a loud 404-shape error, never a silent partial
+        from ampd.mock import BrowserErrorMock
+        with self.assertRaises(BrowserErrorMock):
+            self.mock.queue_reorder(reordered + ["9999999"])
         self.assertIsNone(self.mock.find_library_playlist("Renamed"))
 
     def test_playback_state_machine(self):

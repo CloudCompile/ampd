@@ -130,9 +130,13 @@ app.openapi = _openapi_with_auth
 
 @app.middleware("http")
 async def auth_guard(request: Request, call_next):
-    if config.api_key and request.url.path not in ("/health", "/demo"):
-        # EventSource can't send headers, so the demo page passes the key
-        # as a query param instead
+    path = request.url.path
+    # the key guards the API SURFACE (/api/, /metrics) — the PWA shell and
+    # the demo page load without it (#90): a locked-down server must still
+    # serve the login page, and the shell itself carries no data. EventSource
+    # can't send headers, so the key rides ?api_key= there; both dialects
+    # are accepted everywhere.
+    if config.api_key and (path.startswith("/api/") or path == "/metrics"):
         auth = request.headers.get("Authorization", "")
         key = request.query_params.get("api_key", "")
         if auth != f"Bearer {config.api_key}" and key != config.api_key:
@@ -181,3 +185,18 @@ def demo():
     """Minimal live player UI — example of what the streaming API enables."""
     return FileResponse(os.path.join(os.path.dirname(__file__), "demo", "index.html"),
                         media_type="text/html")
+
+
+# ---- PWA static serving (#84) — LAST, so every API route above wins ----
+# web/ is built by `node web/build.mjs` (esbuild — the only npm dep) into
+# ampd/web-dist; CI and the Docker build stage both run it (the runtime
+# image has NO node). Missing dist => the API still boots fine; only the
+# SPA 404s. The service worker is served from the root so its scope is "/".
+_WEB_DIST = os.path.join(os.path.dirname(__file__), "web-dist")
+if os.path.isdir(_WEB_DIST):
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=_WEB_DIST, html=True),
+              name="pwa")
+else:
+    log.info("web-dist not built — the PWA is not served "
+             "(run: node web/build.mjs)")

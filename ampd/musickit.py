@@ -367,6 +367,36 @@ def queue_add(catalog_id, play_next=False):
         }})()""", timeout=30)
 
 
+def queue_reorder(ids):
+    """Reorder the queue to EXACTLY this list (#87: the client sends the
+    whole ordered list, never deltas — last write wins, no merge states).
+    MusicKit has no public reorder: setQueue(items) rebuilds the queue, then
+    playback is moved back onto the SAME track at its new index. Best-effort
+    like every transport op — the queue internals move between builds."""
+    id_list = ", ".join(_j(i) for i in ids)
+    browser.eval(
+        f"""(async () => {{
+          const mk = MusicKit.getInstance();
+          const cur = mk.nowPlayingItem
+                      && (mk.nowPlayingItem.id
+                          || mk.nowPlayingItem.attributes?.playParams?.id);
+          const wasPlaying = !!mk.isPlaying;
+          await mk.setQueue({{items: [{id_list}]}});
+          // put the playhead back on the same track, wherever it landed
+          let idx = 0;
+          try {{
+            const q = mk._playbackController && mk._playbackController._queue;
+            const items = (q && (q._queueItems || q.items)) || [];
+            idx = Math.max(0, items.findIndex(it =>
+              (it.id || it.attributes?.playParams?.id) === cur));
+          }} catch (e) {{ /* keep 0 — top of the new queue */ }}
+          if (idx > 0 && mk.changeToMediaAtIndex)
+            await mk.changeToMediaAtIndex(idx);
+          if (!wasPlaying) await mk.pause();
+          return true;
+        }})()""", timeout=30)
+
+
 # ---------------------------------------------------------------- playback
 # The web player's MusicKit build exposes transport methods directly on the
 # instance (no `.player` sub-object): play, pause, skipToNextItem,
