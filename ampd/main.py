@@ -65,6 +65,13 @@ async def lifespan(app):
             _exp_mod.export_scheduler = _exp
         except Exception as e:
             log.error("export scheduler failed to start: %s", e)
+    # Discord Rich Presence (opt-in: AMPD_DISCORD=1) — daemon thread that
+    # reads the stream's emitted state; a hiccup can never touch the server
+    try:
+        from . import discord
+        discord.start()
+    except Exception as e:
+        log.error("discord bridge failed to start: %s", e)
     yield
     try:
         from .store import store

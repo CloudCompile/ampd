@@ -232,6 +232,15 @@ state the playhead position at join — `X-AMPD-Join-Playhead-Ms` plus
 state. Degrades loudly, never silently pretends. The capture is a live
 pipe: there is no seekable buffer to rewind into.
 
+### Discord Rich Presence — `AMPD_DISCORD=1`
+
+Running ampd on a desktop with Discord? Set `AMPD_DISCORD=1` and
+`AMPD_DISCORD_CLIENT_ID=<your app id>` and the session's now-playing shows
+in your presence — track change pushed, progress ticked by Discord's own
+end-timestamp, **paused or stalled clears the presence** instead of
+freezing a wrong track. Zero new dependencies (raw local IPC); on a
+headless box it logs the missing socket and idles harmlessly.
+
 ### OBS overlay — `/api/overlay`
 
 Now-playing for streamers, served from the SSE stream's last emitted state
@@ -346,6 +355,7 @@ Every non-2xx response, from any route, is:
 | `AMPD_EXPORT_INTERVAL` | `0` | seconds between scheduled full exports (`0` = off); atomic writes to `AMPD_EXPORT_DIR` |
 | `AMPD_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
 | `AMPD_MOCK` | `0` | **mock mode** — serve the whole API from seeded synthetic fixtures; no Apple account, no Chrome, no network |
+| `AMPD_DISCORD` | `0` | Discord Rich Presence (needs a local Discord client) — requires `AMPD_DISCORD_CLIENT_ID` |
 
 ## Field notes (the parts the docs won't tell you)
 
