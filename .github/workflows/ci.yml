@@ -115,6 +115,15 @@ jobs:
       - name: Unit tests (hermetic — read cache / coalescer)
         run: python -m unittest discover -s tests
 
+      - name: Build the PWA (esbuild — the only npm dep)
+        run: |
+          # node exists ONLY here (and in the Docker build stage) — the
+          # runtime image has none. The bundle must compile for CI to pass.
+          npm ci --prefix web || npm install --prefix web --no-audit --no-fund
+          node web/build.mjs
+          test -f ampd/web-dist/app.js && test -f ampd/web-dist/index.html \
+            && echo "PWA bundle OK"
+
       - name: Integration — mock mode serves the full API (no Chrome, no Apple)
         run: |
           AMPD_MOCK=1 AMPD_AUTO_CHROME=0 AMPD_PORT=8971 python -m ampd \
@@ -159,6 +168,20 @@ jobs:
                   except Exception:
                       return e.code, {}
 
+          def put(path, body):
+              req = urllib.request.Request(
+                  base + path, method="PUT",
+                  data=json.dumps(body).encode(),
+                  headers={"Content-Type": "application/json"})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as r:
+                      return r.status, json.loads(r.read())
+              except urllib.error.HTTPError as e:
+                  try:
+                      return e.code, json.loads(e.read())
+                  except Exception:
+                      return e.code, {}
+
           # every key read surface, route-level, validated by response_model
           # server-side (a 200 IS a model-conformance pass)
           s, j = get("/api/library/songs?limit=5")
@@ -179,6 +202,13 @@ jobs:
           assert s == 200 and j["isPlaying"] is True, "mock world is playing"
           s, j = get("/api/playback/queue")
           assert s == 200 and j["items"]
+          # queue reorder (#87): whole-list PUT — reverse it, get it back
+          ids = [i["id"] for i in j["items"]]
+          s, j = put("/api/playback/queue", {"ids": list(reversed(ids))})
+          assert s == 200 and j["ok"] is True
+          s, j = get("/api/playback/queue")
+          assert [i["id"] for i in j["items"]] == list(reversed(ids)), \
+              "queue PUT is the whole ordered list — last write wins"
           s, j = post("/api/playback/next")          # state mutates
           assert s == 200 and j["ok"] is True
           s, j = get("/api/write/sweeps/never-played")
@@ -226,6 +256,57 @@ jobs:
           assert "None" not in t and t.strip(), t
           print("overlay OK — json + text served from the stream state")
           EOF
+
+          # PWA shell (#84): served from the static mount
+          python - <<'EOF'
+          import urllib.request
+          base = "http://127.0.0.1:8971"
+          for path, marker in [("/", "ampd"), ("/app.js", ""),
+                               ("/styles.css", ""), ("/sw.js", "ampd-shell"),
+                               ("/manifest.webmanifest", "ampd")]:
+              with urllib.request.urlopen(base + path, timeout=10) as r:
+                  body = r.read().decode(errors="replace")
+              assert r.status == 200, (path, r.status)
+              if marker:
+                  assert marker in body, (path, body[:80])
+          print("PWA shell OK — /, app.js, styles.css, sw.js, manifest served")
+          EOF
           kill $(cat /tmp/mock-server.pid) 2>/dev/null || true
+          sleep 1
+
+          # auth dialect (#90): with a key, the SHELL still loads keylessly
+          # and the API 401s — then accepts BOTH dialects
+          AMPD_MOCK=1 AMPD_AUTO_CHROME=0 AMPD_PORT=8972 AMPD_API_KEY=sekrit \
+            python -m ampd > /tmp/mock-keyed.log 2>&1 &
+          KEYED=$!
+          python - <<'EOF'
+          import time, urllib.request, urllib.error
+          base = "http://127.0.0.1:8972"
+          for _ in range(60):
+              try:
+                  with urllib.request.urlopen(base + "/health", timeout=2) as r:
+                      if r.status == 200: break
+              except Exception: time.sleep(0.5)
+          else: raise SystemExit("keyed mock server never came up")
+          with urllib.request.urlopen(base + "/", timeout=10) as r:      # shell
+              assert r.status == 200, "shell must load WITHOUT the key"
+          try:                                                           # api
+              urllib.request.urlopen(base + "/api/library/songs?limit=1",
+                                     timeout=10)
+              raise SystemExit("API responded WITHOUT a key — auth leak")
+          except urllib.error.HTTPError as e:
+              assert e.code == 401, e.code
+          for url in (base + "/api/library/songs?limit=1&api_key=sekrit",):
+              with urllib.request.urlopen(url, timeout=10) as r:         # query
+                  assert r.status == 200, url
+          req = urllib.request.Request(                                  # header
+              base + "/api/library/songs?limit=1",
+              headers={"Authorization": "Bearer sekrit"})
+          with urllib.request.urlopen(req, timeout=10) as r:
+              assert r.status == 200, "bearer dialect"
+          print("auth dialect OK — shell keyless; API 401s, then accepts "
+                "?api_key= and Bearer")
+          EOF
+          kill $KEYED 2>/dev/null || true
           sleep 1
           echo "mock integration step done"

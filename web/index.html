@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- ampd PWA (#84) — library browse, search, queue, now-playing, synced
+     lyrics. The shell is cached by the service worker (#90); the API is
+     NEVER cached. Auth dialect: Authorization Bearer OR ?api_key= (stored
+     in localStorage, appended everywhere — EventSource cannot send
+     headers). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#131316">
+<link rel="manifest" href="/manifest.webmanifest">
+<title>ampd</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">ampd</div>
+  <input id="q" type="search" placeholder="search library & catalog…"
+         autocomplete="off" aria-label="search">
+  <span id="conn" class="conn" title="live stream state">●</span>
+</header>
+
+<main>
+  <!-- now playing + transport: SSE-driven, poll nothing (#88) -->
+  <section id="np" class="np">
+    <div id="art" class="art empty"></div>
+    <div class="np-meta">
+      <h1 id="np-title">—</h1>
+      <div id="np-artist" class="muted">&nbsp;</div>
+      <div class="bar"><div id="np-fill"></div></div>
+      <div class="times muted">
+        <span id="np-elapsed">0:00</span><span id="np-dur">0:00</span>
+      </div>
+      <div class="controls">
+        <button id="prev" title="previous">⏮</button>
+        <button id="play" class="big" title="play/pause">▶</button>
+        <button id="next" title="next">⏭</button>
+        <input id="vol" type="range" min="0" max="1" step="0.01"
+               title="volume">
+        <button id="mute" title="mute">🔈</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- synced lyrics (#89, contract in docs/lyrics-contract.md) -->
+  <section id="lyr" hidden>
+    <div class="lyrrow">
+      <span class="muted">lyrics</span>
+      <span class="muted">offset <b id="off">0</b>ms</span>
+      <button id="offMinus">−100</button>
+      <button id="offPlus">+100</button>
+      <button id="lyrClose">close</button>
+    </div>
+    <div id="lyr-lines"></div>
+  </section>
+
+  <!-- tabs: library browse (#85) / search results (#86) / queue (#87) -->
+  <nav id="tabs">
+    <button data-tab="songs" class="on">songs</button>
+    <button data-tab="albums">albums</button>
+    <button data-tab="artists">artists</button>
+    <button data-tab="playlists">playlists</button>
+    <button data-tab="queue">queue</button>
+  </nav>
+  <section id="list" class="list" tabindex="0"></section>
+  <section id="searchout" hidden>
+    <div id="search-scope" class="muted"></div>
+    <div id="search-list" class="list"></div>
+  </section>
+</main>
+
+<div id="keyprompt" class="modal" hidden>
+  <div class="modal-card">
+    <h2>server key</h2>
+    <p class="muted">This ampd runs behind an API key. It is stored in
+       localStorage and sent as <code>?api_key=</code> (and as a Bearer
+       header everywhere fetch can).</p>
+    <input id="key" type="password" placeholder="AMPD_API_KEY">
+    <button id="keysave">save</button>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

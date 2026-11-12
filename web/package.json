@@ -1,0 +1,13 @@
+{
+  "name": "ampd-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ampd PWA — built with esbuild (the only dev dependency), no framework runtime",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

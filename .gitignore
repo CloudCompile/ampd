@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .env
 chrome-profile/
+# PWA build output — produced by CI and the Docker build stage, never committed
+ampd/web-dist/
+web/node_modules/

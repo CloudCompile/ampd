@@ -1,0 +1,15 @@
+{
+  "name": "ampd",
+  "short_name": "ampd",
+  "description": "Your Apple Music session, self-hosted — library, search, queue, synced lyrics.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131316",
+  "theme_color": "#131316",
+  "icons": [{
+    "src": "/icon.png",
+    "sizes": "512x512",
+    "type": "image/png",
+    "purpose": "any maskable"
+  }]
+}

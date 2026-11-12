@@ -4,7 +4,7 @@ from .. import musickit as mk
 from ..browser import BrowserError
 from ..models import (NowPlaying, Ok, OkPlaylist, OkRating, OkRepeat,
                       OkShuffle, OkStatus, OkVolume, PlaybackSettings, Queue,
-                      QueueItem, VolumeState)
+                      QueueItem, QueueReorder, VolumeState)
 
 router = APIRouter(prefix="/playback", tags=["playback"])
 
@@ -20,9 +20,27 @@ def now_playing():
 
 @router.get("/queue", response_model=Queue)
 def queue():
+    """The current queue (also pushed by the SSE stream — prefer the
+    stream; this is the one-shot read)."""
     try:
         return {"items": mk.queue()}
     except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+@router.put("/queue", response_model=Ok)
+def queue_reorder(body: QueueReorder):
+    """Reorder the queue: send the FULL ordered list of item ids (#87 —
+    whole-list PUT semantics, last write wins, no deltas). The playhead
+    stays on the same track at its new index. Best-effort like every
+    transport op: MusicKit has no public reorder, so the queue is rebuilt
+    and the playhead is moved back onto the same track."""
+    try:
+        mk.queue_reorder(body.ids)
+        return {"ok": True}
+    except BrowserError as e:
+        if "no such queue item" in str(e).lower():
+            raise HTTPException(404, str(e))
         raise HTTPException(502, str(e))
 
 

@@ -1,5 +1,9 @@
+# keep the build context lean — the web build happens in the node stage
+.git/
+.venv/
 __pycache__/
 *.pyc
-.git/
-*.md
-ampd-test*
+chrome-profile/
+web/node_modules/
+ampd/web-dist/
+/data/

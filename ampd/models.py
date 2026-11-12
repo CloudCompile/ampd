@@ -267,6 +267,13 @@ class VolumeState(_PassThrough):
     volume: float | None = None
 
 
+class QueueReorder(_PassThrough):
+    """PUT /api/playback/queue body — the FULL ordered list of queue item
+    ids (#87: whole-list PUT, never deltas). The playhead stays on the same
+    track at its new index."""
+    ids: list[str]
+
+
 class Ok(_PassThrough):
     ok: bool = True
 

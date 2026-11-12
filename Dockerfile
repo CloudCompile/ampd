@@ -7,6 +7,16 @@
 # First-time sign-in: profiles are plain Chrome user-data-dirs, so sign in
 # once on any desktop (see README "Deploying") and drop the profile into the
 # /data volume — or run with --headless=0 on a machine with a display.
+
+# ---- stage 1: build the PWA (#84) — node exists ONLY here -----------------
+FROM node:22-slim AS webbuild
+WORKDIR /src
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund
+COPY web/ web/
+RUN node web/build.mjs            # -> /src/ampd/web-dist
+
+# ---- stage 2: the runtime — Chrome + pulse + ffmpeg, NO node --------------
 FROM python:3.12-slim
 
 # chromium (Debian) + fonts so Apple's UI renders and any screenshot isn't tofu
@@ -24,6 +34,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ampd/ ampd/
+# the built PWA from stage 1 — AFTER `COPY ampd/` so it is not clobbered
+COPY --from=webbuild /src/ampd/web-dist ampd/web-dist
 
 # HOME points at the volume so the default chrome profile
 # (~/.config/ampd/chrome-profile) persists across container upgrades.
