@@ -317,6 +317,18 @@ docker compose up -d --build
 curl localhost:8188/health   # -> {"status":"ok","browser":"authorized"}
 ```
 
+**Prebuilt images** (amd64 **and** arm64 — Raspberry Pi 4/5, Apple Silicon)
+publish to ghcr.io on every release tag. On an arm64 host, skip the build:
+
+```bash
+docker run -d --name ampd -p 8188:8188 -v ampd-data:/data \
+  ghcr.io/cloudcompile/ampd:latest
+```
+
+(or set `image: ghcr.io/cloudcompile/ampd:latest` in compose instead of
+`build: .` — everything else, profile volume and login flow included, is
+identical).
+
 **Healthchecks.** The image ships with a `HEALTHCHECK` polling `GET /health`
 (every 30s, 5s timeout, 3 retries — `/health` is exempt from `AMPD_API_KEY`,
 so it works with a key set). Docker only *marks* the container unhealthy; it
