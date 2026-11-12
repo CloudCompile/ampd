@@ -6,7 +6,10 @@ evals — a redeclaration is fatal). Async snippets are awaited by the CDP layer
 import json
 import re
 
+from . import cache as _cache_mod
 from .browser import browser, BrowserError
+
+read_cache = _cache_mod.read_cache
 
 
 def _j(value):
@@ -15,18 +18,26 @@ def _j(value):
 
 # ---------------------------------------------------------------- primitives
 
-def api_music(path, timeout=90):
+def api_music(path, timeout=90, fresh=False):
     """GET any me/catalog path with tokens injected. Uses raw fetch instead of
     MusicKit's api.music because the latter memoizes responses — reads after
-    mutations would return stale data."""
-    res = raw_api(path, method="GET", timeout=timeout)
+    mutations would return stale data.
+    Reads go through the TTL cache + single-flight coalescer (see cache.py);
+    `fresh=True` bypasses it (clients: `?fresh=1` on the favorites/ratings
+    routes) — for when Apple's own auto-sync lag makes even a 10s TTL lie."""
+    res = raw_api(path, method="GET", timeout=timeout, fresh=fresh)
     if res["status"] != 200:
         raise BrowserError(f"apple api: HTTP {res['status']} — {res['body'][:150]}")
     return json.loads(res["body"])
 
 
-def raw_api(path, method="GET", body=None, timeout=60):
-    """Raw amp-api call with tokens injected. Full control of method + body."""
+def _raw_api_now(path, method="GET", body=None, timeout=60):
+    """Raw amp-api call with tokens injected. Full control of method + body.
+    Mutations bust the read cache and open the grace window BEFORE issuing —
+    Apple applies them async (202/204), and retried reads must never be
+    served the pre-mutation snapshot from cache."""
+    if method != "GET":
+        read_cache.after_mutation()
     return browser.eval(
         f"""(async () => {{
           const inst = MusicKit.getInstance();
@@ -42,9 +53,18 @@ def raw_api(path, method="GET", body=None, timeout=60):
         }})()""", timeout=timeout)
 
 
+def raw_api(path, method="GET", body=None, timeout=60, fresh=False):
+    """raw_api with the read cache in front of GETs (single-flight coalesced;
+    never applied to mutations)."""
+    if method == "GET" and read_cache.enabled and not fresh:
+        return read_cache.coalesce(
+            path, lambda: _raw_api_now(path, method, body, timeout))
+    return _raw_api_now(path, method, body, timeout)
+
+
 # ---------------------------------------------------------------- library
 
-def paginated(first_path, extract):
+def paginated(first_path, extract, fresh=False):
     """Walk Apple's paging (`next` links) and concatenate extracted items.
     NOTE: Apple's `next` links drop the `limit` param (defaulting to 25/page)
     — re-apply the original limit so big libraries don't take 4x the calls."""
@@ -53,7 +73,7 @@ def paginated(first_path, extract):
     limit = m.group(1) if m else None
     out, path, guard = [], first_path, 0
     while path and guard < 1000:
-        data = api_music(path if path.startswith("/") else "/" + path)
+        data = api_music(path if path.startswith("/") else "/" + path, fresh=fresh)
         out.extend(extract(data))
         nxt = data.get("next")
         if nxt and limit and "limit=" not in nxt:
@@ -102,26 +122,28 @@ def item_row(t):
     return row
 
 
-def playlist_tracks(playlist_id):
+def playlist_tracks(playlist_id, fresh=False):
     """All tracks of a library playlist. Empty playlists 404 on their
     tracks relationship (Apple treats 'no tracks' as 'no related
-    resources') — that's [], not an error."""
+    resources') — that's [], not an error.
+    `fresh=True` bypasses the read cache (favorites auto-sync lag)."""
     def extract(data):
         return [song_row(t) for t in data.get("data", [])]
     try:
         return paginated(f"/v1/me/library/playlists/{playlist_id}/tracks?limit=100",
-                         extract)
+                         extract, fresh=fresh)
     except BrowserError as e:
         if "404" in str(e):
             return []
         raise
 
 
-def find_library_playlist(name):
+def find_library_playlist(name, fresh=False):
     """Find a library playlist by (case-insensitive) name.
     NOTE: no `match=` param — it's a MusicKit-client-only extension; the raw
     amp-api rejects it. Filter locally instead."""
-    hits = paginated("/v1/me/library/playlists?limit=100", lambda d: d.get("data", []))
+    hits = paginated("/v1/me/library/playlists?limit=100",
+                     lambda d: d.get("data", []), fresh=fresh)
     for pl in hits:
         if (pl.get("attributes", {}).get("name") or "").lower() == name.lower():
             return pl["id"]
@@ -150,6 +172,7 @@ def set_favorite(kind, resource_id, favorited):
     """
     url = FAVORITES_TMPL[kind].format(id=resource_id)
     method = "POST" if favorited else "DELETE"
+    read_cache.after_mutation()          # bust + grace BEFORE issuing
     res = browser.eval(
         f"""(async () => {{
           const inst = MusicKit.getInstance();
@@ -181,8 +204,10 @@ def rate_song(song_id, like):
     return res["status"]
 
 
-def get_rating(song_id):
-    res = raw_api(f"/v1/me/ratings/songs/{song_id}", method="GET")
+def get_rating(song_id, fresh=False):
+    """Current rating: None = none, 1 = like. `fresh=True` bypasses the
+    read cache (ratings lag server-side; a heart IS this same value)."""
+    res = raw_api(f"/v1/me/ratings/songs/{song_id}", method="GET", fresh=fresh)
     if res["status"] == 404:
         return None
     if res["status"] != 200:
