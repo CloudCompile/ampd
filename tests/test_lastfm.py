@@ -71,6 +71,7 @@ class TestScrobbler(unittest.TestCase):
 
         self.patcher = mock.patch.object(lastfm, "_call", side_effect=fake_call)
         self.patcher.start()
+        self.fake_call = fake_call
 
     def tearDown(self):
         self.patcher.stop()
@@ -109,17 +110,28 @@ class TestScrobbler(unittest.TestCase):
             ev(1, "a", elapsed=1_000, duration=100_000, ts=t0 * 1000),
             ev(2, "a", elapsed=90_000, duration=100_000, ts=t0 * 1000),
         ])
+        base = len([p for p in self.posts
+                    if p["method"] == "track.scrobble"])
         # a restart replays the SAME buffer (same ts — that's what a replay
-        # is); a fresh scrobbler must not re-submit the same play
+        # is); a fresh scrobbler must not re-submit the already-scrobbled play
         replay = Scrobbler(self.store, self.s.creds)
-        with mock.patch.object(lastfm, "_call", return_value={}):
+        with mock.patch.object(lastfm, "_call", side_effect=self.fake_call):
             got = replay.process_events([
-                ev(1, "a", elapsed=90_000, duration=100_000, ts=t0 * 1000),
-                ev(2, "b", elapsed=1_000, duration=100_000, ts=t0 * 1000),
+                ev(1, "a", elapsed=95_000, duration=100_000, ts=t0 * 1000),
+            ])
+        self.assertEqual(got, [], "the replayed play was already scrobbled — "
+                                  "the (id, started_at) marker blocks it")
+        self.assertEqual(len([p for p in self.posts
+                              if p["method"] == "track.scrobble"]), base,
+                         "no second API call for the same play")
+        # and the dedupe must not wedge the scrobbler: the NEXT play flows
+        with mock.patch.object(lastfm, "_call", side_effect=self.fake_call):
+            got = replay.process_events([
+                ev(3, "b", elapsed=1_000, duration=100_000, ts=t0 * 1000),
+                ev(4, "b", elapsed=60_000, duration=100_000, ts=t0 * 1000),
             ])
         self.assertEqual([k for k, _ in got], ["b"],
-                         "only the genuinely NEW play scrobbles; the "
-                         "replayed one is deduped by (id, started_at)")
+                         "the next genuinely-new play scrobbles normally")
 
     def test_now_playing_once_per_track(self):
         self.s.process_events([
