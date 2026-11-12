@@ -4,12 +4,18 @@
 // (node exists only in that stage — the runtime image has no node).
 import { build } from "esbuild";
 import { cpSync, mkdirSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const OUT = "../ampd/web-dist";
+// resolve EVERYTHING off the script's own directory — `node web/build.mjs`
+// must work from the repo root (CI) and from web/ (local) alike
+const HERE = dirname(fileURLToPath(import.meta.url));   // .../web
+const ROOT = join(HERE, "..");                          // repo root
+const OUT = join(ROOT, "ampd", "web-dist");
 mkdirSync(OUT, { recursive: true });
 
 await build({
-  entryPoints: ["src/main.js"],
+  entryPoints: [join(HERE, "src", "main.js")],
   bundle: true,
   minify: true,
   outfile: `${OUT}/app.js`,
@@ -20,7 +26,7 @@ await build({
 
 for (const f of ["index.html", "manifest.webmanifest", "sw.js", "styles.css",
                  "icon.png"]) {
-  try { cpSync(f, `${OUT}/${f}`); } catch { /* optional asset */ }
+  try { cpSync(join(HERE, f), join(OUT, f)); } catch { /* optional asset */ }
 }
 
 // build stamp — the SW bumps its cache name off this
