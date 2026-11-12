@@ -462,6 +462,101 @@ class SweepDigest(_PassThrough):
     sample_never_played: list[ItemRow] = []
 
 
+class WatcherArtist(_PassThrough):
+    """One row of watcher state: the mapping cache + newest release seen."""
+    artist_id: str
+    artist_name: str | None = None
+    catalog_artist_id: str | None = None
+    catalog_artist_name: str | None = None
+    last_album_id: str | None = None
+    last_album_name: str | None = None
+    last_release_date: str | None = None
+    checked_at: float | None = None
+
+
+class WatcherInfo(_PassThrough):
+    enabled: bool
+    interval: int
+    max_artists_per_pass: int = 100
+    auto_playlist: str | None = None
+    auto_add_active: bool = False
+    watched: int = 0
+    mapped: int = 0
+    unmapped: int = 0
+    artists: list[WatcherArtist] = []
+    last_pass: dict | None = None
+
+
+class WatcherPass(_PassThrough):
+    ran: bool = True
+    artists_seen: int = 0
+    checked: int = 0
+    mapped: int = 0
+    unmapped: int = 0
+    new_releases: int = 0
+    auto_added: int = 0
+    skipped_budget: bool | None = None
+    seconds: float | None = None
+    completed_at: float | None = None
+
+
+class Smartlist(_PassThrough):
+    id: str
+    name: str
+    description: str | None = None
+    rules: list[dict]
+    sort: str | None = None
+    limit: int = 0
+    refresh_s: int = 0
+    playlist_id: str | None = None
+    last_eval: float | None = None
+    last_sync: float | None = None
+    last_count: int | None = None
+    created_at: float | None = None
+    updated_at: float | None = None
+
+
+class Smartlists(_PassThrough):
+    enabled: bool
+    items: list[Smartlist]
+    scheduler_interval: int = 0
+
+
+class SmartlistCreate(_PassThrough):
+    name: str
+    description: str | None = ""
+    rules: list[dict] = []
+    sort: str | None = None
+    limit: int | None = None
+    refresh_s: int | None = None
+
+
+class SmartlistUpdate(_PassThrough):
+    name: str | None = None
+    description: str | None = None
+    rules: list[dict] | None = None
+    sort: str | None = None
+    limit: int | None = None
+    refresh_s: int | None = None
+
+
+class SmartlistPreview(_PassThrough):
+    """The local evaluation — store rows only, no Apple touched."""
+    id: str
+    name: str
+    total: int
+    count: int
+    items: list[dict]
+
+
+class SmartlistRefresh(_PassThrough):
+    id: str
+    name: str
+    playlist_id: str
+    created: bool = False
+    count: int = 0
+
+
 # ---- errors / system ----
 
 class ErrorBody(_PassThrough):

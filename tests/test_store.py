@@ -393,5 +393,75 @@ class TestDiffQueries(unittest.TestCase):
             s.close()
 
 
+class TestV2Tables(unittest.TestCase):
+    """v0.6 automation state (watcher + smartlists) lives in the same db,
+    same migration chain — a v1 db upgrades in place, nothing is lost."""
+
+    def test_v1_db_migrates_to_v2_and_keeps_its_rows(self):
+        from tonearm.store import SCHEMA_VERSION
+        s = temp_store()
+        s.start()
+        try:
+            self.assertEqual(s._conn.execute(
+                "SELECT value FROM _meta WHERE key='schema_version'"
+            ).fetchone()[0], str(SCHEMA_VERSION))
+            s.record_play("i.1", "t", "a", "l", None, 1000, 123.0)
+            # pretend this db was v1: wipe the v2 tables, downgrade the stamp
+            s._conn.executescript(
+                "DROP TABLE watcher_artists; DROP TABLE smartlists;")
+            s._conn.execute("UPDATE _meta SET value='1' "
+                            "WHERE key='schema_version'")
+            s._conn.commit()
+            s.close()
+            s.start()
+            # the play survived; the v2 tables are back
+            self.assertEqual(s.recently_played()["total"], 1)
+            self.assertEqual(s._conn.execute(
+                "SELECT value FROM _meta WHERE key='schema_version'"
+            ).fetchone()[0], str(SCHEMA_VERSION))
+            s.watcher_upsert_artist("r.1", "Aurora")   # tables usable
+        finally:
+            s.close()
+
+    def test_watcher_state_upsert_semantics(self):
+        s = temp_store()
+        s.start()
+        try:
+            s.watcher_upsert_artist("r.1", "Aurora", last_album_id="al.1",
+                                    last_release_date="2024-01-01")
+            # a later pass maps the catalog id — must not clobber the release
+            s.watcher_upsert_artist("r.1", "Aurora", catalog_artist_id="1470")
+            row = s.watcher_artist("r.1")
+            self.assertEqual(row["catalog_artist_id"], "1470")
+            self.assertEqual(row["last_album_id"], "al.1",
+                             "COALESCE keeps the earlier release state")
+            self.assertEqual(len(s.watcher_artists()), 1)
+            self.assertIsNone(s.watcher_artist("r.nope"))
+        finally:
+            s.close()
+
+    def test_smartlist_crud_roundtrip(self):
+        s = temp_store()
+        s.start()
+        try:
+            rules = [{"field": "artist", "op": "equals", "value": "Aurora"}]
+            s.smartlist_add("sl-1", "Rotator", "desc", rules,
+                            "play_count_desc", 25, 600)
+            row = s.smartlist_get("sl-1")
+            self.assertEqual(row["name"], "Rotator")
+            self.assertEqual(row["rules"], rules, "rules round-trip as JSON")
+            self.assertIsNone(row["playlist_id"])
+            s.smartlist_update("sl-1", playlist_id="p.1", last_count=7)
+            self.assertEqual(s.smartlist_get("sl-1")["last_count"], 7)
+            self.assertEqual(len(s.smartlist_rows()), 1)
+            self.assertTrue(s.smartlist_delete("sl-1"))
+            self.assertIsNone(s.smartlist_get("sl-1"))
+            self.assertFalse(s.smartlist_delete("sl-1"))
+            with self.assertRaises(ValueError):
+                s.smartlist_update("sl-1", bogus=1)
+        finally:
+            s.close()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

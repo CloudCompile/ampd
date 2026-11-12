@@ -160,6 +160,12 @@ class MockKit:
         self.by_library_id = {s["id"]: s for s in self.songs}
         self.by_catalog_id = {s["attributes"]["playParams"]["catalogId"]: s
                               for s in self.songs}
+        # catalog albums/artists share the library ids in mock-land, and the
+        # release watcher looks them up in the catalog space (#42)
+        for a in self.albums:
+            self.by_catalog_id[a["id"]] = {**a, "type": "albums"}
+        for a in self.artists:
+            self.by_catalog_id[a["id"]] = {**a, "type": "artists"}
         for p in self.playlists:
             self.by_library_id[p["id"]] = p
         for a in self.albums:
@@ -519,10 +525,22 @@ class MockKit:
             item = self.by_catalog_id.get(m.group(2))
             return {"data": [item] if item else [], "href": None}
         m = re.match(r"/v1/catalog/us/(albums|playlists|artists)"
-                     r"/([^/]+)/(tracks|playlists)$", p)
+                     r"/([^/]+)/(tracks|playlists|albums)$", p)
         if m:
+            # catalog ARTISTS expose an "albums" relationship (the release
+            # watcher reads it, #106); reuse the matching pool's data
+            kind = {"albums": "albums", "artists": "artists",
+                    "playlists": "playlists"}[m.group(1)]
+            if m.group(1) == "artists" and m.group(3) == "albums":
+                artist = next((a for a in self.artists
+                               if a["id"] == m.group(2)), None)
+                data = [a for a in self.albums
+                        if artist and (a["attributes"].get("artistName") ==
+                                       artist["attributes"].get("name"))]
+                return self._page(data, p, q)
             item = self.by_catalog_id.get(m.group(2))
-            rel = ((item or {}).get("relationships") or {}).get(m.group(3)) or {}
+            rel = ((item or {}).get("relationships") or {}).get(m.group(3)) \
+                or {}
             return self._page(rel.get("data", []), p, q)
 
         # ratings reads (get_rating rides raw_api, but be lenient here too)

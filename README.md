@@ -152,6 +152,47 @@ opt-in).
 Every sweep returns a PLAN unless `execute=1`. A full library walk is
 ~100 s for a 9k-song library; sweep calls are slow by design.
 
+### Smart playlists — `/api/smartlists/…` (rule sets → live playlists, needs `TONEARM_STORE=1`)
+
+| Endpoint | Description |
+|---|---|
+| `GET /smartlists` | definitions + last evaluation/sync state |
+| `POST /smartlists` | create: `{name, rules: [{field, op, value}], sort?, limit?, refresh_s?}` — rules validated, bad rule = 400 |
+| `GET /smartlists/{id}` / `PATCH` / `DELETE` | manage a definition (DELETE keeps any materialized Apple playlist) |
+| `GET /smartlists/{id}/preview` | evaluate NOW against the local store — zero Apple calls |
+| `POST /smartlists/{id}/refresh` | materialize: find-or-create the playlist, one full-list PUT so Apple matches the evaluation exactly |
+
+Rule dialect (all rules AND; evaluation is **local-only** — Apple is
+touched only at materialization, writes-gated + throttled):
+
+| field | ops |
+|---|---|
+| `title` / `artist` / `album` | `contains` `equals` `starts` `ends` (case-insensitive) |
+| `genre` | `contains` |
+| `play_count` | `eq` `gt` `gte` `lt` `lte` (absent data never matches) |
+| `release_date` / `added` | `after` `before` (ISO `YYYY-MM-DD`; `added` reads the store watermark) |
+| `last_played` | `within_days` `older_than_days` `never` (joined against the play archive on both id spaces) |
+
+Sorts: `added_desc` (default), `added_asc`, `name`, `artist`,
+`play_count_desc`, `release_date_desc`.
+
+### Release watcher — `/api/watcher` (`TONEARM_WATCHER=1`, **verify-live gate**)
+
+| Endpoint | Description |
+|---|---|
+| `GET /watcher` | watched artists, mapping coverage (`mapped`/`unmapped` is honest), last pass summary |
+| `POST /watcher/refresh` | one bounded pass, synchronously (same code the scheduler runs) |
+
+The watcher polls **library artists** daily (`TONEARM_WATCHER_INTERVAL=86400`),
+maps each to a catalog artist by strict name search, and emits a
+`release.found` webhook when a newer album appears. **Gate, stated
+plainly**: the library-artist → catalog-artist mapping surface is
+undocumented and the name-search strategy is unverified against a real
+Apple account — the feature ships OFF, the first pass is a silent
+baseline, and you should run a manual `POST /refresh` and eyeball
+`GET /watcher` (mapped vs unmapped) before trusting it.
+
+
 ### Automation — `/api/webhooks/…` (outbound webhooks, `TONEARM_WEBHOOKS=1` → else `501`)
 
 | Endpoint | Description |
@@ -355,6 +396,8 @@ What fires (all observed state — nothing new is asked of Chrome):
 | `renderer.stalled` / `renderer.recovered` | watchdog declared the tab dead / recycled it |
 | `library.deduped` / `library.rated` | sweep executions |
 | `sweep.digest` | the scheduled digest (below) |
+| `release.found` | the release watcher found a newer album than last seen (below — verify-live gate) |
+| `smartlist.updated` | a smart playlist was re-materialized to match its rules (below) |
 | `webhook.test` | the test endpoint |
 
 Delivery contract:
@@ -430,6 +473,54 @@ event — library size, duplicate groups + removable rows, never-played count
 with samples. The same payload is available on demand at
 `GET /api/write/sweeps/digest` (no flags needed — it's a read). One walk
 feeds both reports; the walk is stall-gated and never overlaps itself.
+
+### Smart playlists — `TONEARM_SMARTLIST_INTERVAL` (needs `TONEARM_STORE=1`)
+
+Define rules once, get a live playlist:
+
+```bash
+curl -X POST http://127.0.0.1:8188/api/smartlists \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "Aurora — not played lately",
+       "rules": [{"field": "artist", "op": "equals", "value": "aurora"},
+                 {"field": "last_played", "op": "older_than_days", "value": 30}],
+       "sort": "play_count_desc", "limit": 25}'
+
+curl -X POST http://127.0.0.1:8188/api/smartlists/<id>/preview   # local eval, no Apple
+curl -X POST http://127.0.0.1:8188/api/smartlists/<id>/refresh   # find-or-create + full PUT
+```
+
+Evaluation is **local-only** (the store's library rows + play archive —
+zero Apple calls); materialization touches Apple only through
+`TONEARM_ENABLE_WRITES=1` and is throttled per list
+(`TONEARM_SMARTLIST_MIN_REFRESH`, floor 300s — a full-list PUT rebuilds
+the playlist on Apple's side). Set `TONEARM_SMARTLIST_INTERVAL=3600` to
+have the scheduler re-evaluate and sync on a cadence; 0 (default) means
+manual refresh only. Each sync emits a `smartlist.updated` webhook.
+
+### New-release watcher — `TONEARM_WATCHER=1` (verify-live gate)
+
+```bash
+TONEARM_WEBHOOKS=1 TONEARM_WATCHER=1 python -m tonearm
+# optionally: TONEARM_WATCHER_PLAYLIST="New Music (auto)" + TONEARM_ENABLE_WRITES=1
+#   → a found release's tracks are appended to that playlist (#108)
+```
+
+A daily (`TONEARM_WATCHER_INTERVAL=86400`) bounded pass over library
+artists: map each to a catalog artist by strict name search, read its
+newest catalog album, emit `release.found` when it's newer than the last
+one seen. The first pass is always a **silent baseline**. **The mapping
+strategy is the unverified part** — the surface is undocumented; eyeball
+`GET /api/watcher` (mapped vs unmapped) and `POST /api/watcher/refresh`
+after a live login before trusting it. See ROADMAP.
+
+### Home Assistant — recipes, not an integration
+
+`docs/ha-recipes.md` has copy-paste YAML for both directions: tonearm
+webhook events driving HA automations (dim lights on pause, page on
+`renderer.stalled`, phone-notify on `release.found`), and HA calling the
+API back (`rest_command` transport buttons, a polled now-playing sensor).
+
 
 ### OBS overlay — `/api/overlay`
 
@@ -554,6 +645,12 @@ Every non-2xx response, from any route, is:
 | `TONEARM_WEBHOOK_TIMEOUT` | `10` | per-attempt HTTP timeout, seconds |
 | `TONEARM_WEBHOOK_PARK_AFTER` / `TONEARM_WEBHOOK_PARK_S` | `3` / `900` | park a URL after N consecutive dead letters for this many seconds |
 | `TONEARM_DIGEST_INTERVAL` | `0` | seconds between scheduled `sweep.digest` webhooks (`0` = off; needs `TONEARM_WEBHOOKS=1`) |
+| `TONEARM_WATCHER` | `0` | new-release watcher: poll library artists, emit `release.found` on a newer album (**verify-live gate** — mapping strategy unverified, see ROADMAP) |
+| `TONEARM_WATCHER_INTERVAL` | `86400` | seconds between watcher passes (daily) |
+| `TONEARM_WATCHER_MAX_ARTISTS` | `100` | catalog lookups per pass (mappings cached; later passes rotate) |
+| `TONEARM_WATCHER_PLAYLIST` | *(unset)* | auto-add a found release's tracks to this playlist (needs `TONEARM_ENABLE_WRITES=1` too) |
+| `TONEARM_SMARTLIST_INTERVAL` | `0` | seconds between smart-playlist re-evaluate + sync sweeps (`0` = manual refresh only; needs `TONEARM_STORE=1`) |
+| `TONEARM_SMARTLIST_MIN_REFRESH` | `300` | floor on a single list's materialization cadence (a full-list PUT rebuilds it) |
 
 ## Field notes (the parts the docs won't tell you)
 
@@ -657,9 +754,15 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
 * **v0.6 — Automation — shipped**: outbound webhooks (`/api/webhooks`,
   `TONEARM_WEBHOOKS=1` — track changes, write mutations, renderer
   stall/recover, library diffs; retries with backoff, HMAC-SHA256 signing)
-  and scheduled sweep digests (`TONEARM_DIGEST_INTERVAL`)
-* **Next**: **Multi-user** (scoped keys) → **1.0 Polish**; the new-release
-  watcher stays open behind a live-verification gate (see ROADMAP)
+  and scheduled sweep digests (`TONEARM_DIGEST_INTERVAL`); smart playlists
+  (`/api/smartlists` — local rule evaluation, writes-gated materialization,
+  `TONEARM_SMARTLIST_INTERVAL`); scheduled release watcher
+  (`TONEARM_WATCHER=1`, daily library-artist poll, `release.found` events,
+  optional auto-add — **the artist→catalog mapping strategy is
+  name-search and remains verify-live gated**); Home Assistant recipes in
+  `docs/ha-recipes.md`
+* **Next**: **Multi-user** (scoped keys) → **1.0 Polish**; the watcher's
+  artist→catalog mapping stays behind a live-verification gate (see ROADMAP)
 
 ## Deploying
 

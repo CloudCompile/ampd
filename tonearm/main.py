@@ -15,7 +15,9 @@ from .models import Health
 from . import __version__
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
-                     history, overlay, webhooks as webhooks_routes)
+                     history, overlay, webhooks as webhooks_routes,
+                     smartlists as smartlists_routes,
+                     watcher as watcher_routes)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -107,6 +109,41 @@ async def lifespan(app):
             _digest_mod.scheduler = _dig
         except Exception as e:
             log.error("digest scheduler failed to start: %s", e)
+    # New-release watcher (opt-in: TONEARM_WATCHER=1, #42). It needs
+    # somewhere to notify (webhooks) or somewhere to put new music
+    # (auto-add playlist + writes) — otherwise a pass is wasted evals.
+    if config.watcher_enabled:
+        if config.webhooks_enabled or (config.watcher_auto_playlist
+                                       and config.enable_writes):
+            try:
+                from .store import store as _store
+                from .watcher import ReleaseWatcher
+                from .browser import browser as _b
+                from . import musickit as _mk
+                _watch = ReleaseWatcher(_store, _b, _mk)
+                _watch.start()
+                import tonearm.watcher as _watcher_mod
+                _watcher_mod.watcher = _watch
+            except Exception as e:
+                log.error("release watcher failed to start: %s", e)
+        else:
+            log.warning("watcher: TONEARM_WATCHER=1 but nothing to do — "
+                        "set TONEARM_WEBHOOKS=1 (notify) or "
+                        "TONEARM_WATCHER_PLAYLIST + TONEARM_ENABLE_WRITES "
+                        "(auto-add)")
+    # Smart-playlist engine (opt-in: TONEARM_SMARTLIST_INTERVAL>0; the
+    # scheduler re-evaluates + materializes; CRUD works without it).
+    if config.smartlist_interval > 0:
+        try:
+            from .store import store as _store
+            from .smartlists import SmartlistScheduler
+            from .browser import browser as _b
+            _smart = SmartlistScheduler(_store, _b)
+            _smart.start()
+            import tonearm.smartlists as _smart_mod
+            _smart_mod.scheduler = _smart
+        except Exception as e:
+            log.error("smartlist scheduler failed to start: %s", e)
     yield
     try:
         from . import digest as _digest_mod
@@ -117,6 +154,18 @@ async def lifespan(app):
     try:
         from . import webhooks
         webhooks.stop()
+    except Exception:
+        pass
+    try:
+        from . import watcher as _watcher_mod
+        if getattr(_watcher_mod, "watcher", None) is not None:
+            _watcher_mod.watcher.stop()
+    except Exception:
+        pass
+    try:
+        from . import smartlists as _smart_mod
+        if getattr(_smart_mod, "scheduler", None) is not None:
+            _smart_mod.scheduler.stop()
     except Exception:
         pass
     try:
@@ -211,6 +260,8 @@ app.include_router(debug.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(overlay.router, prefix="/api")
 app.include_router(webhooks_routes.router, prefix="/api")
+app.include_router(smartlists_routes.router, prefix="/api")
+app.include_router(watcher_routes.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)
