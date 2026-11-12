@@ -14,8 +14,13 @@ Implementation notes from live validation against a real account:
 from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
+from .. import restore as restore_mod
 from ..browser import BrowserError
 from ..config import config
+
+
+def _norm(s):
+    return (s or "").strip().lower()
 
 router = APIRouter(prefix="/write", tags=["writes (disabled by default)"])
 
@@ -202,5 +207,72 @@ def delete_playlist(playlist_id: str):
     try:
         mk.playlist_delete(playlist_id)
         return {"ok": True}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+
+# ---------------------------------------------------------------- restore
+
+@router.post("/restore")
+def restore(source: dict = None, execute: int = 0, match_budget: int = 2000):
+    """Restore playlists from a /api/library/export JSON body.
+
+    DRY-RUN BY DEFAULT: returns the plan (per playlist: exists/create,
+    per track: catalog-id / name-match / unmatched-with-reason).
+    `?execute=1` runs it: creates missing playlists, adds tracks, verifies
+    counts with bounded retries (Apple's applies are async).
+
+    The unmatched report is the contract: nothing is ever dropped silently.
+    """
+    _guard()
+    if not source or not isinstance(source.get("playlists"), list):
+        raise HTTPException(400, "body must be a /api/library/export JSON "
+                                 "shape (needs a 'playlists' array)")
+    if execute:
+        _plan = restore(source, execute=0, match_budget=match_budget)
+        if not isinstance(_plan, dict) or "playlists" not in _plan:
+            raise HTTPException(502, "plan rebuild failed")
+        try:
+            report = restore_mod.execute_plan(_plan, mk)
+            return {"ok": True, "plan_totals": _plan["totals"],
+                    "report": report}
+        except BrowserError as e:
+            raise HTTPException(502, str(e))
+
+    def existing_lookup(name):
+        return _existing.get(_norm(name))
+
+    def catalog_lookup(name, artist):
+        term = " ".join(x for x in (name, artist) if x)
+        if not term:
+            return None
+        try:
+            import urllib.parse
+            data = mk.api_music(
+                f"/v1/catalog/us/search?term={urllib.parse.quote(term)}"
+                f"&types=songs&limit=5")
+            songs = (data.get("results", {}).get("songs", {}) or {}).get("data", [])
+            for s in songs:
+                a = s.get("attributes", {})
+                if (_norm(a.get("name")) == _norm(name)
+                        and _norm(a.get("artistName")) == _norm(artist)):
+                    return s["id"]
+            return None
+        except BrowserError:
+            return None
+
+    # ONE walk of the playlist names (find-per-name would re-walk per
+    # playlist — 50 playlists must not cost 50 full walks)
+    try:
+        pls = mk.paginated("/v1/me/library/playlists?limit=100",
+                           lambda d: d.get("data", []), fresh=True)
+        _existing = {(p.get("attributes", {}) or {}).get("name") or "": p["id"]
+                     for p in pls}
+    except BrowserError as e:
+        raise HTTPException(502, str(e))
+
+    try:
+        return restore_mod.build_plan(source, existing_lookup,
+                                      catalog_lookup, match_budget)
     except BrowserError as e:
         raise HTTPException(502, str(e))
