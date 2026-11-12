@@ -44,7 +44,7 @@ jobs:
                        "/api/catalog/songs/{song_id}/lyrics",
                        "/api/audio/stream.mp3", "/api/stream", "/demo",
                        "/api/write/sweeps/dedupe", "/api/playback/now-playing",
-                       "/api/favorites", "/metrics"):
+                       "/api/favorites", "/metrics", "/api/debug"):
               assert must in paths, f"missing route: {must}"
           print(f"app OK — {len(paths)} routes")
 

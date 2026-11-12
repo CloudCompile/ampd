@@ -34,7 +34,7 @@ its own renderer.*
 - [x] **Prometheus `/metrics`** — eval latency histogram, renderer-stall
       counter, Apple 4xx/5xx rates, stream listeners, queue depth `S P1`
 - [x] **ARM64 images** — buildx multi-arch for RPi / Apple Silicon `S P1`
-- [ ] **`/api/debug` surface** — last-N CDP calls with durations, current
+- [x] **`/api/debug` surface** — last-N CDP calls with durations, current
       tab URL, renderer health snapshot `S P1`
 - [ ] **Apple 429/backoff handling** in the in-page fetch layer `M P1`
 

@@ -15,6 +15,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+from collections import deque
 
 import websocket
 
@@ -41,6 +42,11 @@ class Browser:
         self._ws = None
         self._target_id = None
         self._n = 0
+        # last-N CDP calls for /api/debug — plain deque, guarded by its own
+        # lock, written in _raw_call (try/except: recording must never be
+        # able to break a request)
+        self._recent = deque(maxlen=50)
+        self._recent_lock = threading.Lock()
         # --- renderer watchdog state (flat dict, guarded by its own lock) ---
         # the thread starts at import but WAITS for the first successful
         # connect — importing this module must never touch Chrome (CI has
@@ -197,10 +203,50 @@ class Browser:
 
     # ------------------------------------------------------------- low level
 
+    def recent_calls(self):
+        """Last-N CDP calls with durations — for /api/debug."""
+        with self._recent_lock:
+            return list(self._recent)
+
+    def tab_url(self):
+        """Current music-tab URL via the debug HTTP API — socket-free (no
+        eval, never competes with the renderer it is diagnosing)."""
+        try:
+            tabs = json.loads(urllib.request.urlopen(
+                config.cdp_url + "/json/list", timeout=2).read())
+            target = next((t for t in tabs
+                           if t.get("type") == "page"
+                           and "music.apple.com" in t.get("url", "")), None)
+            return target.get("url") if target else None
+        except Exception:
+            return None
+
     def _raw_call(self, method, deadline_s=60, **params):
         """One CDP command on the existing socket. No reconnect, no retry —
         callers decide. The recv loop is hard-bounded so a zombie renderer
         can never pin a worker thread."""
+        t0 = time.time()
+        try:
+            result = self._raw_call_inner(method, deadline_s=deadline_s, **params)
+            self._record_call(method, params, time.time() - t0, ok=True)
+            return result
+        except Exception as e:
+            self._record_call(method, params, time.time() - t0, ok=False,
+                              error=str(e)[:160])
+            raise
+
+    def _record_call(self, method, params, dt, ok, error=None):
+        try:
+            what = str(params.get("expression") or method)[:120]
+            with self._recent_lock:
+                self._recent.append({
+                    "ts": round(time.time(), 3), "call": method,
+                    "what": what, "ms": round(dt * 1000), "ok": ok,
+                    **({"error": error} if error else {})})
+        except Exception:
+            pass                     # diagnostics must never break the call
+
+    def _raw_call_inner(self, method, deadline_s=60, **params):
         if self._ws is None:
             raise BrowserError(f"{method}: no websocket")
         self._n += 1
