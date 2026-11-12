@@ -5,6 +5,8 @@
 services:
   ampd:
     build: .
+    # prebuilt multi-arch alternative (amd64 + arm64, published on releases):
+    # image: ghcr.io/cloudcompile/ampd:latest
     ports:
       - "8188:8188"
     environment:
