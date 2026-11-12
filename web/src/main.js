@@ -63,7 +63,8 @@ library.show("songs");
 
 // ---------------- the key dialect (#90) ----------------
 function maybePromptKey(err) {
-  if (/401|403/.test(String(err))) $("keyprompt").hidden = false;
+  if (err && (err.status === 401 || err.status === 403))
+    $("keyprompt").hidden = false;
 }
 window.addEventListener("unhandledrejection", (e) => maybePromptKey(e.reason));
 $("keysave").onclick = () => {

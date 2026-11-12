@@ -17,7 +17,7 @@ export async function get(path, params) {
   const r = await fetch(url(path, params), {
     headers: KEY() ? { Authorization: `Bearer ${KEY()}` } : {},
   });
-  if (!r.ok) throw new Error(`${r.status} ${path}`);
+  if (!r.ok) throw errWithStatus(`${r.status} ${path}`, r.status);
   return r.json();
 }
 
@@ -30,8 +30,17 @@ export async function send(path, method, body, params) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!r.ok) throw new Error(`${r.status} ${method} ${path}`);
+  if (!r.ok) throw errWithStatus(`${r.status} ${method} ${path}`, r.status);
   return r.json().catch(() => ({}));
+}
+
+// structured errors (#90 followup): the key prompt must match on the STATUS,
+// never on substrings of the message — "404 /api/catalog/songs/6401003/…"
+// contains "401" and would open the modal spuriously (real ids hit this too).
+function errWithStatus(message, status) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
 }
 
 export const post = (p, body) => send(p, "POST", body);

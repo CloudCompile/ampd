@@ -15,7 +15,7 @@ function rowHtml(item) {
          `<span>${esc(sub)}</span></div><span class="badge">${esc(badge)}</span>`;
 }
 
-async function loader(resource) {
+function loader(resource) {
   return async (offset, limit) => {
     const page = await get(`/api/library/${resource}`, { offset, limit });
     return { items: page.items, next_offset: page.next_offset };
