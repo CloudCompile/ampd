@@ -30,7 +30,7 @@ async def lifespan(app):
     if config.audio_enabled and not config.mock_enabled:
         try:
             from .audio import broadcaster
-            broadcaster.start()
+            broadcaster.prestart()
         except Exception as e:
             log.error("audio pipeline failed to start: %s", e)
     # local store (v0.3 Memory): opens the db and arms the history writer —

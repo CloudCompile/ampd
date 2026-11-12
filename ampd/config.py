@@ -47,6 +47,12 @@ class Config:
     audio_display: str = os.environ.get("AMPD_AUDIO_DISPLAY", ":2")
     audio_sink: str = os.environ.get("AMPD_AUDIO_SINK", "ampd_audio")
     audio_bitrate: str = os.environ.get("AMPD_AUDIO_BITRATE", "160k")
+    # loudness normalization (#93): ffmpeg loudnorm in the encoder process —
+    # one filter per pipeline, fanned out post-encode, no extra subprocesses
+    audio_loudnorm: bool = os.environ.get("AMPD_AUDIO_LOUDNORM", "0") == "1"
+    # join alignment (#95): pad a new listener's feed with pre-encoded
+    # silence so clients get a deterministic alignment point. 0 disables.
+    audio_join_pad: bool = os.environ.get("AMPD_AUDIO_JOIN_PAD", "1") == "1"
 
     # --- mock mode (v0.4) ---
     # AMPD_MOCK=1 serves the full API from seeded synthetic fixtures — no

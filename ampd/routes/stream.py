@@ -45,6 +45,13 @@ def last_snapshot():
 def _remember(d):
     with _last_lock:
         _last.update(d)
+    # feed the join-alignment state (#95): the audio routes stamp join
+    # headers from this — no Chrome evals from the audio side, ever
+    try:
+        from ..audio import note_playhead
+        note_playhead(d.get("elapsedMs"), d.get("isPlaying"))
+    except Exception:
+        pass                                          # audio is optional
 
 
 def _listener_delta(d):
