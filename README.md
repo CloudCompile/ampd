@@ -294,6 +294,24 @@ docker compose up -d --build
 curl localhost:8188/health   # -> {"status":"ok","browser":"authorized"}
 ```
 
+**Healthchecks.** The image ships with a `HEALTHCHECK` polling `GET /health`
+(every 30s, 5s timeout, 3 retries — `/health` is exempt from `AMPD_API_KEY`,
+so it works with a key set). Docker only *marks* the container unhealthy; it
+never restarts it on its own. On a VPS, if you want wedged containers to
+self-heal, run an autoheal sidecar next to ampd:
+
+```bash
+docker run -d --name autoheal \
+  -e AUTOHEAL_CONTAINER_LABEL=all \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  willfarrell/autoheal
+```
+
+Note what "unhealthy" means here: a stalled renderer usually recovers on its
+own (ampd fast-fails 502s during the stall and heals), so don't wire a
+restart loop tighter than the watchdog can ride out — 3 failed checks in a
+row (~90s) is the image's threshold, and that's a good minimum.
+
 The Chrome profile lives on the `ampd-data` volume. To sign in, make a
 profile on any machine with a screen, then drop it into the volume:
 

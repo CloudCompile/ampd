@@ -40,4 +40,12 @@ EXPOSE 8188
 RUN useradd -u 1000 -m -d /data ampd && chown -R ampd /data /app
 USER ampd
 
+# Docker treats a failed healthcheck by marking the container unhealthy — it
+# does NOT restart it on its own. Pair with `restart: unless-stopped` (compose)
+# or an autoheal sidecar (plain `docker run`) — see README "Deploying".
+# /health is exempt from AMPD_API_KEY auth, so this works with a key set.
+# start-period is generous because first boot launches Chrome.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/health' % os.environ.get('AMPD_PORT','8188'), timeout=4)"
+
 CMD ["python", "-m", "ampd"]

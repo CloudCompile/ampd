@@ -27,7 +27,7 @@ its own renderer.*
 - [ ] **Read cache + request coalescing** — TTL cache for library/catalog
       GETs, identical in-flight reads collapse into one CDP eval, mutations
       bust by key `M P0`
-- [ ] **Docker HEALTHCHECK** wired to `/health` + restart-policy guidance in
+- [x] **Docker HEALTHCHECK** wired to `/health` + restart-policy guidance in
       the deploy guides `S P0`
 - [ ] **Non-localhost warning** — refuse (or warn loudly) when binding
       0.0.0.0 without `AMPD_API_KEY` `S P0`
