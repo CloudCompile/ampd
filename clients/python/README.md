@@ -6,10 +6,6 @@ Version tracks the server release tag.
 ```python
 from ampd_client import Client
 client = Client(base_url="http://127.0.0.1:8188")
-
-# auth dialect (enforced server-side, baked into the schema):
-#   AuthenticatedClient(base_url=..., token="<key>")  ->  Bearer header
-#   or  "?api_key=<key>"  (the fallback EventSource needs)
-from ampd_client.api.default import health_health_get
-print(health_health_get.sync(client=client).status)
+# auth dialect (enforced server-side):
+#   headers={"Authorization": "Bearer <key>"}  or  ?api_key=<key>
 ```

@@ -468,9 +468,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Queue */
+        /**
+         * Queue
+         * @description The current queue (also pushed by the SSE stream — prefer the
+         *     stream; this is the one-shot read).
+         */
         get: operations["queue_api_playback_queue_get"];
-        put?: never;
+        /**
+         * Queue Reorder
+         * @description Reorder the queue: send the FULL ordered list of item ids (#87 —
+         *     whole-list PUT semantics, last write wins, no deltas). The playhead
+         *     stays on the same track at its new index. Best-effort like every
+         *     transport op: MusicKit has no public reorder, so the queue is rebuilt
+         *     and the playhead is moved back onto the same track.
+         */
+        put: operations["queue_reorder_api_playback_queue_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -675,17 +687,17 @@ export interface paths {
             cookie?: never;
         };
         /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__post"];
+        get: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__post"];
+        put: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__post"];
+        post: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__post"];
+        delete: operations["passthrough_api_amp_api__path__delete"];
         options?: never;
         head?: never;
         /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__post"];
+        patch: operations["passthrough_api_amp_api__path__delete"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -1024,9 +1036,50 @@ export interface paths {
         /**
          * Stream Mp3
          * @description Live mp3 of whatever the server's Apple Music session is playing.
-         *     Point an <audio> element at it. ~1-2 s behind the reported playhead.
+         *     Point an <audio> element at it. ~1-2 s behind the reported playhead —
+         *     X-AMPD-Join-* headers describe the alignment at subscribe time.
          */
         get: operations["stream_mp3_api_audio_stream_mp3_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audio/stream.ogg": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Ogg
+         * @description Live Ogg Vorbis of the session's audio (same capture as mp3).
+         */
+        get: operations["stream_ogg_api_audio_stream_ogg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audio/stream.opus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Opus
+         * @description Live Opus (in Ogg) of the session's audio — smallest bandwidth.
+         */
+        get: operations["stream_opus_api_audio_stream_opus_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1147,6 +1200,49 @@ export interface paths {
          * @description Plays per day, last N days — bucketed in SQL, ready for a chart.
          */
         get: operations["stats_series_api_history_stats_series_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/overlay/now-playing.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Now Playing Json
+         * @description Now-playing as JSON — for OBS browser sources and bots.
+         */
+        get: operations["now_playing_json_api_overlay_now_playing_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/overlay/now-playing.txt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Now Playing Txt
+         * @description Now-playing as one text line. `?format=` is a template with
+         *     {title} {artist} {album} {elapsed} {duration} placeholders — unknown
+         *     fields and missing values render as ''. Text (not JSON) on purpose:
+         *     OBS's classic Text source wants a plain line.
+         */
+        get: operations["now_playing_txt_api_overlay_now_playing_txt_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1562,6 +1658,35 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * OverlayNowPlaying
+         * @description OBS overlay payload — NowPlaying + the playing item's id (what the
+         *     SSE `update` events carry), so overlays can also resolve lyrics/art.
+         */
+        OverlayNowPlaying: {
+            /** Isplaying */
+            isPlaying: boolean;
+            /** State */
+            state?: number | null;
+            /** Title */
+            title?: string | null;
+            /** Artist */
+            artist?: string | null;
+            /** Album */
+            album?: string | null;
+            /** Durationms */
+            durationMs?: number | null;
+            /** Artworkurl */
+            artworkUrl?: string | null;
+            /** Progress */
+            progress?: number | null;
+            /** Elapsedms */
+            elapsedMs?: number | null;
+            /** Id */
+            id?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** PlayRow */
         PlayRow: {
             /** Id */
@@ -1618,6 +1743,18 @@ export interface components {
             artist?: string | null;
             /** Kind */
             kind?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * QueueReorder
+         * @description PUT /api/playback/queue body — the FULL ordered list of queue item
+         *     ids (#87: whole-list PUT, never deltas). The playhead stays on the same
+         *     track at its new index.
+         */
+        QueueReorder: {
+            /** Ids */
+            ids: string[];
         } & {
             [key: string]: unknown;
         };
@@ -2655,6 +2792,39 @@ export interface operations {
             };
         };
     };
+    queue_reorder_api_playback_queue_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueueReorder"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_volume_api_playback_volume_get: {
         parameters: {
             query?: never;
@@ -2944,7 +3114,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -2975,7 +3145,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3006,7 +3176,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3037,7 +3207,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3068,7 +3238,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3736,7 +3906,10 @@ export interface operations {
     };
     stream_mp3_api_audio_stream_mp3_get: {
         parameters: {
-            query?: never;
+            query?: {
+                bitrate?: string;
+                loudnorm?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3750,6 +3923,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_ogg_api_audio_stream_ogg_get: {
+        parameters: {
+            query?: {
+                bitrate?: string;
+                loudnorm?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_opus_api_audio_stream_opus_get: {
+        parameters: {
+            query?: {
+                bitrate?: string;
+                loudnorm?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3896,6 +4142,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatsSeries"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    now_playing_json_api_overlay_now_playing_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverlayNowPlaying"];
+                };
+            };
+        };
+    };
+    now_playing_txt_api_overlay_now_playing_txt_get: {
+        parameters: {
+            query?: {
+                format?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
                 };
             };
             /** @description Validation Error */
