@@ -209,6 +209,29 @@ Apple, no TestClient), and every mock response is enforced against the
 typed response models, so the fixtures can't rot out of the schema
 silently.
 
+### Audio options — formats, loudness, join alignment
+
+The stream stays the live pipe from your session's private sink; formats
+are encoder tails on that one source — **one subprocess per format, never
+per listener**:
+
+```
+/api/audio/stream.mp3    the original URL (libmp3lame)
+/api/audio/stream.ogg    Ogg Vorbis
+/api/audio/stream.opus   Opus in Ogg (48 kHz) — smallest bandwidth
+?bitrate=96k             any <bits>k value per request
+?loudnorm=1              EBU R128 loudness normalization (-16 LUFS), or
+                         AMPD_AUDIO_LOUDNORM=1 to default it on
+```
+
+Join alignment for mid-song listeners (`X-AMPD-Join-*` response headers):
+the feed starts with a pre-encoded silence pad (`AMPD_AUDIO_JOIN_PAD=0`
+disables) so clients get a deterministic alignment point, and the headers
+state the playhead position at join — `X-AMPD-Join-Playhead-Ms` plus
+`X-AMPD-Join-Stale`, which is `1` when that claim rests on stale stream
+state. Degrades loudly, never silently pretends. The capture is a live
+pipe: there is no seekable buffer to rewind into.
+
 ### OBS overlay — `/api/overlay`
 
 Now-playing for streamers, served from the SSE stream's last emitted state
