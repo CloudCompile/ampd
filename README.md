@@ -148,6 +148,13 @@ the renderer** — every series is read from state the watchdog, fetch layer
 and stream gauges already maintain. Sits behind `AMPD_API_KEY` when one is
 set (scrape config: `authorization` block with `Bearer <key>`).
 
+### Debug — `/api/debug` (what just happened in there?)
+
+Last 50 raw CDP calls with durations (watchdog pings and stream drains
+included), the current music-tab URL, and the renderer health snapshot.
+The debug surface never evals the renderer it is diagnosing — everything is
+read from memory or Chrome's socket-free HTTP API.
+
 ### Audio — `/api/audio/stream.mp3` (the actual sound)
 
 Metadata streaming is great for a remote control on the same machine — but
