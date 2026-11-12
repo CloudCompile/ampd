@@ -61,6 +61,11 @@ _MIGRATIONS = {
         started_at REAL NOT NULL,
         UNIQUE(track_id, started_at));
     CREATE INDEX IF NOT EXISTS idx_plays_started ON plays(started_at);
+    CREATE TABLE IF NOT EXISTS scrobbles (
+        track_id TEXT NOT NULL,
+        started_at REAL NOT NULL,
+        scrobbled_at REAL NOT NULL,
+        UNIQUE(track_id, started_at));
     CREATE TABLE IF NOT EXISTS library (
         library_id TEXT PRIMARY KEY,
         catalog_id TEXT, name TEXT, artist TEXT, album TEXT,
@@ -158,6 +163,20 @@ class Store:
             conn.commit()
         METRICS.inc("ampd_store_plays_written_total",
                     help_text="play rows persisted (dedupes included)")
+
+    def record_scrobble(self, track_id, started_at):
+        """Mark a play as scrobbled. Returns False if it was ALREADY
+        recorded — the dedupe that makes restarts never double-scrobble
+        (#98): the marker is UNIQUE(track_id, started_at), same key as the
+        play itself."""
+        conn = self._require_conn()
+        with self._lock:
+            cur = conn.execute(
+                "INSERT OR IGNORE INTO scrobbles(track_id, started_at, "
+                "scrobbled_at) VALUES(?,?,?)",
+                (track_id, started_at, time.time()))
+            conn.commit()
+            return cur.rowcount > 0
 
     def recently_played(self, limit=50, offset=0):
         """The archive: newest first, past Apple's ~20-item cap."""
