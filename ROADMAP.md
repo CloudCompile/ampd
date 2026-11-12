@@ -97,16 +97,28 @@ its own renderer.*
       webhook on a schedule `S P1` — `tonearm/digest.py` ·
       `TONEARM_DIGEST_INTERVAL` (needs webhooks); on-demand twin at
       `GET /api/write/sweeps/digest`. One walk feeds both reports.
-- [ ] **New-release watcher** — poll followed artists' catalog pages, notify
-      + optionally auto-add to a playlist `M P1`
-      *Blocked on a verify-live gate:* library artists are keyed by library
-      ids (`r.xxx`) and the mapping to catalog artist ids is not documented —
-      the lookup strategy (attributes vs search) must be validated against a
-      real account before anything ships.
-- [ ] **Smart-playlist engine** — rule sets ("added after X, artist in Y")
-      materialized as live playlists `L P2`
-- [ ] **Home Assistant recipes** — media_player-style integration examples
-      `S P2` (the webhook events above are already the payload half)
+- [x] **New-release watcher** — poll library artists, notify + optionally
+      auto-add to a playlist `M P1` — `tonearm/watcher.py` ·
+      `/api/watcher` · `TONEARM_WATCHER=1` (daily,
+      `TONEARM_WATCHER_INTERVAL`). Bounded passes, stall-gated,
+      single-flight; per-artist mapping + last-seen-release state in the
+      store (v2 migration); the first pass is a silent baseline;
+      auto-add (#108) rides `TONEARM_WATCHER_PLAYLIST` + the writes gate.
+      *Still gated on live verification:* the library→catalog artist
+      mapping is implemented as strict name search (the one documented
+      surface) but remains UNVERIFIED against a real Apple account —
+      run a manual `POST /api/watcher/refresh` and check mapped/unmapped
+      on `GET /api/watcher` after a live login before trusting it.
+- [x] **Smart-playlist engine** — rule sets ("added after X, artist in Y")
+      materialized as live playlists `L P2` — `tonearm/smartlists.py` ·
+      `/api/smartlists` · `TONEARM_SMARTLIST_INTERVAL`. Evaluation is
+      local-only (store rows + play archive, both id spaces); rules
+      validated at create (400 on junk, never a silent empty list);
+      materialization = find-or-create + ONE full-list PUT
+      (`TONEARM_ENABLE_WRITES` gated, per-list refresh floor).
+- [x] **Home Assistant recipes** — media_player-style integration examples
+      `S P2` — `docs/ha-recipes.md` (webhook-triggered automations both
+      directions + rest_command transport + a polled now-playing sensor).
 
 ## v0.7 — Multi-user
 

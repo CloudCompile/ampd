@@ -47,7 +47,7 @@ from .metrics import METRICS
 
 log = logging.getLogger("tonearm.store")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _MIGRATIONS = {
     1: """
@@ -74,6 +74,34 @@ _MIGRATIONS = {
     CREATE INDEX IF NOT EXISTS idx_library_last_seen ON library(last_seen);
     CREATE TABLE IF NOT EXISTS cursors (
         name TEXT PRIMARY KEY, value TEXT, updated_at REAL);
+    """,
+    # v0.6 automation: the release watcher's per-artist state (the
+    # r.xxx -> catalog mapping cache + last-seen release, #107) and the
+    # smart-playlist definitions (#44). Both are durable server state on
+    # the user's volume, so they live in the same db, same lock, same
+    # migration chain — no second persistence layer.
+    2: """
+    CREATE TABLE IF NOT EXISTS watcher_artists (
+        artist_id TEXT PRIMARY KEY,      -- library artist id (r.xxx)
+        artist_name TEXT,
+        catalog_artist_id TEXT,          -- NULL until the mapping resolves
+        catalog_artist_name TEXT,
+        last_album_id TEXT,              -- newest release already SEEN (#107)
+        last_album_name TEXT,
+        last_release_date TEXT,          -- ISO date string, Apple format
+        checked_at REAL,
+        updated_at REAL);
+    CREATE TABLE IF NOT EXISTS smartlists (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        rules TEXT,                      -- JSON: [{"field","op","value"}]
+        sort TEXT,
+        limit_n INTEGER,
+        refresh_s INTEGER,
+        playlist_id TEXT,                -- library playlist once materialized
+        last_eval REAL, last_sync REAL, last_count INTEGER,
+        created_at REAL, updated_at REAL);
     """,
 }
 
@@ -338,6 +366,142 @@ class Store:
                 "FROM plays WHERE started_at >= ? GROUP BY day ORDER BY day",
                 (since,)).fetchall()
         return [{"day": r[0], "plays": r[1]} for r in rows]
+
+    # ------------------------------------------------------- watcher state
+    # Per-artist watcher state (v0.6 #107): the cached library->catalog
+    # mapping and the newest release already seen. The first record for an
+    # artist is a silent BASELINE — the watcher decides when to emit.
+
+    def watcher_upsert_artist(self, artist_id, artist_name,
+                              catalog_artist_id=None, catalog_artist_name=None,
+                              last_album_id=None, last_album_name=None,
+                              last_release_date=None):
+        conn = self._require_conn()
+        now = time.time()
+        with self._lock:
+            conn.execute(
+                "INSERT INTO watcher_artists(artist_id, artist_name, "
+                "catalog_artist_id, catalog_artist_name, last_album_id, "
+                "last_album_name, last_release_date, checked_at, updated_at) "
+                "VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(artist_id) DO UPDATE "
+                "SET artist_name=excluded.artist_name, "
+                "catalog_artist_id=COALESCE(excluded.catalog_artist_id, "
+                "catalog_artist_id), catalog_artist_name=COALESCE("
+                "excluded.catalog_artist_name, catalog_artist_name), "
+                "last_album_id=COALESCE(excluded.last_album_id, last_album_id), "
+                "last_album_name=COALESCE(excluded.last_album_name, "
+                "last_album_name), last_release_date=COALESCE("
+                "excluded.last_release_date, last_release_date), "
+                "checked_at=excluded.checked_at, updated_at=excluded.updated_at",
+                (artist_id, artist_name, catalog_artist_id,
+                 catalog_artist_name, last_album_id, last_album_name,
+                 last_release_date, now, now))
+            conn.commit()
+
+    def watcher_artist(self, artist_id):
+        conn = self._require_conn()
+        with self._lock:
+            row = conn.execute(
+                "SELECT artist_id, artist_name, catalog_artist_id, "
+                "catalog_artist_name, last_album_id, last_album_name, "
+                "last_release_date, checked_at FROM watcher_artists "
+                "WHERE artist_id=?", (artist_id,)).fetchone()
+        if row is None:
+            return None
+        return {"artist_id": row[0], "artist_name": row[1],
+                "catalog_artist_id": row[2], "catalog_artist_name": row[3],
+                "last_album_id": row[4], "last_album_name": row[5],
+                "last_release_date": row[6], "checked_at": row[7]}
+
+    def watcher_artists(self):
+        conn = self._require_conn()
+        with self._lock:
+            rows = conn.execute(
+                "SELECT artist_id, artist_name, catalog_artist_id, "
+                "catalog_artist_name, last_album_id, last_album_name, "
+                "last_release_date, checked_at FROM watcher_artists "
+                "ORDER BY artist_name").fetchall()
+        return [{"artist_id": r[0], "artist_name": r[1],
+                 "catalog_artist_id": r[2], "catalog_artist_name": r[3],
+                 "last_album_id": r[4], "last_album_name": r[5],
+                 "last_release_date": r[6], "checked_at": r[7]}
+                for r in rows]
+
+    # ---------------------------------------------------------- smartlists
+
+    def smartlist_add(self, list_id, name, description, rules, sort,
+                      limit_n, refresh_s):
+        conn = self._require_conn()
+        now = time.time()
+        with self._lock:
+            conn.execute(
+                "INSERT INTO smartlists(id, name, description, rules, sort, "
+                "limit_n, refresh_s, playlist_id, last_eval, last_sync, "
+                "last_count, created_at, updated_at) "
+                "VALUES(?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,?,?)",
+                (list_id, name, description, json.dumps(rules),
+                 sort, limit_n, refresh_s, now, now))
+            conn.commit()
+
+    def smartlist_update(self, list_id, **fields):
+        """Partial update; `rules`/dicts are JSON-encoded. Returns the fresh
+        row (via smartlist_get semantics) or None if the id is unknown."""
+        conn = self._require_conn()
+        cols = {"name", "description", "rules", "sort", "limit_n",
+                "refresh_s", "playlist_id", "last_eval", "last_sync",
+                "last_count"}
+        unknown = set(fields) - cols
+        if unknown:
+            raise ValueError(f"unknown smartlist fields: {sorted(unknown)}")
+        with self._lock:
+            sets, args = [], []
+            for k, v in fields.items():
+                sets.append(f"{k}=?")
+                if k == "rules" and not isinstance(v, str):
+                    v = json.dumps(v)
+                args.append(v)
+            sets.append("updated_at=?")
+            args.append(time.time())
+            args.append(list_id)
+            conn.execute(f"UPDATE smartlists SET {', '.join(sets)} "
+                         f"WHERE id=?", args)
+            conn.commit()
+
+    def _smartlist_row(self, row):
+        return {"id": row[0], "name": row[1], "description": row[2],
+                "rules": json.loads(row[3]) if row[3] else [],
+                "sort": row[4], "limit": row[5] or 0,
+                "refresh_s": row[6] or 0, "playlist_id": row[7],
+                "last_eval": row[8], "last_sync": row[9],
+                "last_count": row[10], "created_at": row[11],
+                "updated_at": row[12]}
+
+    _SMARTLIST_COLS = ("id, name, description, rules, sort, limit_n, "
+                       "refresh_s, playlist_id, last_eval, last_sync, "
+                       "last_count, created_at, updated_at")
+
+    def smartlist_get(self, list_id):
+        conn = self._require_conn()
+        with self._lock:
+            row = conn.execute(
+                f"SELECT {self._SMARTLIST_COLS} FROM smartlists "
+                f"WHERE id=?", (list_id,)).fetchone()
+        return self._smartlist_row(row) if row else None
+
+    def smartlist_rows(self):
+        conn = self._require_conn()
+        with self._lock:
+            rows = conn.execute(
+                f"SELECT {self._SMARTLIST_COLS} FROM smartlists "
+                f"ORDER BY created_at").fetchall()
+        return [self._smartlist_row(r) for r in rows]
+
+    def smartlist_delete(self, list_id):
+        conn = self._require_conn()
+        with self._lock:
+            cur = conn.execute("DELETE FROM smartlists WHERE id=?", (list_id,))
+            conn.commit()
+            return cur.rowcount > 0
 
     # ------------------------------------------------------------- cursors
 

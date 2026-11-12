@@ -46,7 +46,8 @@ jobs:
                        "/api/audio/stream.mp3", "/api/stream", "/demo",
                        "/api/write/sweeps/dedupe", "/api/playback/now-playing",
                        "/api/favorites", "/metrics", "/api/debug",
-                       "/api/webhooks", "/api/write/sweeps/digest"):
+                       "/api/webhooks", "/api/write/sweeps/digest",
+                       "/api/smartlists", "/api/watcher"):
               assert must in paths, f"missing route: {must}"
           print(f"app OK — {len(paths)} routes")
 
@@ -70,7 +71,9 @@ jobs:
           assert config.export_interval == 0, "scheduled exports must default OFF"
           assert config.webhooks_enabled is False, "webhooks must default OFF"
           assert config.digest_interval == 0, "scheduled digests must default OFF"
-          print("defaults OK — writes, audio, store, scheduled exports, webhooks and digests ship disabled; bind guard warn-only")
+          assert config.watcher_enabled is False, "the release watcher must default OFF"
+          assert config.smartlist_interval == 0, "the smartlist scheduler must default OFF"
+          print("defaults OK — writes, audio, store, scheduled exports, webhooks, digests, watcher and smartlists ship disabled; bind guard warn-only")
           EOF
 
       - name: Response-model conformance (every JSON route is typed)
@@ -222,6 +225,13 @@ jobs:
               "sweep EXECUTION is writes-gated"
           s, j = get("/api/history/recently-played")
           assert s == 501 and j["error"]["code"] == "store_disabled"
+          s, j = get("/api/smartlists")
+          assert s == 501 and j["error"]["code"] == "store_disabled", \
+              "smartlists evaluate the LOCAL store — honest 501 without it"
+          s, j = get("/api/watcher")
+          assert s == 501 and j["error"]["code"] == "store_disabled"
+          s, j = post("/api/watcher/refresh")
+          assert s == 501, "the watcher ships OFF (verify-live gate)"
           print("mock integration OK — full API surface served, models enforced")
           EOF
 

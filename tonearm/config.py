@@ -101,6 +101,40 @@ class Config:
     # played digest is POSTed as a `sweep.digest` event every N seconds.
     digest_interval: int = int(os.environ.get("TONEARM_DIGEST_INTERVAL", "0"))
 
+    # --- new-release watcher (v0.6 #42, opt-in, VERIFY-LIVE GATE) ---
+    # TONEARM_WATCHER=1 arms a daily poll of library artists: map each to a
+    # catalog artist (by name search), fetch its newest catalog album, and
+    # emit `release.found` when a newer one appears than the last seen.
+    # The library-artist -> catalog-artist mapping strategy (name search) is
+    # UNVERIFIED against a real Apple account (the surface is undocumented —
+    # see ROADMAP) — hence OFF by default, and the first pass is always a
+    # silent baseline.
+    watcher_enabled: bool = os.environ.get("TONEARM_WATCHER", "0") == "1"
+    watcher_interval: int = int(os.environ.get("TONEARM_WATCHER_INTERVAL",
+                                               "86400"))
+    # Bound the catalog work per pass: at most this many artists get a
+    # catalog lookup each pass (walked in library order); mappings are
+    # cached, so later passes rotate through the rest.
+    watcher_max_artists: int = int(os.environ.get("TONEARM_WATCHER_MAX_ARTISTS",
+                                                  "100"))
+    # Optional auto-add (#108): newest release's tracks are appended to this
+    # playlist (created if missing). Needs TONEARM_ENABLE_WRITES=1 too —
+    # a watcher that mutates the library must pass the same gate as hands.
+    watcher_auto_playlist: str = os.environ.get(
+        "TONEARM_WATCHER_PLAYLIST", "").strip()
+
+    # --- smart-playlist engine (v0.6 #44, opt-in) ---
+    # Rule sets live in the store and evaluate LOCALLY (zero Apple calls);
+    # materialization (full-list PUT to a live playlist) touches Apple only
+    # when TONEARM_ENABLE_WRITES=1, throttled per list. The scheduler's
+    # re-evaluate-and-sync cadence: 0 = OFF (manual refresh only).
+    smartlist_interval: int = int(os.environ.get("TONEARM_SMARTLIST_INTERVAL",
+                                                 "0"))
+    # Floor on a list's own refresh cadence — a full-list PUT rebuilds the
+    # playlist on Apple's side, so it must never run hot.
+    smartlist_min_refresh: int = int(os.environ.get(
+        "TONEARM_SMARTLIST_MIN_REFRESH", "300"))
+
     # --- mock mode (v0.4) ---
     # TONEARM_MOCK=1 serves the full API from seeded synthetic fixtures — no
     # Apple account, no Chrome, no network. For UI devs, contributors and
