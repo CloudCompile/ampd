@@ -11,11 +11,11 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.store import Store, StoreDisabled, diff_rows, HistoryWriter
+from tonearm.store import Store, StoreDisabled, diff_rows, HistoryWriter
 
 
 def temp_store():
-    d = tempfile.mkdtemp(prefix="ampd-store-test-")
+    d = tempfile.mkdtemp(prefix="tonearm-store-test-")
     return Store(path=os.path.join(d, "test.db"), enabled=True)
 
 
@@ -234,7 +234,7 @@ class TestHistoryWriter(unittest.TestCase):
 
 class TestSnapshotScheduler(unittest.TestCase):
     def _sched(self, store, walk_rows_fn, browser=None):
-        from ampd.store import SnapshotScheduler
+        from tonearm.store import SnapshotScheduler
         return SnapshotScheduler(store, browser or FakeOkBrowser(), None,
                                  interval=3600, walk_fn=walk_rows_fn)
 

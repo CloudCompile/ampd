@@ -1,33 +1,33 @@
 # VPS quickstart:
 #   docker compose up -d
-#   docker compose exec ampd python -m ampd.login   # needs a display — see README
+#   docker compose exec tonearm python -m tonearm.login   # needs a display — see README
 #   curl localhost:8188/health
 services:
-  ampd:
+  tonearm:
     build: .
     # prebuilt multi-arch alternative (amd64 + arm64, published on releases):
-    # image: ghcr.io/cloudcompile/ampd:latest
+    # image: ghcr.io/cloudcompile/tonearm:latest
     ports:
       - "8188:8188"
     environment:
       # writes are OFF unless you flip this — same as the raw server
-      AMPD_ENABLE_WRITES: "0"
+      TONEARM_ENABLE_WRITES: "0"
       # set this before exposing beyond localhost:
-      # AMPD_API_KEY: "change-me"
+      # TONEARM_API_KEY: "change-me"
       # optional: attach to an existing chrome instead of launching one
-      # AMPD_CDP_URL: "http://host.docker.internal:9222"
-      # AMPD_AUTO_CHROME: "0"
+      # TONEARM_CDP_URL: "http://host.docker.internal:9222"
+      # TONEARM_AUTO_CHROME: "0"
     volumes:
-      - ampd-data:/data
+      - tonearm-data:/data
     # chrome is hungry; give it room (Railway/Render: set the same in their UI)
     mem_limit: 1g
     # The image's HEALTHCHECK (see Dockerfile) polls /health and marks the
     # container unhealthy when the API stops answering. `restart: unless-stopped`
     # alone does not act on unhealthy state — for self-healing on a VPS, either
     # run willfarrell/autoheal as a second container, or (compose) rely on the
-    # watchdog inside ampd to recover the renderer and keep this for crash
+    # watchdog inside tonearm to recover the renderer and keep this for crash
     # restarts only.
     restart: unless-stopped
 
 volumes:
-  ampd-data:
+  tonearm-data:

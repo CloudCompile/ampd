@@ -5,7 +5,7 @@ Small personal project, but genuinely open to contributions.
 * **Issues first** — describe what you expected vs what happened. If it's a
   bug against a live Apple surface, include the endpoint and the response
   shape (redact ids if you like).
-* **Keep the honesty bar** — ampd's README documents what's real vs flaky
+* **Keep the honesty bar** — tonearm's README documents what's real vs flaky
   (album adds, empty-playlist 404s, async lag). New features should state
   their caveats the same way.
 * **Net-zero testing** — any change to write paths gets exercised against a
@@ -17,5 +17,5 @@ Small personal project, but genuinely open to contributions.
 Run locally:
 
     pip install -r requirements.txt
-    AMPD_PORT=8189 python3 -m ampd          # writes and audio are off by default
-    AMPD_ENABLE_WRITES=1 python3 -m ampd    # when you mean it
+    TONEARM_PORT=8189 python3 -m tonearm          # writes and audio are off by default
+    TONEARM_ENABLE_WRITES=1 python3 -m tonearm    # when you mean it

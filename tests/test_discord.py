@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd import discord
+from tonearm import discord
 
 
 class TestPresenceMapping(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestPresenceMapping(unittest.TestCase):
 
 class TestOptInGating(unittest.TestCase):
     def test_off_by_default(self):
-        with mock.patch("ampd.config.config") as c:
+        with mock.patch("tonearm.config.config") as c:
             c.discord_enabled = False
             c.mock_enabled = False
             with mock.patch("threading.Thread") as th:
@@ -53,7 +53,7 @@ class TestOptInGating(unittest.TestCase):
                 th.assert_not_called()
 
     def test_skipped_in_mock_mode(self):
-        with mock.patch("ampd.config.config") as c:
+        with mock.patch("tonearm.config.config") as c:
             c.discord_enabled = True
             c.mock_enabled = True
             c.discord_client_id = "x"
@@ -62,7 +62,7 @@ class TestOptInGating(unittest.TestCase):
                 th.assert_not_called()
 
     def test_requires_client_id(self):
-        with mock.patch("ampd.config.config") as c:
+        with mock.patch("tonearm.config.config") as c:
             c.discord_enabled = True
             c.mock_enabled = False
             c.discord_client_id = ""

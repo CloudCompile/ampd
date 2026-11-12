@@ -12,7 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.browser import Browser, BrowserError
+from tonearm.browser import Browser, BrowserError
 
 
 def bare_browser():
@@ -98,7 +98,7 @@ class TestTabUrl(unittest.TestCase):
 
 class TestDebugPayload(unittest.TestCase):
     def test_assembly(self):
-        from ampd.routes import debug as dbg
+        from tonearm.routes import debug as dbg
         b = bare_browser()
         with mock.patch.object(dbg, "browser", b):
             out = dbg.debug()

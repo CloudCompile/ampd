@@ -1,7 +1,7 @@
 """Unit tests for the error envelope (v0.4 #32) — hermetic, no TestClient.
 
 Run:  python3 -m unittest discover -s tests
-The envelope is built by pure functions (ampd/errors.py); the FastAPI
+The envelope is built by pure functions (tonearm/errors.py); the FastAPI
 handlers are thin wrappers over them.
 """
 import os
@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.errors import (ApiError, STATUS_CODES, envelope_content,
+from tonearm.errors import (ApiError, STATUS_CODES, envelope_content,
                          wrap_http_exception, wrap_validation_error)
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -70,11 +70,11 @@ class TestEnvelopeShape(unittest.TestCase):
 
 class TestApiError(unittest.TestCase):
     def test_explicit_codes_beat_status_defaults(self):
-        e = ApiError(501, "writes_disabled", "set AMPD_ENABLE_WRITES=1")
+        e = ApiError(501, "writes_disabled", "set TONEARM_ENABLE_WRITES=1")
         s, body = envelope_content(e.status, e.code, e.hint)
         self.assertEqual(body["error"]["code"], "writes_disabled",
                          "both 501 flavors share a status, not a code")
-        e2 = ApiError(501, "store_disabled", "set AMPD_STORE=1")
+        e2 = ApiError(501, "store_disabled", "set TONEARM_STORE=1")
         self.assertNotEqual(e.code, e2.code)
 
     def test_default_hint_applied(self):

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- ampd PWA (#84) — library browse, search, queue, now-playing, synced
+<!-- tonearm PWA (#84) — library browse, search, queue, now-playing, synced
      lyrics. The shell is cached by the service worker (#90); the API is
      NEVER cached. Auth dialect: Authorization Bearer OR ?api_key= (stored
      in localStorage, appended everywhere — EventSource cannot send
@@ -10,12 +10,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#131316">
 <link rel="manifest" href="/manifest.webmanifest">
-<title>ampd</title>
+<title>tonearm</title>
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header>
-  <div class="brand">ampd</div>
+  <div class="brand">tonearm</div>
   <input id="q" type="search" placeholder="search library & catalog…"
          autocomplete="off" aria-label="search">
   <span id="conn" class="conn" title="live stream state">●</span>
@@ -73,10 +73,10 @@
 <div id="keyprompt" class="modal" hidden>
   <div class="modal-card">
     <h2>server key</h2>
-    <p class="muted">This ampd runs behind an API key. It is stored in
+    <p class="muted">This tonearm runs behind an API key. It is stored in
        localStorage and sent as <code>?api_key=</code> (and as a Bearer
        header everywhere fetch can).</p>
-    <input id="key" type="password" placeholder="AMPD_API_KEY">
+    <input id="key" type="password" placeholder="TONEARM_API_KEY">
     <button id="keysave">save</button>
   </div>
 </div>

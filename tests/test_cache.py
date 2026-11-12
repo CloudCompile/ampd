@@ -11,13 +11,13 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.cache import ReadCache
+from tonearm.cache import ReadCache
 
 
 def fresh_cache(**env):
     """A ReadCache as if the given env had been set at import."""
     saved = {k: os.environ.pop(k, None) for k in
-             ("AMPD_CACHE", "AMPD_CACHE_TTL")}
+             ("TONEARM_CACHE", "TONEARM_CACHE_TTL")}
     try:
         os.environ.update({k: v for k, v in env.items()})
         return ReadCache()
@@ -31,23 +31,23 @@ def fresh_cache(**env):
 
 class TestTTL(unittest.TestCase):
     def test_hit_and_expiry(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="0.05")
+        rc = fresh_cache(TONEARM_CACHE_TTL="0.05")
         rc.put("/k", {"v": 1})
         self.assertEqual(rc.get("/k"), {"v": 1})
         time.sleep(0.07)
         self.assertIsNone(rc.get("/k"))
 
     def test_family_ttls(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="10")
+        rc = fresh_cache(TONEARM_CACHE_TTL="10")
         self.assertEqual(rc.ttl_for("/v1/catalog/us/songs/1"), 100.0)
         self.assertEqual(rc.ttl_for("/v1/me/favorites?ids=1"), 10.0)
         self.assertEqual(rc.ttl_for("/v1/me/library/songs?limit=100"), 10.0)
-        rc = fresh_cache(AMPD_CACHE_TTL="30")
+        rc = fresh_cache(TONEARM_CACHE_TTL="30")
         self.assertEqual(rc.ttl_for("/v1/me/ratings/songs/1"), 10.0,
                          "favorites/ratings cap short even with a big base TTL")
 
     def test_disabled(self):
-        rc = fresh_cache(AMPD_CACHE="0")
+        rc = fresh_cache(TONEARM_CACHE="0")
         self.assertFalse(rc.enabled)
         calls = []
         rc.coalesce("/k", lambda: calls.append(1) or "x")
@@ -55,7 +55,7 @@ class TestTTL(unittest.TestCase):
         self.assertEqual(len(calls), 2, "disabled cache must never serve")
 
     def test_eviction_bounded(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         for i in range(600):
             rc.put(f"/k{i}", i)
         self.assertLessEqual(len(rc._entries), 500)
@@ -63,7 +63,7 @@ class TestTTL(unittest.TestCase):
 
 class TestCoalescing(unittest.TestCase):
     def test_in_flight_calls_collapse(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         n = [0]
         barrier = threading.Barrier(6)
 
@@ -88,7 +88,7 @@ class TestCoalescing(unittest.TestCase):
         self.assertEqual(results, [{"ok": True}] * 6)
 
     def test_leader_failure_lets_follower_retry(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         state = {"fail": True}
         def fetch():
             if state["fail"]:
@@ -108,7 +108,7 @@ class TestCoalescing(unittest.TestCase):
         t.join(5)
 
     def test_fresh_bypasses(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         rc.put("/k", "stale")
         seen = []
         out = rc.coalesce("/k", lambda: seen.append(1) or "fresh", fresh=True)
@@ -118,7 +118,7 @@ class TestCoalescing(unittest.TestCase):
 
 class TestMutationHooks(unittest.TestCase):
     def test_after_mutation_busts_and_blocks(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         rc.put("/v1/me/library/songs?limit=100", ["song"])
         self.assertEqual(rc.get("/v1/me/library/songs?limit=100"), ["song"])
         rc.after_mutation()
@@ -134,7 +134,7 @@ class TestMutationHooks(unittest.TestCase):
         self.assertFalse(rc.blocked())
 
     def test_blocked_reads_never_cache(self):
-        rc = fresh_cache(AMPD_CACHE_TTL="60")
+        rc = fresh_cache(TONEARM_CACHE_TTL="60")
         rc.after_mutation()
         rc.coalesce("/k", lambda: "x")
         self.assertIsNone(rc.get("/k"), "grace-window fetch must not populate")

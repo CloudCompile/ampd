@@ -13,9 +13,9 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ampd.mock import MockKit, BrowserErrorMock
-from ampd.musickit import item_row, song_row  # real, pure
-from ampd import models as M
+from tonearm.mock import MockKit, BrowserErrorMock
+from tonearm.musickit import item_row, song_row  # real, pure
+from tonearm import models as M
 
 
 def route_library_list(raw_page, offset=0):
@@ -88,7 +88,7 @@ class TestModelConformance(unittest.TestCase):
         self.assertTrue(groups)
 
     def test_lyrics_fixture_parses_and_fits(self):
-        from ampd.routes.catalog import _parse_ttml  # pure
+        from tonearm.routes.catalog import _parse_ttml  # pure
         data = self.mock.api_music(
             f"/v1/catalog/us/songs/{self.mock.catalog_songs[0]['id']}/lyrics")
         ttml = (data.get("data") or [{}])[0].get("attributes", {}).get("ttml")
@@ -106,11 +106,11 @@ class TestModelConformance(unittest.TestCase):
 
 class TestPaginatedWalk(unittest.TestCase):
     def test_next_links_chain_to_the_end(self):
-        # install the mock into the REAL musickit surface (like AMPD_MOCK=1
+        # install the mock into the REAL musickit surface (like TONEARM_MOCK=1
         # does), walk with the real-shape paginated equivalent, restore.
         # NEVER call the real browser-driving paginated from tests.
-        import ampd.musickit as mk
-        from ampd.mock import install
+        import tonearm.musickit as mk
+        from tonearm.mock import install
         saved = {k: getattr(mk, k) for k in
                  ("api_music", "paginated", "raw_api")}
         try:
@@ -184,7 +184,7 @@ class TestMockState(unittest.TestCase):
         after = self.mock.snapshot()
         self.assertEqual(after["title"], before["title"])
         # a missing id is a loud 404-shape error, never a silent partial
-        from ampd.mock import BrowserErrorMock
+        from tonearm.mock import BrowserErrorMock
         with self.assertRaises(BrowserErrorMock):
             self.mock.queue_reorder(reordered + ["9999999"])
         self.assertIsNone(self.mock.find_library_playlist("Renamed"))
@@ -232,7 +232,7 @@ class TestOverlay(unittest.TestCase):
     """OBS overlay (#94) — serves the stream's last emitted state."""
 
     def setUp(self):
-        from ampd.routes import stream
+        from tonearm.routes import stream
         self.stream = stream
         self.stream._remember({"isPlaying": True, "title": "Signal 5",
                                "artist": "Mock Artist 2", "album": None,
@@ -251,12 +251,12 @@ class TestOverlay(unittest.TestCase):
         self.assertEqual(snap["artist"], "Mock Artist 2")
 
     def test_json_payload_is_model_valid(self):
-        from ampd.routes.overlay import _payload
-        from ampd import models as M
+        from tonearm.routes.overlay import _payload
+        from tonearm import models as M
         M.OverlayNowPlaying.model_validate(_payload())
 
     def test_text_template_substitution(self):
-        from ampd.routes.overlay import now_playing_txt
+        from tonearm.routes.overlay import now_playing_txt
         out = now_playing_txt(format="{title} by {artist} [{elapsed}]")
         self.assertIn("Signal 5", out)
         self.assertIn("Mock Artist 2", out)
@@ -264,7 +264,7 @@ class TestOverlay(unittest.TestCase):
         self.assertIsInstance(out, str)
 
     def test_text_template_empty_values(self):
-        from ampd.routes.overlay import now_playing_txt
+        from tonearm.routes.overlay import now_playing_txt
         self.stream._remember({"isPlaying": False, "title": None,
                                "artist": None, "album": None, "id": None,
                                "durationMs": None, "elapsedMs": None})
