@@ -55,10 +55,23 @@ python -m ampd
 | `GET /library/recently-added?limit` | most recent additions |
 | `GET /library/playlists/{id}/tracks` | every track of a playlist (auto-paginated to the end) |
 | `GET /library/export` | full backup: every song + every playlist with its tracks (~3 min for a 9k library) |
+| `GET /library/diff?since=&what=` | what changed since a unix timestamp (added/updated/removed) — computed from the local store's snapshot walks; `501` unless `AMPD_STORE=1` |
 
 Every item is normalized (`id`, `catalog_id`, `library_id`, `name`, `artist`,
 `album`, `artwork` at 600×600, …) **and** carries Apple's full raw
 `attributes` blob, so nothing the API exposes is hidden.
+
+### History — `/api/history/…` (the local archive, `AMPD_STORE=1` → else `501`)
+
+Apple's recently-played caps at ~20 items and erodes; the local store keeps
+everything from the moment you enable it (no backfill — coverage starts at
+opt-in).
+
+| Endpoint | Description |
+|---|---|
+| `GET /history/recently-played?limit&offset` | every play since `AMPD_STORE=1` was first enabled, newest first |
+| `GET /history/stats?window=day\|week\|month\|all` | top tracks + artists from YOUR play archive (SQL aggregation, no Apple calls) |
+| `GET /history/stats/series?days=` | plays per UTC day — chart-ready |
 
 ### Catalog (read) — `/api/catalog/…`
 
@@ -202,7 +215,9 @@ usually arrive but the album container row may never appear) ·
 `POST /write/playlists/{id}/tracks` (body: catalog id array — auto-adds songs to your library) ·
 `PUT /write/playlists/{id}/tracks` (body: bare JSON array of **library** ids, full ordered
 list — this is both reorder and removal) ·
-`PATCH /write/playlists/{id}?name=&description=` · `DELETE /write/playlists/{id}`
+`PATCH /write/playlists/{id}?name=&description=` · `DELETE /write/playlists/{id}` ·
+`POST /write/restore` (body: a `/library/export` JSON — **dry-run plan by default**, `?execute=1` applies:
+creates missing playlists, adds tracks, verifies counts async; every un-restorable row is listed with a reason)
 
 Every mutation returns `501` until you set `AMPD_ENABLE_WRITES=1`. All shapes
 above were validated live against a real account.
@@ -225,6 +240,11 @@ above were validated live against a real account.
 | `AMPD_AUDIO_DISPLAY` | `:2` | virtual display for audible chrome |
 | `AMPD_AUDIO_SINK` | `ampd_audio` | private pulse sink to capture |
 | `AMPD_AUDIO_BITRATE` | `160k` | mp3 bitrate of the audio stream |
+| `AMPD_STORE` | `0` | local sqlite store: play archive, library snapshots, diff/stats (`/api/history/…`, `/api/library/diff`) |
+| `AMPD_STORE_PATH` | `/data/ampd.db` in docker, else `~/.local/share/ampd/` | where the store db lives |
+| `AMPD_STORE_SYNC_INTERVAL` | `21600` | seconds between library snapshot walks (single-flight, stall-gated) |
+| `AMPD_EXPORT_INTERVAL` | `0` | seconds between scheduled full exports (`0` = off); atomic writes to `AMPD_EXPORT_DIR` |
+| `AMPD_EXPORT_KEEP` | `7` | keep the newest N scheduled exports, prune older |
 
 ## Field notes (the parts the docs won't tell you)
 
@@ -314,10 +334,13 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
 * **v0.2 — Bulletproof — shipped**: renderer watchdog, read cache + request
   coalescing, Docker healthchecks, bind guard, Prometheus `/metrics`,
   `/api/debug`, multi-arch (amd64+arm64) images, Apple 429 backoff
-* **v0.3 — Memory** (next): backup/restore, local history → then **Typed
-  API** (real response models, generated clients) → **Listening experience**
-  (PWA, synced lyrics) → **Automation** (webhooks, watchers) → **Multi-user**
-  (scoped keys) → **1.0 Polish**
+* **v0.3 — Memory — shipped**: local SQLite store (play archive, library
+  snapshots, cursors), `/api/library/diff`, `/api/history/*` (recently-played
+  + stats + series), scheduled exports with keep-N retention, restore
+  (dry-run planner + verified executor)
+* **Next**: **Typed API** (real response models, generated clients) →
+  **Listening experience** (PWA, synced lyrics) → **Automation** (webhooks,
+  watchers) → **Multi-user** (scoped keys) → **1.0 Polish**
 
 ## Deploying
 
