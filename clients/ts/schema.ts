@@ -687,17 +687,17 @@ export interface paths {
             cookie?: never;
         };
         /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__delete"];
+        get: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__delete"];
+        put: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__delete"];
+        post: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__delete"];
+        delete: operations["passthrough_api_amp_api__path__post"];
         options?: never;
         head?: never;
         /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__delete"];
+        patch: operations["passthrough_api_amp_api__path__post"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -3114,7 +3114,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3145,7 +3145,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3176,7 +3176,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3207,7 +3207,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3238,7 +3238,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
