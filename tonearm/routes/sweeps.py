@@ -11,13 +11,21 @@ Sweeps:
   rate          batch-heart library songs matching a filter
                 (artist / album / min-plays / unrated-only)
   never-played  read-only report of songs Apple reports 0 plays for
+  digest        one walk -> dedupe + never-played summary (v0.6 automation)
+
+The plan computations live in `tonearm/sweeps.py` so the scheduled digest
+can reuse them without importing a router.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from .. import musickit as mk
+from .. import sweeps as sweeps_mod
+from .. import webhooks
 from ..browser import BrowserError
 from ..config import config
 from ..errors import ApiError
+from ..models import (DedupePlan, DedupeReport, NeverPlayedPlan, RatePlan,
+                      RateReport, SweepDigest)
 
 
 def _guard():
@@ -31,31 +39,9 @@ def _guard():
             "batch sweeps mutate your library — they ship off like every "
             "other write. To enable, set TONEARM_ENABLE_WRITES=1 in the "
             "environment.")
-from ..models import (DedupePlan, DedupeReport, NeverPlayedPlan, RatePlan,
-                      RateReport)
+
 
 router = APIRouter(prefix="/write/sweeps", tags=["sweeps (batch, dry-run default)"])
-
-
-def _all_library_songs():
-    def extract(d):
-        return d.get("data", [])
-    return mk.paginated("/v1/me/library/songs?limit=100", extract)
-
-
-def _row_identity(row):
-    """Group key: catalog id when known, else name+artist+duration."""
-    attrs = row.get("attributes", {})
-    catalog = (attrs.get("playParams") or {}).get("catalogId")
-    if catalog:
-        return f"cat:{catalog}", catalog
-    dur = attrs.get("durationInMillis")
-    return (f"nd:{(attrs.get('name') or '').lower()}|"
-            f"{(attrs.get('artistName') or '').lower()}|{dur}"), None
-
-
-def _song_row(row):
-    return mk.item_row(row)
 
 
 # ---------------------------------------------------------------- dedupe
@@ -63,18 +49,9 @@ def _song_row(row):
 @router.get("/dedupe", response_model=DedupePlan)
 def dedupe_plan():
     """Dry-run: groups of duplicate library rows. Nothing is touched."""
-    rows = _all_library_songs()
-    groups = {}
-    for r in rows:
-        key, _ = _row_identity(r)
-        groups.setdefault(key, []).append(r)
-    dupes = {k: [_song_row(x) for x in v]
-             for k, v in groups.items() if len(v) > 1}
-    removable = sum(len(v) - 1 for v in dupes.values())
-    return {"library_size": len(rows), "duplicate_groups": len(dupes),
-            "removable_rows": removable, "groups": list(dupes.values()),
-            "note": "dry-run only — POST with execute=1 to apply "
-                    "(keeps the first row of each group)"}
+    plan = sweeps_mod.dedupe_from_rows(sweeps_mod.all_library_songs())
+    return {**plan, "note": "dry-run only — POST with execute=1 to apply "
+                            "(keeps the first row of each group)"}
 
 
 @router.post("/dedupe", response_model=DedupePlan | DedupeReport)
@@ -96,6 +73,9 @@ def dedupe_execute(execute: int = 0):
                 removed.append(lid)
             except BrowserError as e:
                 errors.append({"id": lid, "error": str(e)[:150]})
+    webhooks.emit(webhooks.LIBRARY_DEDUPED,
+                  {"removed_count": len(removed), "removed": removed,
+                   "errors": errors})
     return {"ok": True, "removed": removed, "errors": errors,
             "removed_count": len(removed)}
 
@@ -106,17 +86,9 @@ def dedupe_execute(execute: int = 0):
 def rate_plan(artist: str = None, album: str = None, limit: int = 500):
     """Dry-run: which library songs a batch-rate would heart.
     (Execution re-checks each song's current rating and skips hearts.)"""
-    rows = _all_library_songs()
-    picked = []
-    for r in rows:
-        attrs = r.get("attributes", {})
-        if artist and artist.lower() not in (attrs.get("artistName") or "").lower():
-            continue
-        if album and album.lower() not in (attrs.get("albumName") or "").lower():
-            continue
-        picked.append(_song_row(r))
-        if len(picked) >= limit:
-            break
+    picked = sweeps_mod.rate_candidates_from_rows(
+        sweeps_mod.all_library_songs(), artist=artist, album=album,
+        limit=limit)
     return {"would_heart": len(picked), "songs": picked,
             "note": "dry-run only — POST with execute=1 to apply. "
                     "Rate sweeps only ADD hearts; they never clear one."}
@@ -144,6 +116,9 @@ def rate_execute(artist: str = None, album: str = None, limit: int = 500,
             done.append(rid)
         except BrowserError as e:
             errors.append({"id": song.get("id"), "error": str(e)[:150]})
+    webhooks.emit(webhooks.LIBRARY_RATED,
+                  {"hearted_count": len(done), "hearted": done,
+                   "already_hearted": skipped, "errors": errors})
     return {"ok": True, "hearted": done, "already_hearted": skipped,
             "errors": errors, "hearted_count": len(done)}
 
@@ -157,14 +132,15 @@ def never_played(limit: int = 100, offset: int = 0):
     library-songs at all — when that's the case this reports
     `play_count_available: false` rather than pretending every song is
     unplayed."""
-    rows = _all_library_songs()
-    out = []
-    for r in rows:
-        attrs = r.get("attributes", {})
-        plays = attrs.get("playCount")
-        if plays in (None, 0):
-            out.append({**_song_row(r), "play_count": plays})
-    available = any(x["play_count"] is not None for x in out)
-    return {"library_size": len(rows), "never_played": len(out),
-            "play_count_available": available,
-            "songs": out[offset:offset + limit]}
+    return sweeps_mod.never_played_from_rows(
+        sweeps_mod.all_library_songs(), limit=limit, offset=offset)
+
+
+# ---------------------------------------------------------------- digest
+
+@router.get("/digest", response_model=SweepDigest)
+def digest():
+    """Dry-run digest: dedupe + never-played from ONE library walk.
+    The same payload is emitted as `sweep.digest` on the scheduled cadence
+    (TONEARM_DIGEST_INTERVAL + TONEARM_WEBHOOKS=1)."""
+    return sweeps_mod.build_digest()

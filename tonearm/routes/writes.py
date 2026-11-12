@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from .. import restore as restore_mod
+from .. import webhooks
 from ..browser import BrowserError
 from ..config import config
 from ..errors import ApiError
@@ -45,6 +46,9 @@ def favorite(song_id: str, library_key: bool = False):
     _guard()
     try:
         mk.set_favorite("library" if library_key else "catalog", song_id, True)
+        webhooks.emit(webhooks.FAVORITE_ADDED,
+                      {"id": song_id,
+                       "key": "library" if library_key else "catalog"})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -57,6 +61,9 @@ def unfavorite(song_id: str, library_key: bool = False):
     _guard()
     try:
         mk.set_favorite("library" if library_key else "catalog", song_id, False)
+        webhooks.emit(webhooks.FAVORITE_REMOVED,
+                      {"id": song_id,
+                       "key": "library" if library_key else "catalog"})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -84,6 +91,8 @@ def rate_song(song_id: str, rating: str = None):
                                  "accepted by Apple but stores as like — not exposed)")
     try:
         mk.rate_song(song_id, True if rating == "like" else None)
+        webhooks.emit(webhooks.RATING_CHANGED,
+                      {"id": song_id, "rating": rating})
         return {"ok": True, "rating": rating}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -101,6 +110,7 @@ def add_to_library(catalog_ids: list[str] = None):
         raise HTTPException(400, "catalog_ids is required")
     try:
         status = mk.library_add(catalog_ids)
+        webhooks.emit(webhooks.LIBRARY_ADDED, {"ids": catalog_ids})
         return {"ok": True, "status": status,
                 "note": "accepted asynchronously — verify via /api/library/songs"}
     except BrowserError as e:
@@ -114,6 +124,7 @@ def remove_from_library(library_song_id: str):
     _guard()
     try:
         mk.library_remove([library_song_id])
+        webhooks.emit(webhooks.LIBRARY_REMOVED, {"id": library_song_id})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -128,6 +139,7 @@ def add_albums_to_library(catalog_album_ids: list[str] = None):
         raise HTTPException(400, "catalog_album_ids is required")
     try:
         status = mk.library_add_albums(catalog_album_ids)
+        webhooks.emit(webhooks.LIBRARY_ALBUM_ADDED, {"ids": catalog_album_ids})
         return {"ok": True, "status": status,
                 "note": "accepted asynchronously — verify via /api/library/albums"}
     except BrowserError as e:
@@ -141,6 +153,7 @@ def remove_album_from_library(library_album_id: str):
     _guard()
     try:
         mk.library_remove_album(library_album_id)
+        webhooks.emit(webhooks.LIBRARY_ALBUM_REMOVED, {"id": library_album_id})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -155,7 +168,10 @@ def create_playlist(name: str = None, description: str = ""):
     if not name:
         raise HTTPException(400, "name is required")
     try:
-        return {"ok": True, "playlist_id": mk.playlist_create(name, description)}
+        pid = mk.playlist_create(name, description)
+        webhooks.emit(webhooks.PLAYLIST_CREATED,
+                      {"id": pid, "name": name})
+        return {"ok": True, "playlist_id": pid}
     except BrowserError as e:
         raise HTTPException(502, str(e))
 
@@ -169,6 +185,8 @@ def add_tracks(playlist_id: str, track_ids: list[str] = None):
         raise HTTPException(400, "track_ids is required")
     try:
         mk.playlist_add_tracks(playlist_id, track_ids)
+        webhooks.emit(webhooks.PLAYLIST_TRACKS_ADDED,
+                      {"playlist_id": playlist_id, "track_ids": track_ids})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -185,6 +203,9 @@ def set_tracks(playlist_id: str, ordered_library_ids: list[str] = None):
         raise HTTPException(400, "ordered_library_ids is required")
     try:
         mk.playlist_set_tracks(playlist_id, ordered_library_ids)
+        webhooks.emit(webhooks.PLAYLIST_TRACKS_REPLACED,
+                      {"playlist_id": playlist_id,
+                       "track_count": len(ordered_library_ids)})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -198,6 +219,9 @@ def rename_playlist(playlist_id: str, name: str = None, description: str = None)
         raise HTTPException(400, "name and/or description required")
     try:
         mk.playlist_rename(playlist_id, name, description)
+        webhooks.emit(webhooks.PLAYLIST_RENAMED,
+                      {"playlist_id": playlist_id, "name": name,
+                       "description": description})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -209,6 +233,7 @@ def delete_playlist(playlist_id: str):
     _guard()
     try:
         mk.playlist_delete(playlist_id)
+        webhooks.emit(webhooks.PLAYLIST_DELETED, {"playlist_id": playlist_id})
         return {"ok": True}
     except BrowserError as e:
         raise HTTPException(502, str(e))
@@ -237,6 +262,12 @@ def restore(source: dict = None, execute: int = 0, match_budget: int = 2000):
             raise HTTPException(502, "plan rebuild failed")
         try:
             report = restore_mod.execute_plan(_plan, mk)
+            webhooks.emit(webhooks.PLAYLIST_RESTORED,
+                          {"created": len(report.get("created") or []),
+                           "verified": len(report.get("verified") or []),
+                           "mismatch": len(report.get("mismatch") or []),
+                           "unmatched_total":
+                               report.get("unmatched_total", 0)})
             return {"ok": True, "plan_totals": _plan["totals"],
                     "report": report}
         except BrowserError as e:

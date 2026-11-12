@@ -12,9 +12,10 @@ from .config import config
 from .browser import browser, BrowserError
 from .errors import ApiError, install_error_handlers
 from .models import Health
+from . import __version__
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
-                     history, overlay)
+                     history, overlay, webhooks as webhooks_routes)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -86,7 +87,38 @@ async def lifespan(app):
                             "run `python -m tonearm.lastfm` first")
         except Exception as e:
             log.error("lastfm scrobbler failed to start: %s", e)
+    # Outbound webhooks (opt-in: TONEARM_WEBHOOKS=1) — the delivery worker
+    # and the stream watcher. Producers call webhooks.emit(); when off it is
+    # a no-op, so every call site stays unconditional.
+    try:
+        from . import webhooks
+        webhooks.start()
+    except Exception as e:
+        log.error("webhook engine failed to start: %s", e)
+    # Scheduled sweep digests (opt-in: TONEARM_DIGEST_INTERVAL>0, needs
+    # webhooks). A dry-run walk on a slow cadence; emits `sweep.digest`.
+    if config.digest_interval > 0 and config.webhooks_enabled:
+        try:
+            from .digest import DigestScheduler
+            from .browser import browser as _b
+            _dig = DigestScheduler(_b)
+            _dig.start()
+            import tonearm.digest as _digest_mod
+            _digest_mod.scheduler = _dig
+        except Exception as e:
+            log.error("digest scheduler failed to start: %s", e)
     yield
+    try:
+        from . import digest as _digest_mod
+        if getattr(_digest_mod, "scheduler", None) is not None:
+            _digest_mod.scheduler.stop()
+    except Exception:
+        pass
+    try:
+        from . import webhooks
+        webhooks.stop()
+    except Exception:
+        pass
     try:
         from .store import store
         store.close()
@@ -98,7 +130,7 @@ app = FastAPI(
     title="tonearm",
     description="Unofficial personal Apple Music API — powered by your own "
                 "logged-in web player session. Not affiliated with Apple.",
-    version="0.5.1",
+    version=__version__,
     lifespan=lifespan,
 )
 
@@ -178,6 +210,7 @@ app.include_router(metrics.router)
 app.include_router(debug.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(overlay.router, prefix="/api")
+app.include_router(webhooks_routes.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)

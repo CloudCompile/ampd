@@ -8,6 +8,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -255,6 +256,49 @@ class TestSnapshotScheduler(unittest.TestCase):
             self.assertEqual(s.library_count(), 2)
             self.assertEqual(s.get_cursor("library.walk")["rows"], 2,
                              "cursor records the completed walk")
+        finally:
+            s.close()
+
+    def test_second_walk_emits_library_changed(self):
+        s = temp_store()
+        s.start()
+        try:
+            rows_v1 = [dict(library_id="i.1", name="A", artist="x", album="l",
+                            catalog_id=None, duration_ms=1,
+                            type="library-songs", attributes={})]
+            self._sched(s, lambda: rows_v1).run_walk()
+            # first walk emitted nothing: on a virgin store EVERY row would
+            # look "added" — the baseline walk is deliberately silent
+            rows_v2 = [dict(library_id="i.1", name="A!", artist="x", album="l",
+                            catalog_id=None, duration_ms=1,
+                            type="library-songs", attributes={}),
+                       dict(library_id="i.2", name="B", artist="x", album="l",
+                            catalog_id=None, duration_ms=2,
+                            type="library-songs", attributes={})]
+            sched = self._sched(s, lambda: rows_v2)
+            with mock.patch("tonearm.webhooks.emit") as emit:
+                sched.run_walk()
+            self.assertTrue(emit.called, "a change between walks emits")
+            event_type, payload = emit.call_args[0]
+            self.assertEqual(event_type, "library.changed")
+            self.assertEqual(payload["counts"]["added"], 1)
+            self.assertEqual(payload["counts"]["updated"], 1)
+        finally:
+            s.close()
+
+    def test_unchanged_second_walk_emits_nothing(self):
+        s = temp_store()
+        s.start()
+        try:
+            rows = [dict(library_id="i.1", name="A", artist="x", album="l",
+                         catalog_id=None, duration_ms=1,
+                         type="library-songs", attributes={})]
+            sched = self._sched(s, lambda: rows)
+            sched.run_walk()
+            with mock.patch("tonearm.webhooks.emit") as emit:
+                sched.run_walk()
+            self.assertFalse(emit.called,
+                             "an identical re-walk is not a change event")
         finally:
             s.close()
 
