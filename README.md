@@ -311,11 +311,12 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
   lyrics, export), playback + queue, SSE state streaming, live audio
   streaming, write ops with net-zero-tested sweeps, Docker + deploy guides,
   live test suite, CI
-* **v0.2 — Bulletproof** (next): renderer watchdog, read cache + request
-  coalescing, healthchecks, metrics, ARM images
-* then **Memory** (backup/restore, local history) → **Typed API** (real
-  response models, generated clients) → **Listening experience** (PWA,
-  synced lyrics) → **Automation** (webhooks, watchers) → **Multi-user**
+* **v0.2 — Bulletproof — shipped**: renderer watchdog, read cache + request
+  coalescing, Docker healthchecks, bind guard, Prometheus `/metrics`,
+  `/api/debug`, multi-arch (amd64+arm64) images, Apple 429 backoff
+* **v0.3 — Memory** (next): backup/restore, local history → then **Typed
+  API** (real response models, generated clients) → **Listening experience**
+  (PWA, synced lyrics) → **Automation** (webhooks, watchers) → **Multi-user**
   (scoped keys) → **1.0 Polish**
 
 ## Deploying
