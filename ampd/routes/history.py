@@ -7,7 +7,6 @@ REAL archive, and answers 501 when the store is off (honest opt-in).
 """
 from fastapi import APIRouter, HTTPException
 
-from .. import musickit as mk  # noqa: F401  (pattern parity with sibling routers)
 from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/history", tags=["history (local store)"])

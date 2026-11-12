@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/library", tags=["library"])
 
@@ -67,6 +68,35 @@ def export_library(songs_limit: int = 100000):
         }
     except BrowserError as e:
         raise HTTPException(502, str(e))
+
+
+@router.get("/diff")
+def library_diff(since: float = 0.0, what: str = "all",
+                 limit: int = 100, offset: int = 0):
+    """What changed in your library since a unix timestamp.
+
+    Apple has no "changed since" filter — this diff is OURS, computed from
+    the local store's watermark columns (first_seen / last_seen /
+    last_changed) across snapshot walks. So:
+      * `since=0` (default) -> the whole library as `added`
+      * removals become visible on the FIRST walk AFTER they happen
+      * `what` filters: added | updated | removed | all
+    """
+    if since > time.time():
+        raise HTTPException(400, "since is in the future")
+    try:
+        if what == "added":
+            return {"added": store.library_added_since(since, limit, offset)}
+        if what == "updated":
+            return {"updated": store.library_updated_since(since, limit, offset)}
+        if what == "removed":
+            return {"removed": store.library_removed_since(since, limit, offset)}
+        return {"added": store.library_added_since(since, limit, offset),
+                "updated": store.library_updated_since(since, limit, offset),
+                "removed": store.library_removed_since(since, limit, offset),
+                "walk": store.get_cursor("library.walk")}
+    except StoreDisabled as e:
+        raise HTTPException(501, str(e))
 
 
 def _path(resource, limit, offset, term=None, extend=None):

@@ -40,7 +40,8 @@ jobs:
 
           paths = flatten(app.routes)
           assert len(paths) > 40, f"expected 40+ routes, got {len(paths)}"
-          for must in ("/api/library/export",
+          for must in ("/api/library/export", "/api/library/diff",
+                       "/api/history/recently-played",
                        "/api/catalog/songs/{song_id}/lyrics",
                        "/api/audio/stream.mp3", "/api/stream", "/demo",
                        "/api/write/sweeps/dedupe", "/api/playback/now-playing",

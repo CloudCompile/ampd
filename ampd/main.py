@@ -36,14 +36,17 @@ async def lifespan(app):
     # started when AMPD_STORE is unset; everything history answers 501 then.
     if config.store_enabled:
         try:
-            from .store import store, HistoryWriter
+            from .store import store, HistoryWriter, SnapshotScheduler
             from .browser import browser as _b
             from . import musickit as _mk
             store.start()
             _writer = HistoryWriter(store, _b, _mk)
             _writer.start()
+            _snap = SnapshotScheduler(store, _b, _mk)
+            _snap.start()
             import ampd.store as _store_mod
             _store_mod.history_writer = _writer
+            _store_mod.snapshot_scheduler = _snap
         except Exception as e:
             log.error("store failed to start (continuing without it): %s", e)
     yield
