@@ -11,11 +11,12 @@ Gated behind AMPD_API_KEY when set (it sits under /api like everything else).
 from fastapi import APIRouter
 
 from ..browser import browser
+from ..models import DebugInfo
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 
 
-@router.get("")
+@router.get("", response_model=DebugInfo)
 def debug():
     return {
         "tab_url": browser.tab_url(),

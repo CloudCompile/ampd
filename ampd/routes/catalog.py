@@ -9,6 +9,8 @@ from fastapi.responses import Response
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..models import (ItemList, ItemRow, LibraryItem, Lyrics, RelationshipPage,
+                      SearchHints)
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -18,7 +20,7 @@ CATALOG_RESOURCES = {"songs", "albums", "artists", "playlists", "music-videos",
                      "stations", "curators", "search-hints", "record-labels"}
 
 
-@router.get("/search")
+@router.get("/search", response_model=dict[str, list[ItemRow]])
 def catalog_search(term: str, types: str = "songs,albums,artists,playlists",
                    limit: int = 10):
     """Multi-type catalog search. `types` is a comma list, e.g.
@@ -37,7 +39,7 @@ def catalog_search(term: str, types: str = "songs,albums,artists,playlists",
         raise HTTPException(502, str(e))
 
 
-@router.get("/hints")
+@router.get("/hints", response_model=SearchHints)
 def hints(term: str, types: str = "songs,artists,albums,playlists"):
     """Search suggestions (what the web player's autocomplete shows).
     Returns flat rows: {term/title, id, kind}."""
@@ -87,7 +89,7 @@ def _parse_ttml(ttml):
     return lines
 
 
-@router.get("/songs/{song_id}/lyrics")
+@router.get("/songs/{song_id}/lyrics", response_model=Lyrics)
 def song_lyrics(song_id: str, raw: bool = False):
     """Synced lyrics for a catalog song (Apple's TTML, parsed to lines).
     `raw=1` returns the raw TTML document. Songs without lyrics -> 404."""
@@ -106,7 +108,7 @@ def song_lyrics(song_id: str, raw: bool = False):
         raise HTTPException(502, str(e))
 
 
-@router.get("/charts")
+@router.get("/charts", response_model=dict[str, list[ItemRow]])
 def charts(types: str = "songs", limit: int = 25, genre: str = None):
     """Catalog charts: most-played songs/albums/playlists. `genre` = genre id."""
     try:
@@ -123,7 +125,7 @@ def charts(types: str = "songs", limit: int = 25, genre: str = None):
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}")
+@router.get("/{resource}", response_model=ItemList)
 def catalog_by_ids(resource: str, ids: str):
     """Fetch specific catalog resources by (comma-separated) id."""
     if resource not in CATALOG_RESOURCES:
@@ -136,7 +138,7 @@ def catalog_by_ids(resource: str, ids: str):
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}/{resource_id}")
+@router.get("/{resource}/{resource_id}", response_model=LibraryItem)
 def catalog_item(resource: str, resource_id: str, extend: str = None):
     """One catalog item; `extend=tracks` etc. includes relationships inline."""
     if resource not in CATALOG_RESOURCES:
@@ -156,7 +158,7 @@ def catalog_item(resource: str, resource_id: str, extend: str = None):
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}/{resource_id}/{relationship}")
+@router.get("/{resource}/{resource_id}/{relationship}", response_model=RelationshipPage)
 def catalog_relationship(resource: str, resource_id: str, relationship: str,
                          limit: int = 100, offset: int = 0):
     """e.g. /catalog/artists/{id}/albums, /catalog/albums/{id}/tracks."""

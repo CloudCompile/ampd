@@ -18,6 +18,8 @@ from .. import restore as restore_mod
 from ..browser import BrowserError
 from ..config import config
 from ..errors import ApiError
+from ..models import (Ok, OkPlaylist, OkRating, OkStatus, RatingState,
+                      RestoreExecuted, RestorePlan)
 
 
 def _norm(s):
@@ -37,7 +39,7 @@ def _guard():
 
 # ---------------------------------------------------------------- favorites
 
-@router.post("/favorites/{song_id}")
+@router.post("/favorites/{song_id}", response_model=Ok)
 def favorite(song_id: str, library_key: bool = False):
     """Favorite (heart) a song. `library_key=true` for library-keyed tracks."""
     _guard()
@@ -48,7 +50,7 @@ def favorite(song_id: str, library_key: bool = False):
         raise HTTPException(502, str(e))
 
 
-@router.delete("/favorites/{song_id}")
+@router.delete("/favorites/{song_id}", response_model=Ok)
 def unfavorite(song_id: str, library_key: bool = False):
     """Unfavorite a song. Verify with GET /api/favorites — a wrong-key delete
     returns success without doing anything."""
@@ -62,7 +64,7 @@ def unfavorite(song_id: str, library_key: bool = False):
 
 # ---------------------------------------------------------------- ratings
 
-@router.get("/ratings/songs/{song_id}")
+@router.get("/ratings/songs/{song_id}", response_model=RatingState)
 def get_rating(song_id: str, fresh: bool = False):
     """Current rating of a song: null = none, 1 = like.
     Ratings lag server-side after a mutation; `?fresh=1` bypasses cache."""
@@ -73,7 +75,7 @@ def get_rating(song_id: str, fresh: bool = False):
         raise HTTPException(502, str(e))
 
 
-@router.put("/ratings/songs/{song_id}")
+@router.put("/ratings/songs/{song_id}", response_model=OkRating)
 def rate_song(song_id: str, rating: str = None):
     """rating: 'like' or 'none'."""
     _guard()
@@ -89,7 +91,7 @@ def rate_song(song_id: str, rating: str = None):
 
 # ---------------------------------------------------------------- library
 
-@router.post("/library/add")
+@router.post("/library/add", response_model=OkStatus)
 def add_to_library(catalog_ids: list[str] = None):
     """Add catalog songs to your library. Body is a bare JSON array of
     catalog song ids. NOTE: 202-accepted (async on Apple's side); the
@@ -105,7 +107,7 @@ def add_to_library(catalog_ids: list[str] = None):
         raise HTTPException(502, str(e))
 
 
-@router.delete("/library/{library_song_id}")
+@router.delete("/library/{library_song_id}", response_model=Ok)
 def remove_from_library(library_song_id: str):
     """Remove a song from your library by its library id (i.XXX).
     This is NOT the same as unfavoriting. Destructive — no undo."""
@@ -117,7 +119,7 @@ def remove_from_library(library_song_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.post("/library/add-albums")
+@router.post("/library/add-albums", response_model=OkStatus)
 def add_albums_to_library(catalog_album_ids: list[str] = None):
     """Add catalog albums (all their tracks) to your library.
     Body: bare JSON array of catalog album ids. 202-async."""
@@ -132,7 +134,7 @@ def add_albums_to_library(catalog_album_ids: list[str] = None):
         raise HTTPException(502, str(e))
 
 
-@router.delete("/library/albums/{library_album_id}")
+@router.delete("/library/albums/{library_album_id}", response_model=Ok)
 def remove_album_from_library(library_album_id: str):
     """Remove a whole library album (l.XXX) — all its songs go too.
     Destructive — no undo."""
@@ -146,7 +148,7 @@ def remove_album_from_library(library_album_id: str):
 
 # ---------------------------------------------------------------- playlists
 
-@router.post("/playlists")
+@router.post("/playlists", response_model=OkPlaylist)
 def create_playlist(name: str = None, description: str = ""):
     """Create a library playlist. Returns the new playlist id."""
     _guard()
@@ -158,7 +160,7 @@ def create_playlist(name: str = None, description: str = ""):
         raise HTTPException(502, str(e))
 
 
-@router.post("/playlists/{playlist_id}/tracks")
+@router.post("/playlists/{playlist_id}/tracks", response_model=Ok)
 def add_tracks(playlist_id: str, track_ids: list[str] = None):
     """Append catalog songs to a playlist (auto-adds them to the library).
     Body is a bare JSON array of catalog song ids."""
@@ -172,7 +174,7 @@ def add_tracks(playlist_id: str, track_ids: list[str] = None):
         raise HTTPException(502, str(e))
 
 
-@router.put("/playlists/{playlist_id}/tracks")
+@router.put("/playlists/{playlist_id}/tracks", response_model=Ok)
 def set_tracks(playlist_id: str, ordered_library_ids: list[str] = None):
     """REPLACE the track list, in order. Body is a bare JSON array of
     library-songs ids. This is both reorder and removal: send the full
@@ -188,7 +190,7 @@ def set_tracks(playlist_id: str, ordered_library_ids: list[str] = None):
         raise HTTPException(502, str(e))
 
 
-@router.patch("/playlists/{playlist_id}")
+@router.patch("/playlists/{playlist_id}", response_model=Ok)
 def rename_playlist(playlist_id: str, name: str = None, description: str = None):
     """Rename / re-describe a library playlist."""
     _guard()
@@ -201,7 +203,7 @@ def rename_playlist(playlist_id: str, name: str = None, description: str = None)
         raise HTTPException(502, str(e))
 
 
-@router.delete("/playlists/{playlist_id}")
+@router.delete("/playlists/{playlist_id}", response_model=Ok)
 def delete_playlist(playlist_id: str):
     """Delete a library playlist. Destructive — no undo."""
     _guard()
@@ -214,7 +216,7 @@ def delete_playlist(playlist_id: str):
 
 # ---------------------------------------------------------------- restore
 
-@router.post("/restore")
+@router.post("/restore", response_model=RestorePlan | RestoreExecuted)
 def restore(source: dict = None, execute: int = 0, match_budget: int = 2000):
     """Restore playlists from a /api/library/export JSON body.
 

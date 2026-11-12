@@ -15,6 +15,9 @@ from .. import musickit as mk
 from .. import exporter
 from ..browser import BrowserError
 from ..errors import ApiError
+from ..models import (DiffAdded, DiffAll, DiffRemoved, DiffUpdated, ItemList,
+                      ItemRow, LibraryExport, LibraryItem, LibraryList,
+                      PlaylistTrackList, RelationshipPage)
 from ..store import StoreDisabled, store
 
 router = APIRouter(prefix="/library", tags=["library"])
@@ -36,8 +39,8 @@ def _path(resource, limit, offset, term=None, extend=None):
     return f"/v1/me/library/{resource}?{q}"
 
 
-@router.get("/playlists/{playlist_id}/tracks")
-def playlist_tracks(playlist_id: str):
+@router.get("/playlists/{playlist_id}/tracks", response_model=PlaylistTrackList)
+def playlist_tracks(playlist_id: str) -> PlaylistTrackList:
     """Every track of a library playlist (auto-paginated to the end).
     NOTE: declared before the generic routes so it wins the match."""
     try:
@@ -46,7 +49,7 @@ def playlist_tracks(playlist_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.get("/export")
+@router.get("/export", response_model=LibraryExport)
 def export_library(songs_limit: int = 100000):
     """Full library dump as JSON — every song + every playlist (with track
     ids). Slow by design: walks the entire library (~100 s per 9k songs).
@@ -58,7 +61,8 @@ def export_library(songs_limit: int = 100000):
         raise HTTPException(502, str(e))
 
 
-@router.get("/diff")
+@router.get("/diff", response_model=DiffAdded | DiffUpdated
+                       | DiffRemoved | DiffAll)
 def library_diff(since: float = 0.0, what: str = "all",
                  limit: int = 100, offset: int = 0):
     """What changed in your library since a unix timestamp.
@@ -99,7 +103,7 @@ def _path(resource, limit, offset, term=None, extend=None):
     return f"/v1/me/library/{resource}?{q}"
 
 
-@router.get("/search")
+@router.get("/search", response_model=dict[str, list[ItemRow]])
 def library_search(term: str, limit: int = 25):
     """Search YOUR library across songs/albums/artists/playlists."""
     if not term:
@@ -118,7 +122,7 @@ def library_search(term: str, limit: int = 25):
         raise HTTPException(502, str(e))
 
 
-@router.get("/recently-added")
+@router.get("/recently-added", response_model=ItemList)
 def recently_added(limit: int = 25):
     """Most recently added library items (any kind)."""
     try:
@@ -128,7 +132,7 @@ def recently_added(limit: int = 25):
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}")
+@router.get("/{resource}", response_model=LibraryList)
 def list_resource(resource: str, limit: int = 100, offset: int = 0,
                   term: str = None, extend: str = None):
     """List any library resource, fully paginated by the caller."""
@@ -141,7 +145,7 @@ def list_resource(resource: str, limit: int = 100, offset: int = 0,
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}/{resource_id}")
+@router.get("/{resource}/{resource_id}", response_model=LibraryItem)
 def get_resource(resource: str, resource_id: str):
     """One library item, with its relationships (e.g. an album's track list)."""
     try:
@@ -160,7 +164,7 @@ def get_resource(resource: str, resource_id: str):
         raise HTTPException(502, str(e))
 
 
-@router.get("/{resource}/{resource_id}/{relationship}")
+@router.get("/{resource}/{resource_id}/{relationship}", response_model=RelationshipPage)
 def get_relationship(resource: str, resource_id: str, relationship: str,
                      limit: int = 100, offset: int = 0):
     """A relationship collection, e.g. /library/albums/{id}/tracks."""

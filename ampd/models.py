@@ -1,0 +1,412 @@
+"""Response models — the OpenAPI page stops lying by omission (v0.4 #30).
+
+Rules encoded:
+* The raw `attributes` blob stays: typed accessors go BESIDE it, never
+  replacing it (Apple exposes new fields without notice; hiding them is
+  data loss). Same for the envelope-style dicts with dynamic keys — they're
+  typed as `dict[str, list[ItemRow]]` etc.
+* `extra="allow"` on everything: a field we don't model PASSES THROUGH
+  instead of being dropped by response filtering. Models describe what we
+  know; they never censor what Apple sends.
+* Pagination shapes (`next_offset`, `next`) stay exactly as clients use
+  them today — this is a typing pass, not a shape change.
+* SSE (/api/stream), audio, /metrics (text), and the amp-api passthrough
+  are exempt (streaming/binary/raw by design).
+"""
+from pydantic import BaseModel, Field
+
+
+class _PassThrough(BaseModel):
+    """Unknown fields pass through, always."""
+    model_config = {"extra": "allow"}
+
+
+class SongRow(_PassThrough):
+    """mk.song_row — the normalized song shape."""
+    id: str | None = None
+    library_id: str | None = None
+    catalog_id: str | None = None
+    name: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    artwork: str | None = None
+    duration_ms: int | None = None
+
+
+class ItemRow(SongRow):
+    """mk.item_row — any resource: song fields + kind + the RAW attributes
+    blob (every field Apple exposes, unfiltered)."""
+    type: str | None = None
+    track_number: int | None = None
+    play_count: int | None = None
+    release_date: str | None = None
+    genres: list[str] | None = None
+    attributes: dict = Field(default_factory=dict)
+
+
+class RelationshipGroup(_PassThrough):
+    items: list[ItemRow] = []
+
+
+class LibraryList(_PassThrough):
+    items: list[ItemRow]
+    count: int
+    next_offset: int | None = None
+
+
+class LibraryItem(ItemRow):
+    relationships: dict[str, RelationshipGroup] = Field(default_factory=dict)
+
+
+class RelationshipPage(_PassThrough):
+    items: list[ItemRow]
+    next: str | None = None
+
+
+class PlaylistTrackList(_PassThrough):
+    tracks: list[SongRow]
+
+
+class ExportPlaylist(_PassThrough):
+    id: str
+    name: str | None = None
+    tracks: list[SongRow] = []
+
+
+class LibraryExport(_PassThrough):
+    exported_at: str
+    song_count: int
+    songs: list[SongRow]
+    playlist_count: int
+    playlists: list[ExportPlaylist]
+
+
+# ---- local store rows (watermark shape — NOT item rows) ----
+
+class StoreRow(_PassThrough):
+    library_id: str
+    catalog_id: str | None = None
+    name: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    duration_ms: int | None = None
+    kind: str | None = None
+    first_seen: float | None = None
+    last_seen: float | None = None
+    last_changed: float | None = None
+
+
+class StoreRowPage(_PassThrough):
+    total: int
+    count: int
+    items: list[StoreRow]
+    next_offset: int | None = None
+
+
+class _DiffPartial(_PassThrough):
+    # `what=` filtering returns ONLY that key — a partial model must not
+    # silently swallow the full shape in the union, so extras are forbidden
+    model_config = {"extra": "forbid"}
+
+
+class DiffAdded(_DiffPartial):
+    added: StoreRowPage
+
+
+class DiffUpdated(_DiffPartial):
+    updated: StoreRowPage
+
+
+class DiffRemoved(_DiffPartial):
+    removed: StoreRowPage
+
+
+class DiffAll(_DiffPartial):
+    """`what=all` (the default): all three pages + the last walk cursor."""
+    added: StoreRowPage
+    updated: StoreRowPage
+    removed: StoreRowPage
+    walk: dict | None = None
+
+
+class PlayRow(_PassThrough):
+    id: str
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    artwork: str | None = None
+    duration_ms: int | None = None
+    played_at: str
+
+
+class RecentlyPlayed(_PassThrough):
+    total: int
+    count: int
+    items: list[PlayRow]
+    next_offset: int | None = None
+
+
+class TopTrack(_PassThrough):
+    id: str
+    title: str | None = None
+    artist: str | None = None
+    plays: int
+
+
+class TopArtist(_PassThrough):
+    artist: str
+    plays: int
+
+
+class Stats(_PassThrough):
+    window_since: float
+    total_plays: int
+    top_tracks: list[TopTrack]
+    top_artists: list[TopArtist]
+
+
+class SeriesPoint(_PassThrough):
+    day: str
+    plays: int
+
+
+class StatsSeries(_PassThrough):
+    days: int
+    series: list[SeriesPoint]
+
+
+# ---- catalog ----
+
+class SearchHints(_PassThrough):
+    hints: list[dict]
+
+
+class LyricLine(_PassThrough):
+    timeMs: int | None = None
+    text: str
+
+
+class Lyrics(_PassThrough):
+    song_id: str
+    lines: list[LyricLine]
+
+
+# ---- personal ----
+
+class RecommendationGroup(_PassThrough):
+    id: str | None = None
+    title: str | None = None
+    reason: str | None = None
+    items: list[ItemRow] = []
+
+
+class Recommendations(_PassThrough):
+    groups: list[RecommendationGroup]
+
+
+class ItemList(_PassThrough):
+    items: list[ItemRow]
+
+
+class MadeForYou(_PassThrough):
+    playlists: list[ItemRow]
+
+
+# ---- favorites ----
+
+class Favorites(_PassThrough):
+    count: int
+    playlist_id: str
+    tracks: list[SongRow]
+
+
+class RatingState(_PassThrough):
+    song_id: str
+    value: int | None = None
+
+
+# ---- playback ----
+
+class NowPlaying(_PassThrough):
+    isPlaying: bool
+    state: float | int | None = None
+    title: str | None = None
+    artist: str | None = None
+    album: str | None = None
+    durationMs: int | None = None
+    artworkUrl: str | None = None
+    progress: float | None = None
+    elapsedMs: int | None = None
+
+
+class QueueItem(_PassThrough):
+    id: str | None = None
+    title: str | None = None
+    artist: str | None = None
+    kind: str | None = None
+
+
+class Queue(_PassThrough):
+    items: list[QueueItem]
+
+
+class PlaybackSettings(_PassThrough):
+    shuffle: str | None = None
+    repeat: int | None = None
+    volume: float | None = None
+    isPlaying: bool | None = None
+
+
+class VolumeState(_PassThrough):
+    volume: float | None = None
+
+
+class Ok(_PassThrough):
+    ok: bool = True
+
+
+class OkVolume(Ok):
+    volume: float
+
+
+class OkShuffle(Ok):
+    shuffle: str
+
+
+class OkRepeat(Ok):
+    repeat: int
+
+
+class OkRating(Ok):
+    rating: str
+
+
+class OkPlaylist(Ok):
+    playlist_id: str
+
+
+class OkStatus(Ok):
+    status: int
+    note: str | None = None
+
+
+# ---- sweeps ----
+
+class SweepPlan(_PassThrough):
+    library_size: int
+    note: str | None = None
+
+
+class DedupePlan(SweepPlan):
+    duplicate_groups: int
+    removable_rows: int
+    groups: list[list[ItemRow]]
+
+
+class NeverPlayedRow(ItemRow):
+    play_count: int | None = None
+
+
+class NeverPlayedPlan(_PassThrough):
+    library_size: int
+    never_played: int
+    play_count_available: bool
+    songs: list[NeverPlayedRow]
+
+
+class RatePlan(_PassThrough):
+    would_heart: int
+    songs: list[ItemRow]
+    note: str | None = None
+
+
+class WriteError(_PassThrough):
+    id: str | None = None
+    name: str | None = None
+    error: str
+
+
+class DedupeReport(_PassThrough):
+    ok: bool
+    removed: list[str]
+    errors: list[WriteError]
+    removed_count: int
+
+
+class RateReport(_PassThrough):
+    ok: bool
+    hearted: list[str]
+    already_hearted: list[str]
+    errors: list[WriteError]
+    hearted_count: int
+
+
+# ---- restore ----
+
+class RestorePlanItem(_PassThrough):
+    name: str
+    mode: str
+    playlist_id: str | None = None
+    track_count: int
+    actions: list[dict]
+    unmatched: list[dict]
+
+
+class RestorePlan(_PassThrough):
+    totals: dict
+    playlists: list[RestorePlanItem]
+    note: str | None = None
+
+
+class RestoreVerified(_PassThrough):
+    name: str
+    playlist_id: str
+    tracks: int
+
+
+class RestoreReport(_PassThrough):
+    created: list[dict]
+    verified: list[RestoreVerified]
+    mismatch: list[dict]
+    errors: list[dict]
+    unmatched_total: int
+
+
+class RestoreExecuted(_PassThrough):
+    ok: bool
+    plan_totals: dict
+    report: RestoreReport
+
+
+# ---- errors / system ----
+
+class ErrorBody(_PassThrough):
+    code: str
+    hint: str
+
+
+class ErrorEnvelope(_PassThrough):
+    error: ErrorBody
+
+
+class WatchdogState(_PassThrough):
+    running: bool | None = None
+    last_ping_ts: float | None = None
+    last_ok: bool | None = None
+    consecutive_failures: int | None = None
+    recycles: int | None = None
+    last_action: str | None = None
+
+
+class Health(_PassThrough):
+    status: str
+    browser: str | None = None
+    watchdog: WatchdogState | None = None
+    detail: str | None = None
+
+
+class DebugInfo(_PassThrough):
+    tab_url: str | None = None
+    renderer: dict
+    recent_calls: list[dict]
+    note: str | None = None

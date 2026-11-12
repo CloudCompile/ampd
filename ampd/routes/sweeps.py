@@ -16,6 +16,8 @@ from fastapi import APIRouter, HTTPException
 
 from .. import musickit as mk
 from ..browser import BrowserError
+from ..models import (DedupePlan, DedupeReport, NeverPlayedPlan, RatePlan,
+                      RateReport)
 
 router = APIRouter(prefix="/write/sweeps", tags=["sweeps (batch, dry-run default)"])
 
@@ -43,7 +45,7 @@ def _song_row(row):
 
 # ---------------------------------------------------------------- dedupe
 
-@router.get("/dedupe")
+@router.get("/dedupe", response_model=DedupePlan)
 def dedupe_plan():
     """Dry-run: groups of duplicate library rows. Nothing is touched."""
     rows = _all_library_songs()
@@ -60,7 +62,7 @@ def dedupe_plan():
                     "(keeps the first row of each group)"}
 
 
-@router.post("/dedupe")
+@router.post("/dedupe", response_model=DedupePlan | DedupeReport)
 def dedupe_execute(execute: int = 0):
     """Remove all-but-first row of each duplicate group.
     Pass ?execute=1 to actually run it."""
@@ -84,7 +86,7 @@ def dedupe_execute(execute: int = 0):
 
 # ---------------------------------------------------------------- rate
 
-@router.get("/rate")
+@router.get("/rate", response_model=RatePlan)
 def rate_plan(artist: str = None, album: str = None, limit: int = 500):
     """Dry-run: which library songs a batch-rate would heart.
     (Execution re-checks each song's current rating and skips hearts.)"""
@@ -104,7 +106,7 @@ def rate_plan(artist: str = None, album: str = None, limit: int = 500):
                     "Rate sweeps only ADD hearts; they never clear one."}
 
 
-@router.post("/rate")
+@router.post("/rate", response_model=RatePlan | RateReport)
 def rate_execute(artist: str = None, album: str = None, limit: int = 500,
                  execute: int = 0):
     """Heart every library song matching the filter, skipping songs that
@@ -131,7 +133,7 @@ def rate_execute(artist: str = None, album: str = None, limit: int = 500,
 
 # ---------------------------------------------------------------- report
 
-@router.get("/never-played")
+@router.get("/never-played", response_model=NeverPlayedPlan)
 def never_played(limit: int = 100, offset: int = 0):
     """Read-only report: library songs with no reported plays.
     NOTE: Apple's API currently does not expose play counts on

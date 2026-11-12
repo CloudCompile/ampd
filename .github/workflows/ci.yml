@@ -70,5 +70,46 @@ jobs:
           print("defaults OK — writes, audio, store and scheduled exports ship disabled; bind guard warn-only")
           EOF
 
+      - name: Response-model conformance (every JSON route is typed)
+        run: |
+          python - <<'EOF'
+          from ampd.main import app
+
+          # same flattening as the smoke step — _IncludedRouter hides children
+          def flatten(routes, prefix=""):
+              out = []
+              for r in routes:
+                  if type(r).__name__ == "_IncludedRouter":
+                      p = getattr(r.include_context, "prefix", "") or ""
+                      out += flatten(r.original_router.routes, prefix + p)
+                  elif getattr(r, "methods", None):
+                      out.append((prefix + r.path, r))
+              return out
+
+          # streaming / binary / raw surfaces are exempt: SSE, audio bytes,
+          # prometheus text, the demo SPA, and the amp-api raw passthrough
+          # (its shape is whatever Apple's is — typing it would be a lie).
+          # FastAPI's own docs routes (/openapi.json, /docs, /redoc) are
+          # framework infrastructure, not part of the API surface.
+          EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/metrics",
+                             "/demo", "/api/amp-api/", "/openapi.json",
+                             "/docs", "/redoc")
+
+          untyped = []
+          total = 0
+          for path, r in flatten(app.routes):
+              if "GET" not in (r.methods or set()):
+                  continue
+              if any(path.startswith(p) for p in EXEMPT_PREFIXES):
+                  continue
+              total += 1
+              if getattr(r, "response_model", None) is None:
+                  untyped.append(path)
+          assert not untyped, (
+              f"{len(untyped)} JSON route(s) without a response_model — "
+              f"the OpenAPI page would lie about them: {untyped}")
+          print(f"conformance OK — all {total} JSON GET routes declare a response_model")
+          EOF
+
       - name: Unit tests (hermetic — read cache / coalescer)
         run: python -m unittest discover -s tests

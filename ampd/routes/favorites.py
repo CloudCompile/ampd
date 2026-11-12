@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException
 from .. import musickit as mk
 from ..browser import BrowserError
 from ..config import config
+from ..models import Favorites
 from .writes import router as writes  # noqa: F401  (write ops live in /write)
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
@@ -26,7 +27,7 @@ def favorites_playlist_id(fresh: bool = False) -> str:
     return pid
 
 
-@router.get("")
+@router.get("", response_model=Favorites)
 def list_favorites(fresh: bool = False):
     """Every song in your Favorite Songs playlist (auto-paginated, with art).
     Also returns `playlist_id` so clients can browse it like any playlist.
