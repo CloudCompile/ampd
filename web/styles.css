@@ -82,6 +82,12 @@ h1 { font-size: 18px; white-space: nowrap; overflow: hidden;
 /* search scope banner */
 #search-scope { padding: 4px 2px 8px; }
 
+/* the hidden attribute must always win: author display rules (.modal etc.)
+   would otherwise override the UA's [hidden] { display:none } and leave
+   "hidden" elements visible (#90 followup — the key modal showed on every
+   load because .modal set display:grid) */
+[hidden] { display: none !important; }
+
 /* key modal */
 .modal { position: fixed; inset: 0; background: #000a; display: grid;
          place-items: center; z-index: 50; }

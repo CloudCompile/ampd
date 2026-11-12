@@ -29,6 +29,31 @@ that page over CDP and evaluates calls in it — so there are **no tokens to
 manage**: your session lives in a Chrome profile, exactly like a normal login.
 Sign in once, and everything the web player can do becomes an API.
 
+![tonearm PWA — library, now-playing, synced lyrics](docs/pwa.png)
+
+## Try it in 30 seconds — no Apple account
+
+tonearm has a **mock mode**: the entire API and the bundled PWA run on
+synthetic data, zero credentials, zero Chrome. This is also how CI tests
+itself.
+
+```bash
+git clone https://github.com/CloudCompile/tonearm && cd tonearm
+pip install -r requirements.txt
+TONEARM_MOCK=1 python3 -m tonearm
+# → PWA at http://127.0.0.1:8188 · API docs at /docs
+```
+
+Browse the mock library, drag the queue, watch the playhead move — then point
+`curl` at it:
+
+```bash
+curl http://127.0.0.1:8188/api/library/songs?limit=5
+```
+
+When you're ready for the real thing, see Setup. Your Apple session stays in
+a Chrome profile; nothing is downloaded, nothing is shared.
+
 ## Setup
 
 ```bash
