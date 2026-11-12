@@ -1,0 +1,26 @@
+<!doctype html>
+<!-- /bench — playlist workshop. The write-heavy one: full-list PUTs,
+     smartlist materialization, batch hearts, restore. Every mutation is
+     double-confirmed; 501 envelopes surface as honest toasts. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bench — tonearm</title>
+<link rel="stylesheet" href="/sites/common.css">
+</head>
+<body>
+<main>
+  <section>
+    <div class="tabs" id="tabs">
+      <button data-t="playlists" class="active">Playlist editor</button>
+      <button data-t="smartlists">Smart playlists</button>
+      <button data-t="heart">Batch heart</button>
+      <button data-t="restore">Restore</button>
+    </div>
+  </section>
+  <section id="panel"></section>
+</main>
+<script type="module" src="/sites/bench.js"></script>
+</body>
+</html>

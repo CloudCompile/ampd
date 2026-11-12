@@ -282,6 +282,28 @@ node web/build.mjs        # bundle -> tonearm/web-dist (gitignored, built in
                           # CI and the Docker image's node stage)
 ```
 
+### Companion pages — `/ledger` `/radar` `/bench`
+
+Three single-page tools served next to `/demo` (same keyless-shell auth
+dialect; the API key, if the server has one, is asked once and kept in
+localStorage):
+
+* **/ledger — stats & library health.** Top artists/tracks (7d/30d/all),
+  plays-per-day chart, the full local archive with deep pagination, and
+  the sweeps as pages: duplicate groups (execute is double-confirmed),
+  never-played, the digest. Needs `TONEARM_STORE=1` for the stats half.
+* **/radar — new music & releases.** Recently-added, Apple's
+  recommendations / made-for-you / heavy rotation, the release watcher's
+  state (mapped vs unmapped artists — this page is the watcher's
+  verify-live instrument), and an artist lookup that diffs an artist's
+  catalog albums against your library with one-click adds.
+* **/bench — playlist workshop.** The write surface: playlist editor
+  (reorder/remove → full-list PUT), smartlist builder (rules → preview →
+  materialize), batch-heart (plan → execute), restore from an export
+  file. Every mutation confirms twice; `writes_disabled` envelopes
+  surface as honest toasts.
+
+
 Serve it by just running the server — the app mounts at `/` when
 `tonearm/web-dist/` exists, and the API keeps every `/api/…` path.
 
