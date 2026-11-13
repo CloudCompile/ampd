@@ -42,6 +42,8 @@ from .config import config
 log = logging.getLogger("tonearm.watcher")
 
 FIRST_RUN_DELAY_S = 60       # let the renderer come up before the first pass
+WATCHER_TIME_BUDGET_S = 180  # a pass stops here even under 429 backoffs
+                             # (#176: a bounded pass once stretched to 4m40)
 
 ALBUMS_PER_ARTIST = 10       # newest-N albums fetched per artist per pass
 TRACKS_PER_ADD_CAP = 100     # auto-add never POSTs more than a page
@@ -101,7 +103,7 @@ class ReleaseWatcher(threading.Thread):
     drive it hermetically (the digest pattern)."""
 
     def __init__(self, store, browser_instance, mk_mod, interval=None,
-                 emit_fn=None, max_artists=None):
+                 emit_fn=None, max_artists=None, time_budget_s=None):
         super().__init__(daemon=True, name="tonearm-watcher")
         self.store = store
         self._browser = browser_instance
@@ -109,6 +111,7 @@ class ReleaseWatcher(threading.Thread):
         self.interval = interval or config.watcher_interval
         self._emit = emit_fn
         self.max_artists = max_artists or config.watcher_max_artists
+        self.time_budget_s = time_budget_s or WATCHER_TIME_BUDGET_S
         self._busy = threading.Lock()      # single-flight: passes never overlap
         self._stop = threading.Event()
 
@@ -129,7 +132,10 @@ class ReleaseWatcher(threading.Thread):
 
     def run_pass(self):
         """One bounded pass. Returns a summary; safe to call directly
-        (the thread calls this; so does POST /api/watcher/refresh)."""
+        (the thread calls this; so does POST /api/watcher/refresh).
+        Two bounds: the artist budget (max_artists) AND a wall-clock
+        budget (#176 — under 429 backoffs a bounded 100-artist pass
+        stretched to 4m40s and outlived every client timeout)."""
         if not self._busy.acquire(timeout=0.1):
             return {"ran": False, "reason": "previous pass still running"}
         try:
@@ -143,6 +149,9 @@ class ReleaseWatcher(threading.Thread):
             for art in artists:
                 if budget <= 0:
                     summary["skipped_budget"] = True
+                    break
+                if time.time() - t0 > self.time_budget_s:
+                    summary["time_budget_exhausted"] = True
                     break
                 try:
                     checked = self._check_artist(art, summary)
@@ -293,14 +302,31 @@ class ReleaseWatcher(threading.Thread):
             emit = webhooks.emit
         emit(event_type, payload)
 
+    def _boot_pass_fresh(self):
+        """True when the last completed pass is recent enough that running
+        another at boot would just burn Apple's rate budget (#176, found
+        live: six debug restarts -> six boot passes -> the 429 wall ->
+        playback and search starved for a long window). Fresh = within
+        half the interval."""
+        try:
+            last = self.store.get_cursor("watcher.pass") or {}
+            done = last.get("completed_at") or 0
+        except Exception:
+            return False
+        return done > 0 and (time.time() - done) < self.interval / 2
+
     def run(self):
         log.info("release watcher armed: library-artists poll every %ds, "
-                 "max %d catalog lookups/pass (stall-gated, single-flight; "
-                 "mapping strategy: name search — VERIFY LIVE)",
-                 self.interval, self.max_artists)
+                 "max %d catalog lookups/pass, %ds time budget "
+                 "(stall-gated, single-flight; mapping strategy: name "
+                 "search — LIVE-VERIFIED)", self.interval, self.max_artists,
+                 self.time_budget_s)
         waited = 0.0
         while waited < FIRST_RUN_DELAY_S and not self._stop.wait(5):
             waited += 5
+        if self._boot_pass_fresh():
+            log.info("watcher: last pass is fresh — skipping the boot pass "
+                     "(#176: restarts must not stampede the rate budget)")
         while not self._stop.is_set():
             if not self._stalled():
                 try:
