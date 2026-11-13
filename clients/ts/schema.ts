@@ -128,6 +128,8 @@ export interface paths {
         /**
          * Recently Added
          * @description Most recently added library items (any kind).
+         *     Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+         *     (found live from the Radar page).
          */
         get: operations["recently_added_api_library_recently_added_get"];
         put?: never;
@@ -687,17 +689,17 @@ export interface paths {
             cookie?: never;
         };
         /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__put"];
+        get: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__put"];
+        put: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__put"];
+        post: operations["passthrough_api_amp_api__path__post"];
         /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__put"];
+        delete: operations["passthrough_api_amp_api__path__post"];
         options?: never;
         head?: never;
         /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__put"];
+        patch: operations["passthrough_api_amp_api__path__post"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -3779,7 +3781,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__put: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3810,7 +3812,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__put: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3841,7 +3843,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__put: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3872,7 +3874,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__put: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3903,7 +3905,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__put: {
+    passthrough_api_amp_api__path__post: {
         parameters: {
             query?: never;
             header?: never;

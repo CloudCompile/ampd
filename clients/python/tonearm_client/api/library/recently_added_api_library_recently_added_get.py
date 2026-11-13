@@ -68,6 +68,8 @@ def sync_detailed(
     """Recently Added
 
      Most recently added library items (any kind).
+    Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+    (found live from the Radar page).
 
     Args:
         limit (int | Unset):  Default: 25.
@@ -99,6 +101,8 @@ def sync(
     """Recently Added
 
      Most recently added library items (any kind).
+    Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+    (found live from the Radar page).
 
     Args:
         limit (int | Unset):  Default: 25.
@@ -125,6 +129,8 @@ async def asyncio_detailed(
     """Recently Added
 
      Most recently added library items (any kind).
+    Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+    (found live from the Radar page).
 
     Args:
         limit (int | Unset):  Default: 25.
@@ -154,6 +160,8 @@ async def asyncio(
     """Recently Added
 
      Most recently added library items (any kind).
+    Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+    (found live from the Radar page).
 
     Args:
         limit (int | Unset):  Default: 25.
