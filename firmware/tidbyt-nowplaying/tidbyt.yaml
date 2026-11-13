@@ -124,10 +124,11 @@ interval:
         on_response:
           then:
             - lambda: |-
-                // response->body arrives as std::string; status first —
-                // 404s carry an error envelope we don't want to render
+                // on_response receives (response, body) — the trigger is
+                // Trigger<shared_ptr<HttpContainer>, string&> (checked in
+                // the 2025.8.0 source); status first, then parse body
                 if (response->status_code != 200) return;
-                json::parse_json(response->body, [](JsonObject root) {
+                json::parse_json(body, [](JsonObject root) {
                   id(np_title_state) = std::string(root["title"] | "(idle)");
                   id(np_artist_state) = std::string(root["artist"] | "");
                   id(np_elapsed) = root["elapsedMs"] | 0;
