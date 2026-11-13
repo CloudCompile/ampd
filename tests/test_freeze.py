@@ -104,9 +104,37 @@ class OpenApiDiffTest(unittest.TestCase):
     def test_snapshot_matches_app(self):
         if os.path.exists(self.snap):
             with open(self.snap) as f:
-                self.assertEqual(json.load(f), self.current,
-                                 "api/openapi.json is stale — regen with "
-                                 "scripts/openapi_dump.py")
+                snap = json.load(f)
+            # a plain assertEqual on two ~100KB dicts is unreadable —
+            # report the FIRST differing path instead
+            def first_diff(a, b, path=""):
+                if type(a) is not type(b):
+                    return f"{path}: type {type(a).__name__} vs " \
+                        f"{type(b).__name__}"
+                if isinstance(a, dict):
+                    for k in sorted(set(a) | set(b)):
+                        if k not in a:
+                            return f"{path}/{k}: only in the fresh schema"
+                        if k not in b:
+                            return f"{path}/{k}: only in the snapshot"
+                        d = first_diff(a[k], b[k], f"{path}/{k}")
+                        if d:
+                            return d
+                    return None
+                if isinstance(a, list):
+                    if len(a) != len(b):
+                        return f"{path}: list len {len(a)} vs {len(b)}"
+                    for i, (x, y) in enumerate(zip(a, b)):
+                        d = first_diff(x, y, f"{path}[{i}]")
+                        if d:
+                            return d
+                    return None
+                return None if a == b else \
+                    f"{path}: {str(a)[:60]!s} != {str(b)[:60]!s}"
+            diff = first_diff(snap, self.current)
+            self.assertIsNone(diff, "api/openapi.json is stale — regen "
+                             "with scripts/openapi_dump.py; first diff: "
+                             + str(diff))
 
     def test_path_removal_is_breaking(self):
         from scripts.openapi_diff import breaking
