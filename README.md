@@ -640,6 +640,25 @@ python3 -m tonearm keys revoke k-ab12cd34
   Apple's session dies, the API says `502 session_expired — run
   `python -m tonearm login`` instead of scattered 403s (#189).
 
+### The OpenCode plugin — your agent runs the music
+
+`plugins/opencode-tonearm/tonearm.js` — a server-part OpenCode plugin: the
+agent gets a `tonearm` tool namespace (`play`/`search`/`pause`/`next`/
+`now`/`listen`) and can literally play your library from inside a coding
+session ("play something chill while you refactor"). Because it runs in
+the OpenCode server, it works the same from the TUI, the web UI, or a URL
+on another computer — and the human hears it through the funnel stream
+(the `listen` tool prints the exact command for wherever they are).
+
+Deploy: symlink it into the global plugins dir, then make it a key:
+
+```bash
+ln -sf ~/tonearm/plugins/opencode-tonearm/tonearm.js \
+  ~/.config/opencode/plugins/tonearm.js
+python3 -m tonearm keys add opencode --scopes read,write --rate 600
+# paste the raw key as TONEARM_KEY in the plugin file (or the env)
+```
+
 ### Errors — one shape everywhere
 
 Every non-2xx response, from any route, is:
