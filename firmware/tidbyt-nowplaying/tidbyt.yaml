@@ -60,6 +60,8 @@ api:
 ota:
   - platform: esphome
 
+http_request:                # hub — the gesture actions + the now-playing poll
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
