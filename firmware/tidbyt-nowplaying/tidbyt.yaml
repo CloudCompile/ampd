@@ -70,6 +70,8 @@ wifi:
   password: !secret wifi_password
   ap:                                  # never orphaned: falls back to a
     ssid: "tidbyt-setup"               # setup hotspot if the wifi's gone
+    password: "tidbytsetup"            # explicit WPA password; open APs
+                                       # are rejected by some ChromeOS/phones
 
 captive_portal:                        # first boot: join "tidbyt-setup",
                                        # pick your WiFi in the portal
