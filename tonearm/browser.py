@@ -11,6 +11,7 @@ Lessons learned the hard way, encoded here:
 import json
 import logging
 import os
+import shlex
 import subprocess
 import threading
 import time
@@ -134,6 +135,10 @@ class Browser:
         # page's decorative animation — the player state still works
         cmd += ["--blink-settings=imageAnimationPolicy=2",
                 "--force-prefers-reduced-motion"]
+        # Escape hatch for tiny hosts (sandboxes, small VPSes): any extra
+        # chrome args via TONEARM_CHROME_EXTRA (space-separated). The e2b
+        # sandbox needs low-end mode or music.apple.com's renderer OOMs.
+        cmd += shlex.split(os.environ.get("TONEARM_CHROME_EXTRA", ""))
         cmd.append("about:blank")
         log.info("launching chrome: %s (audio=%s)", " ".join(cmd), config.audio_enabled)
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
