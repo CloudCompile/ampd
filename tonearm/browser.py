@@ -175,7 +175,19 @@ class Browser:
         self._close_ws()                     # never leak the old socket
         self._ws = websocket.create_connection(
             target["webSocketDebuggerUrl"], timeout=60, max_size=100 * 1024 * 1024)
+        # recv slices of 5s (not the 60s handshake default): deadlines are
+        # then honored within ~5s instead of overshooting to 60s — a dead
+        # renderer fails a 10s-deadline eval in ~10-15s, not ~60 (found in
+        # the sandbox: health took 74s to say "timed out after 10s")
+        if self._ws and self._ws.sock:
+            self._ws.sock.settimeout(5)
         self._n = 0
+        # ARM THE WATCHDOG NOW — a renderer that dies before MusicKit goes
+        # ready (OOM at boot, crashed page) used to deadlock the whole
+        # layer: arming required READY, READY required a living renderer,
+        # and nothing ever recycled the zombie. Socket live = watchdog on;
+        # a not-yet-ready tab just fails pings until the recycle heals it.
+        self._watchdog_armed.set()
         self._raw_call("Page.enable")
         self._raw_call("Runtime.enable")
         # park the tab on Apple Music and wait (bounded) for MusicKit — via
