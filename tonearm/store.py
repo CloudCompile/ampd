@@ -47,7 +47,7 @@ from .metrics import METRICS
 
 log = logging.getLogger("tonearm.store")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 _MIGRATIONS = {
     1: """
@@ -102,6 +102,18 @@ _MIGRATIONS = {
         playlist_id TEXT,                -- library playlist once materialized
         last_eval REAL, last_sync REAL, last_count INTEGER,
         created_at REAL, updated_at REAL);
+    """,
+    # v0.7 multi-user: the per-key audit trail — append-only, who-did-what
+    # (method + path + status + key; request BODIES are never logged — a
+    # playlist name is the user's business, not the audit log's).
+    3: """
+    CREATE TABLE IF NOT EXISTS audit (
+        ts REAL NOT NULL,
+        key_id TEXT NOT NULL,
+        method TEXT NOT NULL,
+        path TEXT NOT NULL,
+        status INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts);
     """,
 }
 
@@ -510,6 +522,34 @@ class Store:
             cur = conn.execute("DELETE FROM smartlists WHERE id=?", (list_id,))
             conn.commit()
             return cur.rowcount > 0
+
+    # ------------------------------------------------------------- audit
+
+    def audit_append(self, rows):
+        """Batch-append audit rows (ts, key_id, method, path, status).
+        Append-only: no update, no delete API — the audit trail is the
+        point."""
+        conn = self._require_conn()
+        with self._lock:
+            conn.executemany(
+                "INSERT INTO audit(ts, key_id, method, path, status) "
+                "VALUES(?,?,?,?,?)", rows)
+            conn.commit()
+
+    def audit_since(self, since=0.0, limit=200, offset=0):
+        conn = self._require_conn()
+        with self._lock:
+            rows = conn.execute(
+                "SELECT ts, key_id, method, path, status FROM audit "
+                "WHERE ts > ? ORDER BY ts DESC LIMIT ? OFFSET ?",
+                (since, min(limit, 1000), max(offset, 0))).fetchall()
+            total = conn.execute(
+                "SELECT COUNT(*) FROM audit WHERE ts > ?", (since,)).fetchone()[0]
+        out = [{"ts": r[0], "key_id": r[1], "method": r[2], "path": r[3],
+                "status": r[4]} for r in rows]
+        nxt = offset + len(out)
+        return {"total": total, "count": len(out), "items": out,
+                "next_offset": nxt if nxt < total and out else None}
 
     # ------------------------------------------------------------- cursors
 
