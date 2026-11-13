@@ -41,7 +41,12 @@ which no remote control wants.
 
    ```bash
    cd firmware/tidbyt-nowplaying
-   pip install esphome
+   # version PIN — newer esphome REMOVED the i2s_audio media_player,
+   # and the replacement (speaker media player) requires the ESP-IDF
+   # framework, which the HUB75 display wrapper doesn't build under.
+   # 2025.8.0 is the validated sweet spot: config-validates AND the
+   # full firmware compiles (we checked both, in a sandbox).
+   pip install "esphome==2025.8.0"
    esphome run tidbyt.yaml
    ```
 
@@ -61,8 +66,20 @@ want display-only mode).
 
 ## First-boot gotchas
 
-- The stream URL starts the audio pipeline on demand — silence when
-  tonearm is idle, live the moment something plays.
 - 2.4 GHz WiFi only.
+- The device's http_request can't pin TLS certs under the arduino
+  framework (ESP-IDF-only feature) — `verify_ssl: false` is set. The
+  scoped key is the auth; the device lives on your LAN. If you want
+  cert pinning, that's the IDF migration (and a new display wrapper).
 - If the display stays dark: the HUB75 power switch (below) is
   ALWAYS_ON, so it's wiring — reseat the panel ribbon.
+- Volume: `POST /api/playback/volume/<0-100>` or any tonearm surface —
+  the device's volume is set at boot to 80%.
+
+## What works vs what's proven
+
+- Config: **validates** on esphome 2025.8.0.
+- Full firmware: **compiles** in CI-like sandbox (toolchain + link).
+- On-device behavior: needs YOUR hardware — flash and report back.
+  The pin map is community-proven (ESPHome-on-Tidbyt-Gen2 thread), so
+  the risk is tuning (touch threshold, scroll speed), not wiring.
