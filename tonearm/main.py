@@ -3,6 +3,7 @@ logged-in web player session."""
 import asyncio
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, HTTPException
@@ -283,14 +284,17 @@ install_error_handlers(app)
 def health():
     if config.mock_enabled:
         return {"status": "ok", "browser": "mock (TONEARM_MOCK=1)",
-                "watchdog": None}
+                "watchdog": None,
+                "session": {"state": "mock", "since": time.time()}}
     wd = browser.health()
     try:
         browser.check()
-        return {"status": "ok", "browser": "authorized", "watchdog": wd}
+        return {"status": "ok", "browser": "authorized", "watchdog": wd,
+                "session": dict(mk.session_state)}
     except BrowserError as e:
         return JSONResponse(status_code=503, content={
-            "status": "degraded", "detail": str(e), "watchdog": wd})
+            "status": "degraded", "detail": str(e), "watchdog": wd,
+            "session": dict(mk.session_state)})
 
 
 app.include_router(library.router, prefix="/api")

@@ -593,10 +593,17 @@ class WatchdogState(_PassThrough):
     last_action: str | None = None
 
 
+class SessionState(_PassThrough):
+    """The Apple session, as far as tonearm's own calls can tell (#189)."""
+    state: str          # ok | expired | unknown | mock
+    since: float | None = None
+
+
 class Health(_PassThrough):
     status: str
     browser: str | None = None
     watchdog: WatchdogState | None = None
+    session: SessionState | None = None
     detail: str | None = None
 
 

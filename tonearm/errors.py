@@ -70,10 +70,17 @@ def wrap_http_exception(exc: StarletteHTTPException):
     The exception's detail, when it has one, IS the human hint.
     A 502 carrying an Apple 'HTTP 429' is a RATE LIMIT, not a renderer
     failure (#175, found live): answer 429/rate_limited so clients can
-    back off instead of reading it as 'the renderer is dead'."""
+    back off instead of reading it as 'the renderer is dead'.
+    A 502 carrying Apple's 'Invalid authentication' is a DEAD SESSION
+    (#189): say so, and say the fix."""
     detail = exc.detail if isinstance(exc.detail, str) else ""
     if exc.status_code == 502 and "HTTP 429" in detail:
         return envelope_content(429, "rate_limited", detail)
+    if exc.status_code == 502 and "Invalid authentication" in detail:
+        return envelope_content(
+            502, "session_expired",
+            "your Apple session died — run `python -m tonearm login`, "
+            "then restart")
     return envelope_content(exc.status_code, detail=detail)
 
 
