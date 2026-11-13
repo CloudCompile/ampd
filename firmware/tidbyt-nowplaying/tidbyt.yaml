@@ -61,6 +61,9 @@ ota:
   - platform: esphome
 
 http_request:                # hub — the gesture actions + the now-playing poll
+  # arduino-framework http_request can't pin certs (IDF-only) — the key
+  # is the auth, and the device lives on the home LAN. Note in README.
+  verify_ssl: false
 
 wifi:
   ssid: !secret wifi_ssid
