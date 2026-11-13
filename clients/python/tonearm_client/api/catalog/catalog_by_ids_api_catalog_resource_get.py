@@ -8,18 +8,26 @@ from ... import errors
 from ...client import AuthenticatedClient, Client
 from ...models.http_validation_error import HTTPValidationError
 from ...models.item_list import ItemList
-from ...types import UNSET, Response
+from ...types import UNSET, Response, Unset
 
 
 def _get_kwargs(
     resource: str,
     *,
     ids: str,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
 
     params["ids"] = ids
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -69,6 +77,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     ids: str,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | ItemList]:
     """Catalog By Ids
 
@@ -77,6 +86,7 @@ def sync_detailed(
     Args:
         resource (str):
         ids (str):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -89,6 +99,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         resource=resource,
         ids=ids,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -103,6 +114,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     ids: str,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | ItemList | None:
     """Catalog By Ids
 
@@ -111,6 +123,7 @@ def sync(
     Args:
         resource (str):
         ids (str):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -124,6 +137,7 @@ def sync(
         resource=resource,
         client=client,
         ids=ids,
+        storefront=storefront,
     ).parsed
 
 
@@ -132,6 +146,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     ids: str,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | ItemList]:
     """Catalog By Ids
 
@@ -140,6 +155,7 @@ async def asyncio_detailed(
     Args:
         resource (str):
         ids (str):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -152,6 +168,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         resource=resource,
         ids=ids,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -164,6 +181,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     ids: str,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | ItemList | None:
     """Catalog By Ids
 
@@ -172,6 +190,7 @@ async def asyncio(
     Args:
         resource (str):
         ids (str):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -186,5 +205,6 @@ async def asyncio(
             resource=resource,
             client=client,
             ids=ids,
+            storefront=storefront,
         )
     ).parsed

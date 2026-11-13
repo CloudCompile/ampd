@@ -17,6 +17,7 @@ def _get_kwargs(
     types: str | Unset = "songs",
     limit: int | Unset = 25,
     genre: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -26,6 +27,13 @@ def _get_kwargs(
     params["limit"] = limit
 
     params["genre"] = genre
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -74,6 +82,7 @@ def sync_detailed(
     types: str | Unset = "songs",
     limit: int | Unset = 25,
     genre: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[ChartsApiCatalogChartsGetResponseChartsApiCatalogChartsGet | HTTPValidationError]:
     """Charts
 
@@ -83,6 +92,7 @@ def sync_detailed(
         types (str | Unset):  Default: 'songs'.
         limit (int | Unset):  Default: 25.
         genre (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -96,6 +106,7 @@ def sync_detailed(
         types=types,
         limit=limit,
         genre=genre,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -111,6 +122,7 @@ def sync(
     types: str | Unset = "songs",
     limit: int | Unset = 25,
     genre: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> ChartsApiCatalogChartsGetResponseChartsApiCatalogChartsGet | HTTPValidationError | None:
     """Charts
 
@@ -120,6 +132,7 @@ def sync(
         types (str | Unset):  Default: 'songs'.
         limit (int | Unset):  Default: 25.
         genre (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -134,6 +147,7 @@ def sync(
         types=types,
         limit=limit,
         genre=genre,
+        storefront=storefront,
     ).parsed
 
 
@@ -143,6 +157,7 @@ async def asyncio_detailed(
     types: str | Unset = "songs",
     limit: int | Unset = 25,
     genre: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[ChartsApiCatalogChartsGetResponseChartsApiCatalogChartsGet | HTTPValidationError]:
     """Charts
 
@@ -152,6 +167,7 @@ async def asyncio_detailed(
         types (str | Unset):  Default: 'songs'.
         limit (int | Unset):  Default: 25.
         genre (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -165,6 +181,7 @@ async def asyncio_detailed(
         types=types,
         limit=limit,
         genre=genre,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -178,6 +195,7 @@ async def asyncio(
     types: str | Unset = "songs",
     limit: int | Unset = 25,
     genre: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> ChartsApiCatalogChartsGetResponseChartsApiCatalogChartsGet | HTTPValidationError | None:
     """Charts
 
@@ -187,6 +205,7 @@ async def asyncio(
         types (str | Unset):  Default: 'songs'.
         limit (int | Unset):  Default: 25.
         genre (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -202,5 +221,6 @@ async def asyncio(
             types=types,
             limit=limit,
             genre=genre,
+            storefront=storefront,
         )
     ).parsed

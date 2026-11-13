@@ -15,11 +15,19 @@ def _get_kwargs(
     song_id: str,
     *,
     raw: bool | Unset = False,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
 
     params["raw"] = raw
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -69,6 +77,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     raw: bool | Unset = False,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | Lyrics]:
     """Song Lyrics
 
@@ -78,6 +87,7 @@ def sync_detailed(
     Args:
         song_id (str):
         raw (bool | Unset):  Default: False.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -90,6 +100,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         song_id=song_id,
         raw=raw,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -104,6 +115,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     raw: bool | Unset = False,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | Lyrics | None:
     """Song Lyrics
 
@@ -113,6 +125,7 @@ def sync(
     Args:
         song_id (str):
         raw (bool | Unset):  Default: False.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -126,6 +139,7 @@ def sync(
         song_id=song_id,
         client=client,
         raw=raw,
+        storefront=storefront,
     ).parsed
 
 
@@ -134,6 +148,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     raw: bool | Unset = False,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | Lyrics]:
     """Song Lyrics
 
@@ -143,6 +158,7 @@ async def asyncio_detailed(
     Args:
         song_id (str):
         raw (bool | Unset):  Default: False.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -155,6 +171,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         song_id=song_id,
         raw=raw,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -167,6 +184,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     raw: bool | Unset = False,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | Lyrics | None:
     """Song Lyrics
 
@@ -176,6 +194,7 @@ async def asyncio(
     Args:
         song_id (str):
         raw (bool | Unset):  Default: False.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -190,5 +209,6 @@ async def asyncio(
             song_id=song_id,
             client=client,
             raw=raw,
+            storefront=storefront,
         )
     ).parsed

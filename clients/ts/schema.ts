@@ -688,18 +688,18 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__delete"];
-        /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__delete"];
-        /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__delete"];
-        /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__delete"];
+        /** Passthrough-Get */
+        get: operations["passthrough_get_amp_api"];
+        /** Passthrough-Put */
+        put: operations["passthrough_put_amp_api"];
+        /** Passthrough-Post */
+        post: operations["passthrough_post_amp_api"];
+        /** Passthrough-Delete */
+        delete: operations["passthrough_delete_amp_api"];
         options?: never;
         head?: never;
-        /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__delete"];
+        /** Passthrough-Patch */
+        patch: operations["passthrough_patch_amp_api"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -1517,6 +1517,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch
+         * @description N reads, one round trip. Every entry is answered as its own
+         *     envelope: {status, body} (4xx/5xx per-entry — one bad request never
+         *     sinks the batch).
+         */
+        post: operations["batch_api_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1551,6 +1573,28 @@ export interface components {
              * @default store
              */
             source: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * BatchEntry
+         * @description One inner result: {status, body} — body is whatever the inner
+         *     route would have answered (error envelope on 4xx/5xx).
+         */
+        BatchEntry: {
+            /** Status */
+            status: number;
+            /** Body */
+            body?: unknown;
+        } & {
+            [key: string]: unknown;
+        };
+        /** BatchRequest */
+        BatchRequest: {
+            /** Requests */
+            requests: {
+                [key: string]: unknown;
+            }[];
         } & {
             [key: string]: unknown;
         };
@@ -1668,6 +1712,8 @@ export interface components {
             session?: components["schemas"]["SessionState"] | null;
             /** Detail */
             detail?: string | null;
+            /** Surface */
+            surface?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -3128,6 +3174,7 @@ export interface operations {
                 term: string;
                 types?: string;
                 limit?: number;
+                storefront?: string | null;
             };
             header?: never;
             path?: never;
@@ -3162,6 +3209,7 @@ export interface operations {
             query: {
                 term: string;
                 types?: string;
+                storefront?: string | null;
             };
             header?: never;
             path?: never;
@@ -3193,6 +3241,7 @@ export interface operations {
         parameters: {
             query?: {
                 raw?: boolean;
+                storefront?: string | null;
             };
             header?: never;
             path: {
@@ -3228,6 +3277,7 @@ export interface operations {
                 types?: string;
                 limit?: number;
                 genre?: string;
+                storefront?: string | null;
             };
             header?: never;
             path?: never;
@@ -3261,6 +3311,7 @@ export interface operations {
         parameters: {
             query: {
                 ids: string;
+                storefront?: string | null;
             };
             header?: never;
             path: {
@@ -3294,6 +3345,7 @@ export interface operations {
         parameters: {
             query?: {
                 extend?: string;
+                storefront?: string | null;
             };
             header?: never;
             path: {
@@ -3329,6 +3381,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 offset?: number;
+                storefront?: string | null;
             };
             header?: never;
             path: {
@@ -3844,7 +3897,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_get_amp_api: {
         parameters: {
             query?: never;
             header?: never;
@@ -3875,7 +3928,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_put_amp_api: {
         parameters: {
             query?: never;
             header?: never;
@@ -3906,7 +3959,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_post_amp_api: {
         parameters: {
             query?: never;
             header?: never;
@@ -3937,7 +3990,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_delete_amp_api: {
         parameters: {
             query?: never;
             header?: never;
@@ -3968,7 +4021,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__delete: {
+    passthrough_patch_amp_api: {
         parameters: {
             query?: never;
             header?: never;
@@ -5409,6 +5462,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditExport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    batch_api_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchEntry"][];
                 };
             };
             /** @description Validation Error */

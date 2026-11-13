@@ -15,7 +15,7 @@ def _get_kwargs(
 ) -> dict[str, Any]:
 
     _kwargs: dict[str, Any] = {
-        "method": "patch",
+        "method": "post",
         "url": "/api/amp-api/{path}".format(
             path=quote(str(path), safe=""),
         ),
@@ -58,7 +58,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[Any | HTTPValidationError]:
-    """Passthrough
+    """Passthrough-Post
 
     Args:
         path (str):
@@ -87,7 +87,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
 ) -> Any | HTTPValidationError | None:
-    """Passthrough
+    """Passthrough-Post
 
     Args:
         path (str):
@@ -111,7 +111,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
 ) -> Response[Any | HTTPValidationError]:
-    """Passthrough
+    """Passthrough-Post
 
     Args:
         path (str):
@@ -138,7 +138,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
 ) -> Any | HTTPValidationError | None:
-    """Passthrough
+    """Passthrough-Post
 
     Args:
         path (str):

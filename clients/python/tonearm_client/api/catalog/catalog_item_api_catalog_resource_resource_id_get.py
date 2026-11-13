@@ -16,11 +16,19 @@ def _get_kwargs(
     resource_id: str,
     *,
     extend: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
 
     params["extend"] = extend
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -72,6 +80,7 @@ def sync_detailed(
     *,
     client: AuthenticatedClient | Client,
     extend: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | LibraryItem]:
     """Catalog Item
 
@@ -81,6 +90,7 @@ def sync_detailed(
         resource (str):
         resource_id (str):
         extend (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -94,6 +104,7 @@ def sync_detailed(
         resource=resource,
         resource_id=resource_id,
         extend=extend,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -109,6 +120,7 @@ def sync(
     *,
     client: AuthenticatedClient | Client,
     extend: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | LibraryItem | None:
     """Catalog Item
 
@@ -118,6 +130,7 @@ def sync(
         resource (str):
         resource_id (str):
         extend (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -132,6 +145,7 @@ def sync(
         resource_id=resource_id,
         client=client,
         extend=extend,
+        storefront=storefront,
     ).parsed
 
 
@@ -141,6 +155,7 @@ async def asyncio_detailed(
     *,
     client: AuthenticatedClient | Client,
     extend: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | LibraryItem]:
     """Catalog Item
 
@@ -150,6 +165,7 @@ async def asyncio_detailed(
         resource (str):
         resource_id (str):
         extend (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -163,6 +179,7 @@ async def asyncio_detailed(
         resource=resource,
         resource_id=resource_id,
         extend=extend,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -176,6 +193,7 @@ async def asyncio(
     *,
     client: AuthenticatedClient | Client,
     extend: str | Unset = UNSET,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | LibraryItem | None:
     """Catalog Item
 
@@ -185,6 +203,7 @@ async def asyncio(
         resource (str):
         resource_id (str):
         extend (str | Unset):
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -200,5 +219,6 @@ async def asyncio(
             resource_id=resource_id,
             client=client,
             extend=extend,
+            storefront=storefront,
         )
     ).parsed

@@ -2,6 +2,9 @@
 
 from .audit_entry import AuditEntry
 from .audit_export import AuditExport
+from .batch_entry import BatchEntry
+from .batch_request import BatchRequest
+from .batch_request_requests_item import BatchRequestRequestsItem
 from .catalog_search_api_catalog_search_get_response_catalog_search_api_catalog_search_get import (
     CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet,
 )
@@ -120,6 +123,9 @@ from .write_error import WriteError
 __all__ = (
     "AuditEntry",
     "AuditExport",
+    "BatchEntry",
+    "BatchRequest",
+    "BatchRequestRequestsItem",
     "CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet",
     "ChartsApiCatalogChartsGetResponseChartsApiCatalogChartsGet",
     "DebugInfo",

@@ -18,6 +18,7 @@ def _get_kwargs(
     *,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -25,6 +26,13 @@ def _get_kwargs(
     params["limit"] = limit
 
     params["offset"] = offset
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -79,6 +87,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | RelationshipPage]:
     """Catalog Relationship
 
@@ -90,6 +99,7 @@ def sync_detailed(
         relationship (str):
         limit (int | Unset):  Default: 100.
         offset (int | Unset):  Default: 0.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -105,6 +115,7 @@ def sync_detailed(
         relationship=relationship,
         limit=limit,
         offset=offset,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -122,6 +133,7 @@ def sync(
     client: AuthenticatedClient | Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | RelationshipPage | None:
     """Catalog Relationship
 
@@ -133,6 +145,7 @@ def sync(
         relationship (str):
         limit (int | Unset):  Default: 100.
         offset (int | Unset):  Default: 0.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -149,6 +162,7 @@ def sync(
         client=client,
         limit=limit,
         offset=offset,
+        storefront=storefront,
     ).parsed
 
 
@@ -160,6 +174,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | RelationshipPage]:
     """Catalog Relationship
 
@@ -171,6 +186,7 @@ async def asyncio_detailed(
         relationship (str):
         limit (int | Unset):  Default: 100.
         offset (int | Unset):  Default: 0.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -186,6 +202,7 @@ async def asyncio_detailed(
         relationship=relationship,
         limit=limit,
         offset=offset,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -201,6 +218,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     limit: int | Unset = 100,
     offset: int | Unset = 0,
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | RelationshipPage | None:
     """Catalog Relationship
 
@@ -212,6 +230,7 @@ async def asyncio(
         relationship (str):
         limit (int | Unset):  Default: 100.
         offset (int | Unset):  Default: 0.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -229,5 +248,6 @@ async def asyncio(
             client=client,
             limit=limit,
             offset=offset,
+            storefront=storefront,
         )
     ).parsed

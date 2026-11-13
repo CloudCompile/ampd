@@ -25,6 +25,7 @@ class Health:
         watchdog (None | Unset | WatchdogState):
         session (None | SessionState | Unset):
         detail (None | str | Unset):
+        surface (None | str | Unset):
     """
 
     status: str
@@ -32,6 +33,7 @@ class Health:
     watchdog: None | Unset | WatchdogState = UNSET
     session: None | SessionState | Unset = UNSET
     detail: None | str | Unset = UNSET
+    surface: None | str | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,6 +70,12 @@ class Health:
         else:
             detail = self.detail
 
+        surface: None | str | Unset
+        if isinstance(self.surface, Unset):
+            surface = UNSET
+        else:
+            surface = self.surface
+
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
         field_dict.update(
@@ -83,6 +91,8 @@ class Health:
             field_dict["session"] = session
         if detail is not UNSET:
             field_dict["detail"] = detail
+        if surface is not UNSET:
+            field_dict["surface"] = surface
 
         return field_dict
 
@@ -146,12 +156,22 @@ class Health:
 
         detail = _parse_detail(d.pop("detail", UNSET))
 
+        def _parse_surface(data: object) -> None | str | Unset:
+            if data is None:
+                return data
+            if isinstance(data, Unset):
+                return data
+            return cast(None | str | Unset, data)
+
+        surface = _parse_surface(d.pop("surface", UNSET))
+
         health = cls(
             status=status,
             browser=browser,
             watchdog=watchdog,
             session=session,
             detail=detail,
+            surface=surface,
         )
 
         health.additional_properties = d

@@ -17,6 +17,7 @@ def _get_kwargs(
     term: str,
     types: str | Unset = "songs,albums,artists,playlists",
     limit: int | Unset = 10,
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -26,6 +27,13 @@ def _get_kwargs(
     params["types"] = types
 
     params["limit"] = limit
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -76,6 +84,7 @@ def sync_detailed(
     term: str,
     types: str | Unset = "songs,albums,artists,playlists",
     limit: int | Unset = 10,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet | HTTPValidationError]:
     """Catalog Search
 
@@ -86,6 +95,7 @@ def sync_detailed(
         term (str):
         types (str | Unset):  Default: 'songs,albums,artists,playlists'.
         limit (int | Unset):  Default: 10.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -99,6 +109,7 @@ def sync_detailed(
         term=term,
         types=types,
         limit=limit,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -114,6 +125,7 @@ def sync(
     term: str,
     types: str | Unset = "songs,albums,artists,playlists",
     limit: int | Unset = 10,
+    storefront: None | str | Unset = UNSET,
 ) -> CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet | HTTPValidationError | None:
     """Catalog Search
 
@@ -124,6 +136,7 @@ def sync(
         term (str):
         types (str | Unset):  Default: 'songs,albums,artists,playlists'.
         limit (int | Unset):  Default: 10.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -138,6 +151,7 @@ def sync(
         term=term,
         types=types,
         limit=limit,
+        storefront=storefront,
     ).parsed
 
 
@@ -147,6 +161,7 @@ async def asyncio_detailed(
     term: str,
     types: str | Unset = "songs,albums,artists,playlists",
     limit: int | Unset = 10,
+    storefront: None | str | Unset = UNSET,
 ) -> Response[CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet | HTTPValidationError]:
     """Catalog Search
 
@@ -157,6 +172,7 @@ async def asyncio_detailed(
         term (str):
         types (str | Unset):  Default: 'songs,albums,artists,playlists'.
         limit (int | Unset):  Default: 10.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -170,6 +186,7 @@ async def asyncio_detailed(
         term=term,
         types=types,
         limit=limit,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -183,6 +200,7 @@ async def asyncio(
     term: str,
     types: str | Unset = "songs,albums,artists,playlists",
     limit: int | Unset = 10,
+    storefront: None | str | Unset = UNSET,
 ) -> CatalogSearchApiCatalogSearchGetResponseCatalogSearchApiCatalogSearchGet | HTTPValidationError | None:
     """Catalog Search
 
@@ -193,6 +211,7 @@ async def asyncio(
         term (str):
         types (str | Unset):  Default: 'songs,albums,artists,playlists'.
         limit (int | Unset):  Default: 10.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -208,5 +227,6 @@ async def asyncio(
             term=term,
             types=types,
             limit=limit,
+            storefront=storefront,
         )
     ).parsed

@@ -14,6 +14,7 @@ def _get_kwargs(
     *,
     term: str,
     types: str | Unset = "songs,artists,albums,playlists",
+    storefront: None | str | Unset = UNSET,
 ) -> dict[str, Any]:
 
     params: dict[str, Any] = {}
@@ -21,6 +22,13 @@ def _get_kwargs(
     params["term"] = term
 
     params["types"] = types
+
+    json_storefront: None | str | Unset
+    if isinstance(storefront, Unset):
+        json_storefront = UNSET
+    else:
+        json_storefront = storefront
+    params["storefront"] = json_storefront
 
     params = {k: v for k, v in params.items() if v is not UNSET and v is not None}
 
@@ -68,6 +76,7 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     term: str,
     types: str | Unset = "songs,artists,albums,playlists",
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | SearchHints]:
     """Hints
 
@@ -77,6 +86,7 @@ def sync_detailed(
     Args:
         term (str):
         types (str | Unset):  Default: 'songs,artists,albums,playlists'.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -89,6 +99,7 @@ def sync_detailed(
     kwargs = _get_kwargs(
         term=term,
         types=types,
+        storefront=storefront,
     )
 
     response = client.get_httpx_client().request(
@@ -103,6 +114,7 @@ def sync(
     client: AuthenticatedClient | Client,
     term: str,
     types: str | Unset = "songs,artists,albums,playlists",
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | SearchHints | None:
     """Hints
 
@@ -112,6 +124,7 @@ def sync(
     Args:
         term (str):
         types (str | Unset):  Default: 'songs,artists,albums,playlists'.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -125,6 +138,7 @@ def sync(
         client=client,
         term=term,
         types=types,
+        storefront=storefront,
     ).parsed
 
 
@@ -133,6 +147,7 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     term: str,
     types: str | Unset = "songs,artists,albums,playlists",
+    storefront: None | str | Unset = UNSET,
 ) -> Response[HTTPValidationError | SearchHints]:
     """Hints
 
@@ -142,6 +157,7 @@ async def asyncio_detailed(
     Args:
         term (str):
         types (str | Unset):  Default: 'songs,artists,albums,playlists'.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -154,6 +170,7 @@ async def asyncio_detailed(
     kwargs = _get_kwargs(
         term=term,
         types=types,
+        storefront=storefront,
     )
 
     response = await client.get_async_httpx_client().request(**kwargs)
@@ -166,6 +183,7 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     term: str,
     types: str | Unset = "songs,artists,albums,playlists",
+    storefront: None | str | Unset = UNSET,
 ) -> HTTPValidationError | SearchHints | None:
     """Hints
 
@@ -175,6 +193,7 @@ async def asyncio(
     Args:
         term (str):
         types (str | Unset):  Default: 'songs,artists,albums,playlists'.
+        storefront (None | str | Unset):
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -189,5 +208,6 @@ async def asyncio(
             client=client,
             term=term,
             types=types,
+            storefront=storefront,
         )
     ).parsed
