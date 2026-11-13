@@ -465,12 +465,11 @@ def playback_back(threshold_ms=10000):
       const mk = MusicKit.getInstance();
       const elapsed = (mk.currentPlaybackTime || 0) * 1000;
       if (elapsed > THRESHOLD) {
-        try { await mk.seekToSeconds(0); return {back: "restart", elapsed}; }
-        catch (e) {
-          // older builds: rewind the playhead the crude way
-          try { mk.currentPlaybackTime = 0; return {back: "restart-crude", elapsed}; }
-          catch (e2) { return {warn: String(e2).slice(0, 120)}; }
-        }
+        // seekToTime is the one that works on the web player's build
+        // (seekToSeconds doesn't exist; the currentPlaybackTime setter
+        // silently no-ops — both probed live)
+        try { await mk.seekToTime(0); return {back: "restart", elapsed}; }
+        catch (e) { return {warn: String(e).slice(0, 120)}; }
       }
       await mk.skipToPreviousItem();
       return {back: "previous", elapsed};
