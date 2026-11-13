@@ -11,8 +11,10 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .errors import ApiError, install_error_handlers
+from .metrics import METRICS
 from .models import Health
 from . import __version__
+from . import keys as keys_mod
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
                      history, overlay, webhooks as webhooks_routes,
@@ -217,20 +219,52 @@ app.openapi = _openapi_with_auth
 @app.middleware("http")
 async def auth_guard(request: Request, call_next):
     path = request.url.path
-    # the key guards the API SURFACE (/api/, /metrics) — the PWA shell and
-    # the demo page load without it (#90): a locked-down server must still
-    # serve the login page, and the shell itself carries no data. EventSource
+    # the key guards the API SURFACE (/api/, /metrics) — the PWA shell,
+    # /demo and the companion pages load without it (#90): a locked-down
+    # server must still serve its own UI (it carries no data). EventSource
     # can't send headers, so the key rides ?api_key= there; both dialects
     # are accepted everywhere.
-    if config.api_key and (path.startswith("/api/") or path == "/metrics"):
-        auth = request.headers.get("Authorization", "")
-        key = request.query_params.get("api_key", "")
-        if auth != f"Bearer {config.api_key}" and key != config.api_key:
-            return JSONResponse(status_code=401, content={
-                "error": {"code": "unauthorized",
-                          "hint": "pass 'Authorization: Bearer <key>' "
-                                  "(or ?api_key= for EventSource)"}})
-    return await call_next(request)
+    if not (path.startswith("/api/") or path == "/metrics"):
+        return await call_next(request)
+    # v0.7 multi-key: no master key AND no keys file = a keyless server,
+    # exactly the old behavior. Anything configured resolves to an identity.
+    if not config.api_key and not keys_mod.registry.has_keys():
+        return await call_next(request)
+    presented = request.headers.get("Authorization", "")
+    if presented.startswith("Bearer "):
+        presented = presented[7:]
+    else:
+        presented = request.query_params.get("api_key", "")
+    identity = keys_mod.registry.resolve(presented)
+    if identity is None:
+        return JSONResponse(status_code=401, content={
+            "error": {"code": "unauthorized",
+                      "hint": "pass 'Authorization: Bearer <key>' "
+                              "(or ?api_key= for EventSource)"}})
+    # per-key rate ceiling (#116) — the master is never limited
+    ok, retry = keys_mod.limiter.check(identity)
+    if not ok:
+        return JSONResponse(
+            status_code=429, headers={"Retry-After": str(retry)},
+            content={"error": {"code": "rate_limited",
+                               "hint": f"key {identity.describe()} hit its "
+                                       f"ceiling — retry after {retry}s"}})
+    # scopes (#115): non-GET requires write — playback control included
+    # (a friend's UI watches; yours drives)
+    if request.method not in ("GET", "HEAD", "OPTIONS") \
+            and not identity.can_write:
+        return JSONResponse(status_code=403, content={
+            "error": {"code": "insufficient_scope",
+                      "hint": f"key {identity.describe()} is read-only — "
+                              f"mutations need a write key"}})
+    request.state.identity = identity
+    response = await call_next(request)
+    # per-key metrics (#119): keyed requests by key id + outcome class
+    METRICS.inc("tonearm_api_requests_total",
+                {"key": identity.describe(),
+                 "code": f"{response.status_code // 100}xx"},
+                help_text="API requests by key and status class")
+    return response
 
 
 install_error_handlers(app)
