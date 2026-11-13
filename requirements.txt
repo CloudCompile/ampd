@@ -2,3 +2,4 @@ fastapi==0.162.7          # EXACT pin: the OpenAPI snapshot is version-sensitive
 uvicorn>=0.54.0
 websocket-client>=1.9.2
 httpx2>=2.16.0          # fastapi.testclient — the freeze tests (#127) hit the app in-process
+Pillow>=10.0            # one cached, darkened artwork background per track (#tidbyt)

@@ -1,4 +1,9 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+from io import BytesIO
+from urllib.request import urlopen
+
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 
 from .. import musickit as mk
 from ..browser import BrowserError
@@ -7,6 +12,42 @@ from ..models import (NowPlaying, Ok, OkPlaylist, OkRating, OkRepeat,
                       QueueItem, QueueReorder, VolumeState)
 
 router = APIRouter(prefix="/playback", tags=["playback"])
+
+_background_cache: dict[str, bytes] = {}
+
+
+@router.get("/artwork-background", include_in_schema=False)
+def artwork_background():
+    """Return one cached, darkened/blurred 64x32 version of the current
+    artwork for the Tidbyt background. The cache key is the artwork URL:
+    one image generation per track/art change, never one per display frame."""
+    try:
+        now = mk.now_playing()
+        url = now.get("artworkUrl") or ""
+        if not url:
+            raise HTTPException(404, "no artwork")
+        url = url.replace("{w}", "600").replace("{h}", "600")
+        if url not in _background_cache:
+            with urlopen(url, timeout=15) as r:
+                source = r.read(2_000_000)
+            image = Image.open(BytesIO(source)).convert("RGB")
+            image = ImageOps.fit(image, (64, 32), method=Image.Resampling.LANCZOS)
+            image = image.filter(ImageFilter.GaussianBlur(radius=4))
+            image = ImageEnhance.Brightness(image).enhance(0.38)
+            out = BytesIO()
+            image.save(out, format="JPEG", quality=78, optimize=True)
+            _background_cache[url] = out.getvalue()
+            # Keep only the current cover; the device asks for a replacement
+            # on track change, so this cannot become a library cache.
+            if len(_background_cache) > 2:
+                for old in list(_background_cache)[:-1]:
+                    del _background_cache[old]
+        return Response(_background_cache[url], media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=3600"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"artwork background unavailable: {e}")
 
 # NOTE: specific routes MUST be declared before the generic /{command} route.
 

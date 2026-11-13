@@ -209,11 +209,13 @@ interval:
                       id(artwork)->set_url(art);
                       id(artwork)->update();
                     }
-                    // The same image is used as a deliberately low-res
-                    // full-panel background. It is not a second large bitmap.
+                    // Tonearm generates one cached blurred/darkened
+                    // background when the cover changes. The device does
+                    // not do blur work and never regenerates per frame.
                     if (art != id(last_background)) {
                       id(last_background) = art;
-                      id(background_art)->set_url(art);
+                      id(background_art)->set_url(
+                        "${tonearm_base}/api/playback/artwork-background?api_key=${tonearm_key}");
                       id(background_art)->update();
                     }
                     return true;
