@@ -1,4 +1,4 @@
-# Tidbyt Gen 2 → tonearm: now-playing display + speaker + gesture remote.
+# Tidbyt Gen 2 → tonearm: now-playing display + gesture remote.
 #
 # Flash once over USB (esphome run tidbyt.yaml from any machine with the
 # device plugged in, or https://web.esphome.io from Chrome). After that
@@ -6,8 +6,8 @@
 # no Tidbyt cloud, no local hub required.
 #
 # Hardware (Gen 2, pinned by the ESPHome-on-Tidbyt-Gen2 community thread):
-#   ESP32-S3 · 64x32 HUB75 matrix · I2S speaker (GPIO12/13/14) · touch pad
-#   (GPIO33, capacitive) · bootloader unlocked.
+#   ESP32 · 64x32 HUB75 matrix · touch pad (GPIO33, capacitive) ·
+#   bootloader unlocked.
 #
 # Gestures (the spec):
 #   1 tap            → play/pause toggle
@@ -15,35 +15,20 @@
 #   3 taps           → "back" — restart if >10s into the song, else the
 #                      previous track (the RULE lives in tonearm:
 #                      POST /api/playback/back — the button stays dumb)
-#   hold ~1s         → play playlist 1
-#   hold twice       → play playlist 2   (two ≥1s holds, released quickly)
+#   hold ~1s         → play playlist 1 (Favorite Songs, in order)
+#   hold twice       → play playlist 2 (Heavy Rotation, shuffled)
 
 substitutions:
   # ── filled in for this device ────────────────────────────────────────
   tonearm_base: "https://remote.tail4c21bf.ts.net:8443"
   tonearm_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"   # tidbyt, read,write, 120/min
-  # hold ~1s → favorites, in order
   playlist_1_id: "p.0YU08k07L9"        # Favorite Songs (the hearts playlist)
-  # hold twice → heavy rotation, SHUFFLED (shuffle flips on before play;
-  # the favorites hold flips it back off — each button is deterministic)
   playlist_2_id: "p.KoKOBXDS3Wm3o9P"   # Heavy Rotation
   # ─────────────────────────────────────────────────────────────────────
 
 esphome:
   name: tidbyt-nowplaying
   friendly_name: Tidbyt Now Playing
-  on_boot:
-    priority: 600                      # after wifi+api, before loops
-    then:
-      # the speaker IS the tonearm stream: start listening on boot and
-      # keep it (tonearm's lazy pipeline wakes on first listener —
-      # silence when idle, live the moment something plays)
-      - media_player.play_media:
-          id: speaker
-          media_url: "${tonearm_base}/api/audio/stream.mp3?api_key=${tonearm_key}"
-      - media_player.volume_set:
-          id: speaker
-          volume: 80%
 
 esp32:
   board: esp32dev
@@ -56,14 +41,12 @@ external_components:
 logger:
 api:
   encryption:
-    key: !secret api_encryption_key    # esphome generates on first run
+    key: !secret api_encryption_key
 ota:
   - platform: esphome
 
 http_request:                # hub — the gesture actions + the now-playing poll
-  # arduino-framework http_request can't pin certs (IDF-only) — the key
-  # is the auth, and the device lives on the home LAN. Note in README.
-  verify_ssl: false
+  verify_ssl: false          # arduino http_request can't pin certs (IDF-only)
 
 wifi:
   ssid: !secret wifi_ssid
@@ -73,52 +56,22 @@ wifi:
     password: "tidbytsetup"            # explicit WPA password; open APs
                                        # are rejected by some ChromeOS/phones
 
-                                       # are rejected by some ChromeOS/phones
-                                       # (captive_portal + web_server were
-                                       # removed: together they exhausted
-                                       # the heap and crashed the I2S
-                                       # speaker init — found live)
+captive_portal:                        # first-boot WiFi provisioning portal
 
-# ── the speaker ────────────────────────────────────────────────────────
-i2s_audio:
-  - id: i2s_out
-    i2s_lrclk_pin: GPIO13             # WS / LRC
-    i2s_bclk_pin: GPIO12              # SCK / BCLK
+# ── the display: minimal 1px-stroke CarPlay player ─────────────────────
+# No backdrop. Static clipped text (title/album/artist), a small progress
+# bar + elapsed time, and a right tile that shows album art — or synced
+# lyrics (previous dim / current bright / next dim) when available.
+# All text renders from a hand-rolled 3x5 pixel font drawn with 1px
+# strokes — no TTF downloads, no glyph atlases.
 
-media_player:
-  - platform: i2s_audio
-    id: speaker
-    name: tonearm speaker
-    dac_type: external
-    i2s_dout_pin: GPIO14
-    mode: mono
-
-# ── the display: static CarPlay-style player ───────────────────────────
-# The player never scrolls. Album artwork is a full-screen low-resolution
-# background; the foreground is a readable 38px text column plus a 24px
-# right tile that automatically becomes synced lyrics when available.
-text_sensor:
-  - platform: template
-    id: np_title
-    lambda: 'return {id(np_title_state)};'
-  - platform: template
-    id: np_artist
-    lambda: 'return {id(np_artist_state)};'
-
-# Background is intentionally low-res: it produces a soft/pixelated wash
-# across the matrix without storing a large bitmap on the ESP32.
 online_image:
-  - id: background_art
-    url: "http://placeholder/background.jpg"
+  - id: artwork
+    url: "http://placeholder/art.jpg"   # replaced at runtime via set_url
     format: JPEG
     type: RGB565
-    resize: 64x32
-    update_interval: never
-
-# (web_server removed — it exhausted the heap alongside the audio pipeline;
-# the i2s DMA buffers then failed to allocate and the device crash-looped.
-# Volume: set at boot via media_player.volume_set, source volume via the
-# tonearm PWA.)
+    resize: 24x24
+    update_interval: never          # we set_url + update on track change
 
 select:
   - platform: template
@@ -160,7 +113,7 @@ globals:
   - id: np_song_id
     type: std::string
     initial_value: '""'
-  - id: last_background
+  - id: last_art
     type: std::string
     initial_value: '""'
   - id: lyric_times
@@ -170,49 +123,46 @@ globals:
     type: std::vector<std::string>
     initial_value: 'std::vector<std::string>()'
 
-# Current metadata and art. The player remains static; only the right tile
-# changes between art and lyrics.
 interval:
   - interval: 5s
     then:
-      - http_request.get:
-          url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
-          capture_response: true
-          request_headers:
-            Content-Type: "application/json"
-          on_response:
-            then:
-              - lambda: |-
-                  if (response->status_code != 200) return;
-                  json::parse_json(body, [](JsonObject root) {
-                    id(np_title_state) = std::string(root["title"] | "(idle)");
-                    id(np_album_state) = std::string(root["album"] | "");
-                    id(np_artist_state) = std::string(root["artist"] | "");
-                    id(np_elapsed) = root["elapsedMs"] | 0;
-                    id(np_duration) = root["durationMs"] | 0;
-                    id(np_playing) = root["isPlaying"] | false;
-                    std::string song = std::string(root["id"] | "");
-                    id(np_song_id) = song;
-                    int secs = (int)(id(np_elapsed) / 1000.0f);
-                    char clock[8];
-                    snprintf(clock, sizeof(clock), "%d:%02d", secs / 60, secs % 60);
-                    id(np_time_state) = std::string(clock);
-                    std::string art = std::string(root["artworkUrl"] | "");
-                    if (art.empty()) return true;
-                    size_t pos = art.find("600x600");
-                    if (pos != std::string::npos) art.replace(pos, 7, "96x96");
-                    id(np_has_art) = true;
-                    // Tonearm generates one cached blurred/darkened
-                    // background plus the clear art tile when the cover
-                    // changes. The device has only one image buffer.
-                    if (art != id(last_background)) {
-                      id(last_background) = art;
-                      id(background_art)->set_url(
-                        "${tonearm_base}/api/playback/artwork-background?api_key=${tonearm_key}");
-                      id(background_art)->update();
-                    }
-                    return true;
-                  });
+    - http_request.get:
+        url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
+        capture_response: true
+        request_headers:
+          Content-Type: "application/json"
+        on_response:
+          then:
+            - lambda: |-
+                // on_response receives (response, body) — the trigger is
+                // Trigger<shared_ptr<HttpContainer>, string&> (checked in
+                // the 2025.8.0 source); status first, then parse body
+                if (response->status_code != 200) return;
+                json::parse_json(body, [](JsonObject root) {
+                  id(np_title_state) = std::string(root["title"] | "(idle)");
+                  id(np_album_state) = std::string(root["album"] | "");
+                  id(np_artist_state) = std::string(root["artist"] | "");
+                  id(np_elapsed) = root["elapsedMs"] | 0;
+                  id(np_duration) = root["durationMs"] | 0;
+                  id(np_playing) = root["isPlaying"] | false;
+                  std::string song = std::string(root["id"] | "");
+                  id(np_song_id) = song;
+                  int secs = (int)(id(np_elapsed) / 1000.0f);
+                  char clock[8];
+                  snprintf(clock, sizeof(clock), "%d:%02d", secs / 60, secs % 60);
+                  id(np_time_state) = std::string(clock);
+                  // album art: ask Apple for a small variant (96px) and
+                  // refresh the online_image only when the art changed
+                  std::string art = std::string(root["artworkUrl"] | "");
+                  size_t pos = art.find("600x600");
+                  if (pos != std::string::npos) art.replace(pos, 7, "96x96");
+                  if (!art.empty() && art != id(last_art)) {
+                    id(last_art) = art;
+                    id(artwork)->set_url(art);
+                    id(artwork)->update();
+                  }
+                  return true;
+                });
 
 # Lyrics are fetched periodically and kept as compact timestamp/text arrays.
 # Auto mode uses lyrics when this array is non-empty; otherwise art remains.
@@ -267,78 +217,108 @@ display:
     CLK_pin: 15
     update_interval: 16ms
     lambda: |-
-      // Full image wash first. Text and the right tile sit over it.
-      if (id(np_has_art)) it.image(0, 0, id(background_art));
-      else it.fill(Color::BLACK);
+      // ── 3x5 pixel font, drawn with 1px strokes ──
+      // Each glyph: 5 rows x 3 bits (MSB of each row = left column).
+      static const uint16_t F35[] = { 0x2BED, 0x6BAE, 0x3923, 0x6B6E, 0x79A7, 0x79A4, 0x396B, 0x5BED, 0x7497, 0x126A, 0x5BAD, 0x4927, 0x5FED, 0x5FFD, 0x2B6A, 0x6BA4, 0x2B51, 0x6BAD, 0x388E, 0x7492, 0x5B6F, 0x5B6A, 0x5BFD, 0x5AAD, 0x5A92, 0x72A7, 0x7B6F, 0x2C97, 0x73E7, 0x72CF, 0x5BC9, 0x79CF, 0x79EF, 0x7252, 0x7BEF, 0x7BCF, 0x0410, 0x01C0, 0x0002, 0x0014, 0x2400, 0x68AB, 0x2482, 0x6280, 0x12A4, 0x1491, 0x4494, 0x05D0, 0x0000 };
+      static const char ORDER[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-.'!?/()&+ ";
 
-      // Static left-side metadata. Fit to the 38px column by clipping
-      // characters rather than moving the title around.
+      auto draw3x5 = [&](int x, int y, const std::string &txt,
+                         bool bright, bool bold) {
+        for (char ch : txt) {
+          int idx = -1;
+          if (ch >= 'A' && ch <= 'Z') idx = ch - 'A';
+          else if (ch >= 'a' && ch <= 'z') idx = ch - 'a';
+          else if (ch >= '0' && ch <= '9') idx = 26 + ch - '0';
+          else if (ch == ':') idx = 36;
+          else if (ch == '-') idx = 37;
+          else if (ch == '.') idx = 38;
+          else if (ch == ',') idx = 39;
+          else if (ch == '\'') idx = 40;
+          else if (ch == '&') idx = 41;
+          else if (ch == '!') idx = 42;
+          else if (ch == '?') idx = 43;
+          else if (ch == '/') idx = 44;
+          else if (ch == '(') idx = 45;
+          else if (ch == ')') idx = 46;
+          else if (ch == '+') idx = 47;
+          else if (ch == ' ') idx = 48;
+          if (idx < 0) { x += 4; continue; }
+          uint16_t g = F35[idx];
+          for (int row = 0; row < 5; row++) {
+            for (int col = 0; col < 3; col++) {
+              bool on = g & (0x1000 >> (row * 3 + col));
+              if (!on) continue;
+              it.draw_pixel_at(x + col, y + row, bright ? Color(245, 245, 245) : Color(90, 90, 90));
+              if (bold) it.draw_pixel_at(x + col + 1, y + row, bright ? Color(245, 245, 245) : Color(90, 90, 90));
+            }
+          }
+          x += bold ? 5 : 4;
+        }
+      };
+
+      it.fill(Color::BLACK);
+
+      // ── left column (0-38): static clipped text ──
       std::string title = id(np_title_state);
       std::string album = id(np_album_state);
       std::string artist = id(np_artist_state);
-      if (title.length() > 8) title = title.substr(0, 7) + ".";
-      if (album.length() > 8) album = album.substr(0, 7) + ".";
-      if (artist.length() > 8) artist = artist.substr(0, 7) + ".";
-      it.printf(0, 0, id(roboto8), "%s", title.c_str());
-      it.printf(0, 8, id(roboto8), "%s", album.c_str());
-      it.printf(0, 16, id(roboto8), "%s", artist.c_str());
+      auto clip = [](std::string s, size_t n) {
+        if (s.length() > n) return s.substr(0, n - 1) + ".";
+        return s;
+      };
+      draw3x5(1, 1, clip(title, 9), true, false);    // title: brightest
+      draw3x5(1, 9, clip(album, 9), false, false);   // album: dim
+      draw3x5(1, 17, clip(artist, 9), false, false); // artist: dim
 
+      // ── progress bar + elapsed time ──
       float frac = (id(np_duration) > 0)
         ? id(np_elapsed) / id(np_duration) : 0.0f;
-      it.rectangle(0, 27, 25, 30, id(dim_white));
-      if (frac > 0) it.filled_rectangle(0, 27, (int)(frac * 25), 30, id(accent));
-      it.printf(28, 25, id(roboto5), "%s", id(np_time_state).c_str());
+      it.rectangle(1, 27, 20, 4, id(dim_white));
+      if (frac > 0) it.filled_rectangle(1, 27, (int)(frac * 20), 4, id(accent));
+      draw3x5(24, 26, id(np_time_state), true, false);
 
+      // ── right tile (40-63): album art or lyrics ──
       bool lyrics_mode = id(display_mode).state == "lyrics" ||
         (id(display_mode).state == "auto" && !id(lyric_lines).empty());
       if (lyrics_mode && !id(lyric_lines).empty()) {
-        // Cover the server-composited art tile only in lyrics mode.
-        it.filled_rectangle(40, 4, 63, 27, Color::BLACK);
+        // lyrics tile: previous dim / current bright+bold / next dim
         int current = -1;
         for (size_t i = 0; i < id(lyric_times).size(); i++) {
           if (id(lyric_times)[i] <= id(np_elapsed)) current = (int)i;
         }
-        if (current >= 0) {
-          int prev = current - 1;
-          int next = current + 1;
-          if (prev >= 0) it.printf(41, 5, id(roboto5), "%s", id(lyric_lines)[prev].c_str());
-          it.printf(41, 13, id(roboto6bold), "%s", id(lyric_lines)[current].c_str());
-          if (next < (int)id(lyric_lines).size()) it.printf(41, 23, id(roboto5), "%s", id(lyric_lines)[next].c_str());
-        }
-      } else if (lyrics_mode) {
-        it.filled_rectangle(40, 4, 63, 27, Color::BLACK);
-        it.printf(42, 14, id(roboto5), "no lyrics");
+        int prev = current - 1, next = current + 1;
+        if (prev >= 0) draw3x5(41, 7, clip(id(lyric_lines)[prev], 5), false, false);
+        if (current >= 0) draw3x5(41, 14, clip(id(lyric_lines)[current], 5), true, true);
+        if (next >= 0 && next < (int)id(lyric_lines).size())
+          draw3x5(41, 22, clip(id(lyric_lines)[next], 5), false, false);
+      } else if (id(np_has_art)) {
+        it.image(40, 4, id(artwork));
+      } else {
+        draw3x5(41, 14, "no art", false, false);
       }
-      // restrained playback pulse: the background becomes slightly brighter
-      // while playing. The next revision can replace this with an RMS meter
-      // from the audio pipeline without changing the layout.
-      if (id(np_playing) && ((millis() / 120) % 8) < 2)
-        it.filled_rectangle(0, 31, 63, 31, id(accent));
-
-font:
-  - file: "gfonts://Roboto"
-    id: roboto8
-    size: 8
-    bpp: 2
-  - file: "gfonts://Roboto"
-    id: roboto6bold
-    size: 6
-    bpp: 2
-  - file: "gfonts://Roboto"
-    id: roboto5
-    size: 5
-    bpp: 2
 
 color:
   - id: accent
     red: 98%
     green: 18%
-    blue: 28%
+    blue: 28%                  # tonearm's #fa2d48
   - id: dim_white
     red: 30%
     green: 30%
     blue: 30%
 
+switch:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Display power"
+    restore_mode: ALWAYS_ON
+    id: power
+
+number:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Brightness"
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
@@ -400,8 +380,3 @@ binary_sensor:
               url: "${tonearm_base}/api/playback/shuffle/on?api_key=${tonearm_key}"
           - http_request.post:
               url: "${tonearm_base}/api/playback/play-collection?kind=playlist&id=${playlist_2_id}&api_key=${tonearm_key}"
-
-# the device key is read,write scoped and rate-capped in tonearm's
-# registry — revoke it with `python3 -m tonearm keys revoke k-…` and the
-# pad goes silent (display keeps polling with the same key; give it a
-# second read-only key if you want display-only mode).
