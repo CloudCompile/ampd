@@ -16,6 +16,7 @@ from .metrics import METRICS
 from .models import Health
 from . import __version__
 from . import keys as keys_mod
+from . import musickit as mk
 from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
                      history, overlay, webhooks as webhooks_routes,
