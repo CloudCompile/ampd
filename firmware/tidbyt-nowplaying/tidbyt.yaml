@@ -325,7 +325,6 @@ font:
   - file: "gfonts://Roboto"
     id: roboto6bold
     size: 6
-    bold: true
   - file: "gfonts://Roboto"
     id: roboto5
     size: 5
