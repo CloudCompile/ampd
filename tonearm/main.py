@@ -157,6 +157,11 @@ async def lifespan(app):
     except Exception:
         pass
     try:
+        from .audio import broadcaster
+        broadcaster.stop()          # kill capture subprocesses (#177)
+    except Exception:
+        pass
+    try:
         from . import watcher as _watcher_mod
         if getattr(_watcher_mod, "watcher", None) is not None:
             _watcher_mod.watcher.stop()

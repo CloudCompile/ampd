@@ -135,6 +135,25 @@ class Pipeline:
             threading.Thread(target=self._read, daemon=True,
                              name="tonearm-audio-%s" % (self.key,)).start()
 
+    def stop(self):
+        """Kill the capture subprocesses. They run in their OWN session
+        (start_new_session) — a graceful server exit does NOT deliver
+        signals to them (#177, found live: a 'stopped' server left
+        parecord running for minutes, recording silence from a dead
+        sink)."""
+        with self._lock:
+            proc, self._proc, self._started = self._proc, None, False
+        if proc and proc.poll() is None:
+            import signal
+            import os as _os
+            try:                       # the whole sh -c group: parecord+ffmpeg
+                _os.killpg(_os.getpgid(proc.pid), signal.SIGTERM)
+            except (ProcessLookupError, PermissionError):
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+
     def _encode_silence(self):
         """Pre-encode SILENCE_SECS of true silence with the SAME codec args —
         the join pad has exactly the stream's format. One cheap one-shot at
@@ -294,6 +313,19 @@ class Broadcaster:
         with self._lock:
             pipe = self._pipelines.setdefault(key, Pipeline(*key))
         pipe.start()
+
+    def stop(self):
+        """Teardown (#177): kill every capture pipeline's subprocesses.
+        Without this, a 'stopped' server left parecord|ffmpeg running in
+        their own session — recording silence from a dead sink for
+        nobody."""
+        with self._lock:
+            pipes = list(self._pipelines.values())
+        for p in pipes:
+            try:
+                p.stop()
+            except Exception:
+                pass
 
     def status(self):
         with self._lock:

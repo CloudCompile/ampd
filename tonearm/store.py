@@ -609,6 +609,7 @@ class HistoryWriter(threading.Thread):
         self._seq = 0
         self._current = None          # last seen track key
         self._playing = None          # last seen is-playing state
+        self._pending = None          # (key, started_at) staged at elapsed 0
         self._stop = threading.Event()
 
     def stop(self):
@@ -622,8 +623,12 @@ class HistoryWriter(threading.Thread):
         synthetic buffers without any renderer.
         A 'play' = the track key changes while playing (progress ticks and
         same-track state changes are not plays), or playback resumes from a
-        pause. The very first track seen playing counts too — a server
-        restart mid-song still happened."""
+        pause — BUT only once playback is PROVEN (#178, found live): a
+        queue-load fires a transient tick with elapsedMs == 0 even when
+        autoplay never delivers sound, and the old code recorded it as a
+        play (a Ledger full of plays that made no noise). A staged start
+        records only when a later tick shows real progress on the same
+        track — with the ORIGINAL start time, not the confirming tick's."""
         recorded = []
         for e in entries:
             self._seq = max(self._seq, e.get("seq", 0))
@@ -631,18 +636,35 @@ class HistoryWriter(threading.Thread):
             if not key:
                 continue
             playing = e.get("isPlaying") is not False
+            el = e.get("elapsedMs") or 0
+            started_at = (e.get("ts") or time.time() * 1000) / 1000.0
             was_playing = self._playing
-            if playing and (key != self._current or was_playing is False):
+            self._playing = playing
+            if not playing:
+                self._pending = None      # a paused staged start never happened
+                continue
+            if key != self._current or was_playing is False:
                 self._current = key
-                self._playing = True
-                started_at = (e.get("ts") or time.time() * 1000) / 1000.0
+                if el > 0:
+                    self._pending = None
+                    self.store.record_play(
+                        track_id=key, title=e.get("title"),
+                        artist=e.get("artist"), album=e.get("album"),
+                        artwork=e.get("artworkUrl"),
+                        duration_ms=e.get("durationMs"),
+                        started_at=started_at)
+                    recorded.append(key)
+                else:
+                    self._pending = (key, started_at)
+            elif self._pending and self._pending[0] == key and el > 0:
+                started_at = self._pending[1]
+                self._pending = None
                 self.store.record_play(
-                    track_id=key, title=e.get("title"), artist=e.get("artist"),
-                    album=e.get("album"), artwork=e.get("artworkUrl"),
+                    track_id=key, title=e.get("title"),
+                    artist=e.get("artist"), album=e.get("album"),
+                    artwork=e.get("artworkUrl"),
                     duration_ms=e.get("durationMs"), started_at=started_at)
                 recorded.append(key)
-            elif not playing:
-                self._playing = False
         return recorded
 
     def run(self):
