@@ -67,8 +67,14 @@ def envelope_content(status, code=None, detail=""):
 
 def wrap_http_exception(exc: StarletteHTTPException):
     """Plain HTTPException (routing 404s, per-route raises) -> envelope.
-    The exception's detail, when it has one, IS the human hint."""
-    return envelope_content(exc.status_code, detail=exc.detail)
+    The exception's detail, when it has one, IS the human hint.
+    A 502 carrying an Apple 'HTTP 429' is a RATE LIMIT, not a renderer
+    failure (#175, found live): answer 429/rate_limited so clients can
+    back off instead of reading it as 'the renderer is dead'."""
+    detail = exc.detail if isinstance(exc.detail, str) else ""
+    if exc.status_code == 502 and "HTTP 429" in detail:
+        return envelope_content(429, "rate_limited", detail)
+    return envelope_content(exc.status_code, detail=detail)
 
 
 def wrap_validation_error(exc: RequestValidationError):
