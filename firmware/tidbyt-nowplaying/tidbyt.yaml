@@ -88,28 +88,48 @@ media_player:
     i2s_dout_pin: GPIO14
     mode: mono
 
-# ── the display: now playing ───────────────────────────────────────────
+# ── the display: static CarPlay-style player ───────────────────────────
+# The player never scrolls. Album artwork is a full-screen low-resolution
+# background; the foreground is a readable 38px text column plus a 24px
+# right tile that automatically becomes synced lyrics when available.
 text_sensor:
   - platform: template
     id: np_title
-    lambda: |-
-      return {id(np_title_state)};
+    lambda: 'return {id(np_title_state)};'
   - platform: template
     id: np_artist
-    lambda: |-
-      return {id(np_artist_state)};
+    lambda: 'return {id(np_artist_state)};'
 
-# album art, downloaded on track change (96px jpeg → 24x24 on the panel)
+# Background is intentionally low-res: it produces a soft/pixelated wash
+# across the matrix without storing a large bitmap on the ESP32.
 online_image:
+  - id: background_art
+    url: "http://placeholder/background.jpg"
+    format: JPEG
+    type: RGB565
+    resize: 64x32
+    update_interval: never
   - id: artwork
-    url: "http://placeholder/art.jpg"   # replaced at runtime via set_url
+    url: "http://placeholder/art.jpg"
     format: JPEG
     type: RGB565
     resize: 24x24
-    update_interval: never          # we set_url + update on track change
+    update_interval: never
 
-web_server:                         # LAN page: the volume slider lives here
+web_server:
   port: 80
+
+select:
+  - platform: template
+    id: display_mode
+    name: "Display mode"
+    optimistic: true
+    restore_value: true
+    options:
+      - auto
+      - artwork
+      - lyrics
+    initial_option: auto
 
 globals:
   - id: np_title_state
@@ -133,49 +153,99 @@ globals:
   - id: np_playing
     type: bool
     initial_value: 'false'
+  - id: np_has_art
+    type: bool
+    initial_value: 'false'
+  - id: np_song_id
+    type: std::string
+    initial_value: '""'
   - id: last_art
     type: std::string
     initial_value: '""'
+  - id: last_background
+    type: std::string
+    initial_value: '""'
+  - id: lyric_times
+    type: std::vector<int>
+    initial_value: '{}'
+  - id: lyric_lines
+    type: std::vector<std::string>
+    initial_value: '{}'
 
+# Current metadata and art. The player remains static; only the right tile
+# changes between art and lyrics.
 interval:
   - interval: 5s
     then:
-    - http_request.get:
-        url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
-        capture_response: true
-        request_headers:
-          Content-Type: "application/json"
-        on_response:
+      - http_request.get:
+          url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
+          capture_response: true
+          request_headers:
+            Content-Type: "application/json"
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code != 200) return;
+                  json::parse_json(body, [](JsonObject root) {
+                    id(np_title_state) = std::string(root["title"] | "(idle)");
+                    id(np_album_state) = std::string(root["album"] | "");
+                    id(np_artist_state) = std::string(root["artist"] | "");
+                    id(np_elapsed) = root["elapsedMs"] | 0;
+                    id(np_duration) = root["durationMs"] | 0;
+                    id(np_playing) = root["isPlaying"] | false;
+                    std::string song = std::string(root["id"] | "");
+                    id(np_song_id) = song;
+                    int secs = (int)(id(np_elapsed) / 1000.0f);
+                    char clock[8];
+                    snprintf(clock, sizeof(clock), "%d:%02d", secs / 60, secs % 60);
+                    id(np_time_state) = std::string(clock);
+                    std::string art = std::string(root["artworkUrl"] | "");
+                    if (art.empty()) return true;
+                    size_t pos = art.find("600x600");
+                    if (pos != std::string::npos) art.replace(pos, 7, "96x96");
+                    id(np_has_art) = true;
+                    if (art != id(last_art)) {
+                      id(last_art) = art;
+                      id(artwork)->set_url(art);
+                      id(artwork)->update();
+                    }
+                    // The same image is used as a deliberately low-res
+                    // full-panel background. It is not a second large bitmap.
+                    if (art != id(last_background)) {
+                      id(last_background) = art;
+                      id(background_art)->set_url(art);
+                      id(background_art)->update();
+                    }
+                    return true;
+                  });
+
+# Lyrics are fetched periodically and kept as compact timestamp/text arrays.
+# Auto mode uses lyrics when this array is non-empty; otherwise art remains.
+  - interval: 15s
+    then:
+      - if:
+          condition:
+            lambda: 'return !id(np_song_id).empty();'
           then:
-            - lambda: |-
-                // on_response receives (response, body) — the trigger is
-                // Trigger<shared_ptr<HttpContainer>, string&> (checked in
-                // the 2025.8.0 source); status first, then parse body
-                if (response->status_code != 200) return;
-                json::parse_json(body, [](JsonObject root) {
-                  id(np_title_state) = std::string(root["title"] | "(idle)");
-                  id(np_album_state) = std::string(root["album"] | "");
-                  id(np_artist_state) = std::string(root["artist"] | "");
-                  id(np_elapsed) = root["elapsedMs"] | 0;
-                  id(np_duration) = root["durationMs"] | 0;
-                  id(np_playing) = root["isPlaying"] | false;
-                  // elapsed → m:ss under the progress bar
-                  int secs = (int)(id(np_elapsed) / 1000.0f);
-                  char buf[8];
-                  snprintf(buf, sizeof(buf), "%d:%02d", secs / 60, secs % 60);
-                  id(np_time_state) = std::string(buf);
-                  // album art: ask Apple for a small variant (96px) and
-                  // refresh the online_image only when the art changed
-                  std::string art = std::string(root["artworkUrl"] | "");
-                  size_t pos = art.find("600x600");
-                  if (pos != std::string::npos) art.replace(pos, 7, "96x96");
-                  if (!art.empty() && art != id(last_art)) {
-                    id(last_art) = art;
-                    id(artwork)->set_url(art);
-                    id(artwork)->update();
-                  }
-                  return true;
-                });
+            - http_request.get:
+                url: !lambda |-
+                  return std::string("${tonearm_base}/api/catalog/songs/") +
+                    id(np_song_id) + "/lyrics?api_key=${tonearm_key}";
+                capture_response: true
+                request_headers:
+                  Content-Type: "application/json"
+                on_response:
+                  then:
+                    - lambda: |-
+                        if (response->status_code != 200) return;
+                        json::parse_json(body, [](JsonObject root) {
+                          id(lyric_times).clear();
+                          id(lyric_lines).clear();
+                          for (JsonObject line : root["lines"].as<JsonArray>()) {
+                            id(lyric_times).push_back(line["timeMs"] | 0);
+                            id(lyric_lines).push_back(std::string(line["text"] | ""));
+                          }
+                        });
 
 display:
   - platform: hub75_matrix_display
@@ -201,53 +271,75 @@ display:
     CLK_pin: 15
     update_interval: 16ms
     lambda: |-
-      // ── left column (0-38): the text stack ──
-      const std::string title = id(np_title_state);
-      // title scrolls inside the 38px column (size-8 Roboto ≈ 5px/glyph)
-      const int title_w = (int)(title.length() * 5) + 1;
-      const int span = title_w + 38;
-      const int off = (millis() / 60) % span;
-      const int x = 38 - off;
-      it.printf(x, 0, id(roboto8), "%s", title.c_str());
-      it.printf(0, 9, id(roboto8), "%s", id(np_album_state).c_str());
-      it.printf(0, 17, id(roboto8), "%s", id(np_artist_state).c_str());
-      // ── progress bar + time, under the text ──
+      // Full image wash first. Text and the right tile sit over it.
+      if (id(np_has_art)) it.image(0, 0, id(background_art));
+      else it.fill(Color::BLACK);
+
+      // Static left-side metadata. Fit to the 38px column by clipping
+      // characters rather than moving the title around.
+      std::string title = id(np_title_state);
+      std::string album = id(np_album_state);
+      std::string artist = id(np_artist_state);
+      if (title.length() > 8) title = title.substr(0, 7) + ".";
+      if (album.length() > 8) album = album.substr(0, 7) + ".";
+      if (artist.length() > 8) artist = artist.substr(0, 7) + ".";
+      it.printf(0, 0, id(roboto8), "%s", title.c_str());
+      it.printf(0, 8, id(roboto8), "%s", album.c_str());
+      it.printf(0, 16, id(roboto8), "%s", artist.c_str());
+
       float frac = (id(np_duration) > 0)
         ? id(np_elapsed) / id(np_duration) : 0.0f;
-      it.rectangle(0, 27, 26, 4, id(dim_white));
-      it.filled_rectangle(0, 27, (int)(frac * 26), 4, id(accent));
-      it.printf(29, 25, id(roboto8), "%s", id(np_time_state).c_str());
-      // ── right column (40-63): the album art ──
-      it.image(40, 4, id(artwork));
-      // playing dot, art's top-left corner
-      if (id(np_playing)) it.filled_rectangle(40, 4, 3, 3, id(accent));
+      it.rectangle(0, 27, 25, 30, id(dim_white));
+      if (frac > 0) it.filled_rectangle(0, 27, (int)(frac * 25), 30, id(accent));
+      it.printf(28, 25, id(roboto5), "%s", id(np_time_state).c_str());
+
+      bool lyrics_mode = id(display_mode).state == "lyrics" ||
+        (id(display_mode).state == "auto" && !id(lyric_lines).empty());
+      if (!lyrics_mode && id(np_has_art)) {
+        it.image(40, 4, id(artwork));
+      } else if (lyrics_mode && !id(lyric_lines).empty()) {
+        int current = -1;
+        for (size_t i = 0; i < id(lyric_times).size(); i++) {
+          if (id(lyric_times)[i] <= id(np_elapsed)) current = (int)i;
+        }
+        if (current >= 0) {
+          int prev = current - 1;
+          int next = current + 1;
+          if (prev >= 0) it.printf(41, 5, id(roboto5), "%s", id(lyric_lines)[prev].c_str());
+          it.printf(41, 13, id(roboto6bold), "%s", id(lyric_lines)[current].c_str());
+          if (next < (int)id(lyric_lines).size()) it.printf(41, 23, id(roboto5), "%s", id(lyric_lines)[next].c_str());
+        }
+      } else {
+        it.printf(42, 14, id(roboto5), "no lyrics");
+      }
+      // restrained playback pulse: the background becomes slightly brighter
+      // while playing. The next revision can replace this with an RMS meter
+      // from the audio pipeline without changing the layout.
+      if (id(np_playing) && ((millis() / 120) % 8) < 2)
+        it.filled_rectangle(0, 31, 63, 31, id(accent));
 
 font:
   - file: "gfonts://Roboto"
     id: roboto8
     size: 8
+  - file: "gfonts://Roboto"
+    id: roboto6bold
+    size: 6
+    bold: true
+  - file: "gfonts://Roboto"
+    id: roboto5
+    size: 5
 
 color:
   - id: accent
     red: 98%
     green: 18%
-    blue: 28%                  # tonearm's #fa2d48
+    blue: 28%
   - id: dim_white
     red: 30%
     green: 30%
     blue: 30%
 
-switch:
-  - platform: hub75_matrix_display
-    matrix_id: matrix
-    name: "Display power"
-    restore_mode: ALWAYS_ON
-    id: power
-
-number:
-  - platform: hub75_matrix_display
-    matrix_id: matrix
-    name: "Brightness"
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
