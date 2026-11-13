@@ -99,13 +99,31 @@ text_sensor:
     lambda: |-
       return {id(np_artist_state)};
 
+# album art, downloaded on track change (96px jpeg → 24x24 on the panel)
+online_image:
+  - id: artwork
+    url: ""
+    format: JPEG
+    type: RGB565
+    resize: 24x24
+    update_interval: never          # we set_url + update on track change
+
+web_server:                         # LAN page: the volume slider lives here
+  port: 80
+
 globals:
   - id: np_title_state
     type: std::string
     initial_value: '"starting up"'
-  - id: np_artist_state
+  - id: np_album_state
     type: std::string
     initial_value: '"tonearm"'
+  - id: np_artist_state
+    type: std::string
+    initial_value: '""'
+  - id: np_time_state
+    type: std::string
+    initial_value: '"0:00"'
   - id: np_elapsed
     type: float
     initial_value: '0'
@@ -115,6 +133,9 @@ globals:
   - id: np_playing
     type: bool
     initial_value: 'false'
+  - id: last_art
+    type: std::string
+    initial_value: '""'
 
 interval:
   - interval: 5s
@@ -133,10 +154,26 @@ interval:
                 if (response->status_code != 200) return;
                 json::parse_json(body, [](JsonObject root) {
                   id(np_title_state) = std::string(root["title"] | "(idle)");
+                  id(np_album_state) = std::string(root["album"] | "");
                   id(np_artist_state) = std::string(root["artist"] | "");
                   id(np_elapsed) = root["elapsedMs"] | 0;
                   id(np_duration) = root["durationMs"] | 0;
                   id(np_playing) = root["isPlaying"] | false;
+                  // elapsed → m:ss under the progress bar
+                  int secs = (int)(id(np_elapsed) / 1000.0f);
+                  char buf[8];
+                  snprintf(buf, sizeof(buf), "%d:%02d", secs / 60, secs % 60);
+                  id(np_time_state) = std::string(buf);
+                  // album art: ask Apple for a small variant (96px) and
+                  // refresh the online_image only when the art changed
+                  std::string art = std::string(root["artworkUrl"] | "");
+                  size_t pos = art.find("600x600");
+                  if (pos != std::string::npos) art.replace(pos, 7, "96x96");
+                  if (!art.empty() && art != id(last_art)) {
+                    id(last_art) = art;
+                    id(artwork)->set_url(art);
+                    id(artwork)->update();
+                  }
                   return true;
                 });
 
@@ -164,31 +201,28 @@ display:
     CLK_pin: 15
     update_interval: 16ms
     lambda: |-
-      const int W = 64;
-      // title (top row) — horizontal pixel-scroll, loops forever.
-      // (Font::get_width doesn't exist in esphome's API; size-10 Roboto
-      // averages ~6px/glyph, good enough for a scroll period.)
+      // ── left column (0-38): the text stack ──
       const std::string title = id(np_title_state);
-      const int title_w = (int)(title.length() * 6) + 1;
-      const int scroll_span = title_w + W;
-      const int offset = (millis() / 60) % scroll_span;
-      const int x = W - offset;
-      if (x + title_w > 0 && x < W)
-        it.printf(x, 1, id(roboto10), "%s", title.c_str());
-      // artist (middle)
-      it.printf(0, 12, id(roboto10), "%s", id(np_artist_state).c_str());
-      // playhead bar (bottom): gradient fill = fraction played
+      // title scrolls inside the 38px column (size-8 Roboto ≈ 5px/glyph)
+      const int title_w = (int)(title.length() * 5) + 1;
+      const int span = title_w + 38;
+      const int off = (millis() / 60) % span;
+      const int x = 38 - off;
+      it.printf(x, 0, id(roboto8), "%s", title.c_str());
+      it.printf(0, 9, id(roboto8), "%s", id(np_album_state).c_str());
+      it.printf(0, 17, id(roboto8), "%s", id(np_artist_state).c_str());
+      // ── progress bar + time, under the text ──
       float frac = (id(np_duration) > 0)
         ? id(np_elapsed) / id(np_duration) : 0.0f;
-      it.rectangle(0, 24, W, 8, id(dim_white));
-      it.filled_rectangle(0, 24, (int)(frac * W), 8, id(accent));
-      // a tiny playing/paused dot, top-right
-      if (id(np_playing)) it.filled_rectangle(W - 3, 0, 3, 3, id(accent));
+      it.rectangle(0, 27, 26, 4, id(dim_white));
+      it.filled_rectangle(0, 27, (int)(frac * 26), 4, id(accent));
+      it.printf(29, 25, id(roboto8), "%s", id(np_time_state).c_str());
+      // ── right column (40-63): the album art ──
+      it.image(40, 4, id(artwork));
+      // playing dot, art's top-left corner
+      if (id(np_playing)) it.filled_rectangle(40, 4, 3, 3, id(accent));
 
 font:
-  - file: "gfonts://Roboto"
-    id: roboto10
-    size: 10
   - file: "gfonts://Roboto"
     id: roboto8
     size: 8
