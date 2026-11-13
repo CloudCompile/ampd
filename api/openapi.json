@@ -1192,6 +1192,28 @@
       ],
       "title": "Elapsedms"
      },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "isLibrary": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Islibrary"
+     },
      "isPlaying": {
       "title": "Isplaying",
       "type": "boolean"
@@ -1445,6 +1467,17 @@
        }
       ],
       "title": "Id"
+     },
+     "isLibrary": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Islibrary"
      },
      "isPlaying": {
       "title": "Isplaying",
@@ -5694,6 +5727,50 @@
     "summary": "Recommendations",
     "tags": [
      "personal"
+    ]
+   }
+  },
+  "/api/playback/back": {
+   "post": {
+    "description": "Hardware-button 'back' (the Tidbyt's triple-tap): past the\nthreshold (default 10s), 'back' means RESTART this song; before it,\nprevious track. Additive route, not a change to /previous \u2014 the\nfreeze's allowlist is additions only.",
+    "operationId": "back_api_playback_back_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "threshold_ms",
+      "required": false,
+      "schema": {
+       "default": 10000,
+       "title": "Threshold Ms",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Back",
+    "tags": [
+     "playback"
     ]
    }
   },
