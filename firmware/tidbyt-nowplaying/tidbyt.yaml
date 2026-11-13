@@ -102,7 +102,7 @@ text_sensor:
 # album art, downloaded on track change (96px jpeg → 24x24 on the panel)
 online_image:
   - id: artwork
-    url: ""
+    url: "http://placeholder/art.jpg"   # replaced at runtime via set_url
     format: JPEG
     type: RGB565
     resize: 24x24
