@@ -22,8 +22,11 @@ substitutions:
   # ── filled in for this device ────────────────────────────────────────
   tonearm_base: "https://remote.tail4c21bf.ts.net:8443"
   tonearm_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"   # tidbyt, read,write, 120/min
-  playlist_1_id: "p.YJXV3lJuekYea8V"   # ACTUALLY GOOD PHONK
-  playlist_2_id: "p.oOzA27PFEpGEaq4"   # ADO Essentials
+  # hold ~1s → favorites, in order
+  playlist_1_id: "p.0YU08k07L9"        # Favorite Songs (the hearts playlist)
+  # hold twice → heavy rotation, SHUFFLED (shuffle flips on before play;
+  # the favorites hold flips it back off — each button is deterministic)
+  playlist_2_id: "p.KoKOBXDS3Wm3o9P"   # Heavy Rotation
   # ─────────────────────────────────────────────────────────────────────
 
 esphome:
@@ -252,20 +255,24 @@ binary_sensor:
         then:
           - http_request.post:
               url: "${tonearm_base}/api/playback/back?threshold_ms=10000&api_key=${tonearm_key}"
-      # — hold ~1s (and release): playlist 1 ————————————
+      # — hold ~1s (and release): FAVORITES, in order ————
       - timing:
           - ON for 0.8s to 2.5s
           - OFF for at least 0.4s
         then:
           - http_request.post:
+              url: "${tonearm_base}/api/playback/shuffle/off?api_key=${tonearm_key}"
+          - http_request.post:
               url: "${tonearm_base}/api/playback/play-collection?kind=playlist&id=${playlist_1_id}&api_key=${tonearm_key}"
-      # — hold, release, hold again: playlist 2 —————————
+      # — hold, release, hold again: HEAVY ROTATION, shuffled ————
       - timing:
           - ON for 0.8s to 2.5s
           - OFF for 0.1s to 0.4s
           - ON for 0.8s to 2.5s
           - OFF for at least 0.4s
         then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/shuffle/on?api_key=${tonearm_key}"
           - http_request.post:
               url: "${tonearm_base}/api/playback/play-collection?kind=playlist&id=${playlist_2_id}&api_key=${tonearm_key}"
 
