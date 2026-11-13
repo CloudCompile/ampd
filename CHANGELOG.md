@@ -58,6 +58,13 @@ catalog goes worldwide.
 
 ## [Unreleased]
 
+### Added
+- **Tidbyt Gen 2 firmware** (`firmware/tidbyt-nowplaying/`): the dead-cloud
+  pixel display becomes a tonearm now-playing screen, stream speaker, and
+  gesture remote (1 tap toggle / 2 taps next / 3 taps smart-back / hold
+  playlist 1 / double hold playlist 2). ESPHome, pinned 2025.8.0; the
+  device authenticates with its own revocable scoped key.
+
 ## [0.7.0] — 2026-11-13 — Multi-user
 
 ### Added
