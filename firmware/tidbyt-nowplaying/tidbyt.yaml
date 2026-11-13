@@ -118,9 +118,9 @@ interval:
     then:
     - http_request.get:
         url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
-        headers:
-          Content-Type: "application/json"
         capture_response: true
+        request_headers:
+          Content-Type: "application/json"
         on_response:
           then:
             - lambda: |-
