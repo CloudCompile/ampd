@@ -73,8 +73,11 @@ wifi:
     password: "tidbytsetup"            # explicit WPA password; open APs
                                        # are rejected by some ChromeOS/phones
 
-captive_portal:                        # first boot: join "tidbyt-setup",
-                                       # pick your WiFi in the portal
+                                       # are rejected by some ChromeOS/phones
+                                       # (captive_portal + web_server were
+                                       # removed: together they exhausted
+                                       # the heap and crashed the I2S
+                                       # speaker init — found live)
 
 # ── the speaker ────────────────────────────────────────────────────────
 i2s_audio:
@@ -112,9 +115,10 @@ online_image:
     resize: 64x32
     update_interval: never
 
-web_server:
-  port: 80
-  version: 2                         # lower RAM than the v3 UI on this board
+# (web_server removed — it exhausted the heap alongside the audio pipeline;
+# the i2s DMA buffers then failed to allocate and the device crash-looped.
+# Volume: set at boot via media_player.volume_set, source volume via the
+# tonearm PWA.)
 
 select:
   - platform: template
