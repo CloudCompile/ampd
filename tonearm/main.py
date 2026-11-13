@@ -377,6 +377,15 @@ def bench_page():
                         media_type="text/html")
 
 
+@app.get("/tidbyt", include_in_schema=False)
+def tidbyt_page():
+    """The Tidbyt companion remote: library search, playlists, volume,
+    display mode, and the device's button profile live on the server so the
+    ESP32 never has to carry the library."""
+    return FileResponse(os.path.join(_SITES, "tidbyt.html"),
+                        media_type="text/html")
+
+
 @app.get("/sites/{filename}", include_in_schema=False)
 def site_asset(filename: str):
     """Static assets for the companion pages (js/css). Path-traversal safe:
