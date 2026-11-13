@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from .config import config
 from .browser import browser, BrowserError
 from .errors import ApiError, install_error_handlers
+from .metrics import METRICS
 from .models import Health
 from . import __version__
 from . import keys as keys_mod
