@@ -123,33 +123,70 @@ its own renderer.*
 ## v0.7 — Multi-user
 
 *Carefully. One Apple session is one stream — by design, not by accident.*
+**Shipped in v0.7.0.**
 
 - [ ] **Multi-key auth with scopes** — `read` keys for friends' UIs, `write`
       keys for yours; per-key rate ceilings `M P0`
-- [ ] **Per-key audit log** — who did what, exportable `S P1`
+      (#46, #114–#119: keys file + hashing, scope enforcement, ceilings,
+      key CLI, SSE caps, metrics/tests)
+- [ ] **Per-key audit log** — who did what, exportable `S P1` (#47, #120)
+- [ ] **Session-expiry UX** — `/health` carries `session: ok | expired`
+      (a dead session must say "run `python -m tonearm login`", not
+      403 everywhere) `S P1` (#189, found live)
 - [ ] **Multi-account support** — a second Apple profile behind a selector
-      header `L P2`
+      header `L P2` (#48, #121–#122: research spike first)
 - [ ] **Party mode** — shared queue with voting (research how far one
-      session can be pushed) `L P2`
+      session can be pushed) `L P2` (#49, #123–#125)
+- [ ] **CDP eval priorities** — playback evals never queue behind a
+      background walk `M P2` (#188 — depends on how #174's fix holds up)
 
-## v1.0 — Polish
+## v0.8.0 — Freeze & Docs
 
-1.0 means: surface stable, documented, backed up, observable.
+*The schema becomes a contract of record, and the docs stop living in a
+chat log. Surface additions land HERE or wait for 1.x.*
 
+- [ ] **API freeze** — deprecation policy (one minor cycle, Sunset
+      header) `S P0` (#50, #126) · Sunset middleware + surface version
+      marker `S P1` (#127) · OpenAPI diff gate in CI `M P1` (#128)
 - [ ] **Docs site** — mkdocs on GitHub Pages, endpoint reference generated
-      from the typed schemas `M P1`
-- [ ] **Install script + systemd generator** — bare-metal setup in one
-      command `S P1`
+      from the typed schemas `M P1` (#51, #129–#131: skeleton, generated
+      reference + route-coverage check, field notes migrated in)
+- [ ] **CHANGELOG.md + release-notes automation** `S P1` (#138)
+- [ ] **Batch endpoint** — one POST answering N GETs (Ledger today = 5
+      round-trips) `S P2` (#183 — reads only, rides the read cache)
+- [ ] **Multi-storefront** — region as a validated param; the hardcoded
+      `us` retires `M P2` (#184, verify live with a non-us storefront)
+
+## v0.9.0 — Install & Harness
+
+*Works on a fresh VM, tested without an Apple account in CI.*
+
+- [ ] **Install script + systemd generator** — bare-metal in one command
+      `S P1` (#52, #132–#134: script, unit generator, the fresh-VM
+      runbook test — the actual proof)
 - [ ] **Recorded-fixture offline harness in CI** — the live suite stays
       manual; CI gains fixture-driven regression coverage `M P1`
-- [ ] **API freeze** — deprecation policy for route/shape changes `S P0`
+      (#53, #135–#137: runner, corpus + conformance diff, live-vs-mock
+      parity checks)
+- [ ] **Deploy docs: the tunnel era** — funnel vs quick tunnel vs LAN
+      (quick tunnels starve SSE; funnels don't — found live) `S P1` (#190)
+- [ ] **Jellyfin/Plex metadata bridge** `L P2` (#185, spike first)
+- [ ] **ESP32 now-playing display recipe** `S P2` (#186 — the overlay
+      endpoint exists for exactly this)
+- [ ] **Voice-control skill** `M P2` (#187 — HA Assist / platform TBD)
 
-## Moonshots
+## v1.0.0 — rc & soak
 
-* Not obviously useful yet, obviously fun eventually:
-  GraphQL-style batch endpoint · multi-storefront (region as a param) ·
-  "tonearm bridge" for Jellyfin/Plex metadata · a tiny ESP32 now-playing
-  display recipe · voice-control skill.
+*Feature freeze is the feature.*
+
+- [ ] **`v1.0.0-rc.1`** — fixes only; the deprecation cycles from v0.8
+      run; the live install soaks it for real (this box); docs get their
+      final pass `S P0`
+- [ ] **`v1.0.0`** — when the surface is stable, documented, backed up,
+      and observable. The freeze policy owns everything after.
+
+*(Moonshots graduated: batch endpoint, multi-storefront, the bridges and
+recipes — all scheduled above. New moonshots land here when they show up.)*
 
 ## Non-goals
 
