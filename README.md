@@ -1,6 +1,7 @@
 # tonearm 🎧
 
 [![CI](https://github.com/CloudCompile/tonearm/actions/workflows/ci.yml/badge.svg)](https://github.com/CloudCompile/tonearm/actions/workflows/ci.yml)
+[![Docs](https://github.com/CloudCompile/tonearm/actions/workflows/docs.yml/badge.svg)](https://cloudcompile.github.io/tonearm/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](requirements.txt)
 
@@ -13,6 +14,11 @@ documented.
 > account, for *your own* use — it holds your session the same way your
 > browser does. That's a gray zone in Apple's ToS; use your judgment and keep
 > it private/local.
+
+> 📚 **The full docs live on the [docs site](https://cloudcompile.github.io/tonearm/)** —
+> generated API reference, env table, field notes, and the deprecation
+> policy. This README stays the source of truth for the env table and the
+> field notes; the site regenerates from it on every build.
 
 ## How it works
 
