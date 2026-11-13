@@ -1,0 +1,264 @@
+# Tidbyt Gen 2 → tonearm: now-playing display + speaker + gesture remote.
+#
+# Flash once over USB (esphome run tidbyt.yaml from any machine with the
+# device plugged in, or https://web.esphome.io from Chrome). After that
+# it lives on your WiFi and talks straight to tonearm's funnel URL —
+# no Tidbyt cloud, no local hub required.
+#
+# Hardware (Gen 2, pinned by the ESPHome-on-Tidbyt-Gen2 community thread):
+#   ESP32-S3 · 64x32 HUB75 matrix · I2S speaker (GPIO12/13/14) · touch pad
+#   (GPIO33, capacitive) · bootloader unlocked.
+#
+# Gestures (the spec):
+#   1 tap            → play/pause toggle
+#   2 taps           → next track
+#   3 taps           → "back" — restart if >10s into the song, else the
+#                      previous track (the RULE lives in tonearm:
+#                      POST /api/playback/back — the button stays dumb)
+#   hold ~1s         → play playlist 1
+#   hold twice       → play playlist 2   (two ≥1s holds, released quickly)
+
+substitutions:
+  # ── FILL THESE IN ────────────────────────────────────────────────────
+  tonearm_base: "https://remote.tail4c21bf.ts.net:8443"   # the funnel
+  tonearm_key: "toneark_REPLACE_ME"    # the DEVICE's own scoped key:
+                                       # python3 -m tonearm keys add tidbyt
+                                       # --scopes read,write --rate 120
+  playlist_1_id: "p.YJXV3lJuekYea8V"   # python3 -m tonearm keys … no —
+                                       # curl the /api/library/playlists
+  playlist_2_id: "p.REPLACE_ME"
+  # ─────────────────────────────────────────────────────────────────────
+
+esphome:
+  name: tidbyt-nowplaying
+  friendly_name: Tidbyt Now Playing
+  on_boot:
+    priority: 600                      # after wifi+api, before loops
+    then:
+      # the speaker IS the tonearm stream: start listening on boot and
+      # keep it (tonearm's lazy pipeline wakes on first listener —
+      # silence when idle, live the moment something plays)
+      - media_player.speaker.play:
+          id: speaker
+          url: "${tonearm_base}/api/audio/stream.mp3?api_key=${tonearm_key}"
+      - media_player.volume_set:
+          id: speaker
+          volume: 80%
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
+
+logger:
+api:
+  encryption:
+    key: !secret api_encryption_key    # esphome generates on first run
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:                                  # never orphaned: falls back to a
+    ssid: "tidbyt-setup"               # setup hotspot if the wifi's gone
+
+# ── the speaker ────────────────────────────────────────────────────────
+i2s_audio:
+  - id: i2s_out
+    i2s_lrclk_pin: GPIO13             # WS / LRC
+    i2s_bclk_pin: GPIO12              # SCK / BCLK
+
+media_player:
+  - platform: i2s_audio
+    id: speaker
+    name: tonearm speaker
+    dac_type: external
+    i2s_dout_pin: GPIO14
+    mode: mono
+
+# ── the display: now playing ───────────────────────────────────────────
+text_sensor:
+  - platform: template
+    id: np_title
+    lambda: |-
+      return {id(np_title_state)};
+  - platform: template
+    id: np_artist
+    lambda: |-
+      return {id(np_artist_state)};
+
+globals:
+  - id: np_title_state
+    type: std::string
+    initial_value: '"starting up"'
+  - id: np_artist_state
+    type: std::string
+    initial_value: '"tonearm"'
+  - id: np_elapsed
+    type: float
+    initial_value: '0'
+  - id: np_duration
+    type: float
+    initial_value: '0'
+  - id: np_playing
+    type: bool
+    initial_value: 'false'
+
+interval:
+  - interval: 5s
+    then:
+    - http_request.get:
+        url: "${tonearm_base}/api/playback/now-playing?api_key=${tonearm_key}"
+        headers:
+          Content-Type: "application/json"
+        capture_response: true
+        on_response:
+          then:
+            - lambda: |-
+                json::parse_json(id(this->last_response_body_), [](JsonObject root) {
+                  id(np_title_state) = std::string(root["title"] | "(idle)");
+                  id(np_artist_state) = std::string(root["artist"] | "");
+                  id(np_elapsed) = root["elapsedMs"] | 0;
+                  id(np_duration) = root["durationMs"] | 0;
+                  id(np_playing) = root["isPlaying"] | false;
+                  return true;
+                });
+
+display:
+  - platform: hub75_matrix_display
+    id: matrix
+    driver: FM6126A
+    i2sspeed: HZ_10M
+    clock_phase: false
+    latch_blanking: 1
+    width: 64
+    height: 32
+    R1_pin: 5
+    G1_pin: 23
+    B1_pin: 4
+    R2_pin: 2
+    G2_pin: 22
+    B2_pin: 32
+    A_pin: 25
+    B_pin: 21
+    C_pin: 26
+    D_pin: 19
+    LAT_pin: 18
+    OE_pin: 27
+    CLK_pin: 15
+    update_interval: 16ms
+    lambda: |-
+      const int W = 64;
+      // title (top row) — horizontal pixel-scroll, loops forever
+      const std::string title = id(np_title_state);
+      const int title_w = id(roboto10).get_width(title);
+      const int scroll_span = title_w + W;
+      const int offset = (millis() / 60) % scroll_span;
+      const int x = W - offset;
+      if (x + title_w > 0 && x < W)
+        it.printf(x, 1, id(roboto10), "%s", title.c_str());
+      // artist (middle)
+      it.printf(0, 12, id(roboto10), "%s", id(np_artist_state).c_str());
+      // playhead bar (bottom): gradient fill = fraction played
+      float frac = (id(np_duration) > 0)
+        ? id(np_elapsed) / id(np_duration) : 0.0f;
+      it.rectangle(0, 24, W, 8, id(dim_white));
+      it.filled_rectangle(0, 24, (int)(frac * W), 8, id(accent));
+      // a tiny playing/paused dot, top-right
+      if (id(np_playing)) it.filled_rectangle(W - 3, 0, 3, 3, id(accent));
+
+font:
+  - file: "gfonts://Roboto"
+    id: roboto10
+    size: 10
+  - file: "gfonts://Roboto"
+    id: roboto8
+    size: 8
+
+color:
+  - id: accent
+    red: 98%
+    green: 18%
+    blue: 28%                  # tonearm's #fa2d48
+  - id: dim_white
+    red: 30%
+    green: 30%
+    blue: 30%
+
+switch:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Display power"
+    restore_mode: ALWAYS_ON
+    id: power
+
+number:
+  - platform: hub75_matrix_display
+    matrix_id: matrix
+    name: "Brightness"
+
+# ── the touch pad: the whole remote ────────────────────────────────────
+esp32_touch:
+  setup_mode: false
+
+binary_sensor:
+  - platform: esp32_touch
+    name: "Top pad"
+    id: pad
+    pin: GPIO33
+    threshold: 1200
+    filters:
+      - delayed_on: 10ms
+    on_multi_click:
+      # — 1 tap: play/pause ——————————————————————————————
+      - timing:
+          - ON for at most 0.35s
+          - OFF for at least 0.45s        # window closes: it was ONE tap
+        then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/toggle?api_key=${tonearm_key}"
+      # — 2 taps: next ———————————————————————————————————
+      - timing:
+          - ON for at most 0.35s
+          - OFF for 0.1s to 0.4s
+          - ON for at most 0.35s
+          - OFF for at least 0.45s
+        then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/next?api_key=${tonearm_key}"
+      # — 3 taps: back (restart if >10s, else previous) ——
+      - timing:
+          - ON for at most 0.35s
+          - OFF for 0.1s to 0.4s
+          - ON for at most 0.35s
+          - OFF for 0.1s to 0.4s
+          - ON for at most 0.35s
+          - OFF for at least 0.45s
+        then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/back?threshold_ms=10000&api_key=${tonearm_key}"
+      # — hold ~1s (and release): playlist 1 ————————————
+      - timing:
+          - ON for 0.8s to 2.5s
+          - OFF for at least 0.4s
+        then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/play-collection?kind=playlist&id=${playlist_1_id}&api_key=${tonearm_key}"
+      # — hold, release, hold again: playlist 2 —————————
+      - timing:
+          - ON for 0.8s to 2.5s
+          - OFF for 0.1s to 0.4s
+          - ON for 0.8s to 2.5s
+          - OFF for at least 0.4s
+        then:
+          - http_request.post:
+              url: "${tonearm_base}/api/playback/play-collection?kind=playlist&id=${playlist_2_id}&api_key=${tonearm_key}"
+
+# the device key is read,write scoped and rate-capped in tonearm's
+# registry — revoke it with `python3 -m tonearm keys revoke k-…` and the
+# pad goes silent (display keeps polling with the same key; give it a
+# second read-only key if you want display-only mode).
