@@ -8,39 +8,55 @@ policy](docs/deprecation.md) governs breaking changes).
 Release notes for each version are drafted by `scripts/release_notes.py`
 (merged PRs since the previous tag) and edited by hand before publishing.
 
-## [Unreleased]
+## [0.8.0] — 2026-11-13 — The Freeze
+
+The release where the API surface becomes a contract: documented
+deprecation policy, enforced by CI. Docs site live; batch reads; the
+catalog goes worldwide.
 
 ### Added
+- **The freeze** (#50, #126–128): deprecation policy
+  ([docs/deprecation.md](docs/deprecation.md)) — one minor cycle of
+  `Deprecation:`/`Sunset:` headers, then the route dies; the pinnable
+  surface marker (`/health` `surface` + `X-Tonearm-Surface`); the
+  OpenAPI contract gate (CI diffs every PR against
+  [api/openapi.json](api/openapi.json), breaking changes fail without
+  the `api-breaking` label).
 - **Batch reads** (#183): `POST /api/batch` — N reads in one round trip
   (a dashboard render was 5 tunnel round trips; now it's 1). Entries
   `{path, params}`, answers `[{status, body}]` with per-entry failure
   isolation; reads only, cap 10.
 - **Multi-storefront catalog** (#184): `?storefront=` (validated ISO
-  alpha-2) on every catalog route — regional charts/search/availability;
-  library/me routes stay on the account's home storefront. Live-verified
-  us/gb/de.
-- **The freeze** (#50, #126–128): documented deprecation policy
-  ([docs/deprecation.md](docs/deprecation.md)), `Deprecation:`/`Sunset:`
-  headers middleware, the pinnable surface marker (`/health` `surface`
-  field + `X-Tonearm-Surface` header), and the OpenAPI contract gate —
-  CI diffs every PR's schema against `api/openapi.json` and fails
-  breaking changes that didn't ride the policy.
-- **This docs site** (#129–131): mkdocs-material on GitHub Pages,
-  deployed on release tags; the API reference is generated from the
-  OpenAPI snapshot with a route-coverage check; the env table and field
-  notes are generated from the README (which stays the source of truth).
-- CHANGELOG + release-notes automation (#138).
+  alpha-2) on every catalog route — regional charts, search,
+  availability; library/me routes stay on the account's home
+  storefront. Live-verified us/gb/de.
+- **The docs site** (#129–131): mkdocs-material on GitHub Pages,
+  deployed on release tags; the API reference generates from the
+  OpenAPI snapshot with a route-coverage check; env table + field
+  notes generate from this README.
+- **CHANGELOG + notes automation** (#138): this file (keep-a-changelog)
+  and `scripts/release_notes.py` (drafts from squash-merge history).
+- **e2b sandbox template** (`sandbox/`): the full runtime (chrome,
+  pulse, ffmpeg, Xvfb) as a 2 vCPU / 4GB sandbox template for safe
+  development.
 
 ### Fixed
-- Audio pipeline teardown: a duplicate `Pipeline.stop()` (smuggled in by
-  the #162 rename) defeated the #177 process-group kill — parecord/ffmpeg
-  lingered forever after the last stream listener left (#200).
+- Audio pipeline teardown: a duplicate `Pipeline.stop()` (smuggled in
+  by the #162 rename) defeated the #177 process-group kill —
+  parecord/ffmpeg lingered forever after the last stream listener
+  left (#200).
 - CDP deadlock: the renderer watchdog armed only on a READY MusicKit
   tab, so a renderer that died before first-ready wedged the whole API
-  layer forever. The watchdog now arms when the websocket connects.
-  CDP recv slices tightened to 5s so deadlines are honored (~10s fail,
-  was ~60s) (#201).
-- `TONEARM_CHROME_EXTRA`: pass extra chrome args for constrained hosts.
+  layer forever. The watchdog now arms when the websocket connects;
+  CDP recv slices tightened to 5s (deadlines were overshooting ~60s)
+  (#201).
+- `TONEARM_CHROME_EXTRA` env: extra chrome args for constrained hosts.
+- The passthrough route's operationId flip-flopped by hash order
+  between processes (the contract gate's first catch, fixed at root).
+- `fastapi` pinned exactly — schema output varies by patch version and
+  the snapshot must not drift.
+
+## [Unreleased]
 
 ## [0.7.0] — 2026-11-13 — Multi-user
 
@@ -109,7 +125,8 @@ Release notes for each version are drafted by `scripts/release_notes.py`
 - Playback control, library/catalog search, favorites, the demo page,
   audio streaming at `/api/audio/stream.mp3`.
 
-[Unreleased]: https://github.com/CloudCompile/tonearm/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/CloudCompile/tonearm/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/CloudCompile/tonearm/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/CloudCompile/tonearm/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/CloudCompile/tonearm/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/CloudCompile/tonearm/compare/v0.6.0...v0.6.1
