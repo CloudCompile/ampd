@@ -102,7 +102,8 @@ jobs:
           EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/metrics",
                              "/demo", "/api/amp-api/", "/api/overlay/",
                              "/openapi.json", "/docs", "/redoc",
-                             "/ledger", "/radar", "/bench", "/sites/")
+                             "/ledger", "/radar", "/bench", "/tidbyt",
+                             "/sites/")
 
           untyped = []
           total = 0
