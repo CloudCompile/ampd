@@ -124,9 +124,11 @@ def library_search(term: str, limit: int = 25):
 
 @router.get("/recently-added", response_model=ItemList)
 def recently_added(limit: int = 25):
-    """Most recently added library items (any kind)."""
+    """Most recently added library items (any kind).
+    Apple caps this endpoint's limit at 25 — asked for 100 it 400s
+    (found live from the Radar page)."""
     try:
-        data = mk.api_music(f"/v1/me/library/recently-added?limit={min(limit, 100)}")
+        data = mk.api_music(f"/v1/me/library/recently-added?limit={min(limit, 25)}")
         return {"items": [mk.item_row(t) for t in data.get("data", [])]}
     except BrowserError as e:
         raise HTTPException(502, str(e))
