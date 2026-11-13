@@ -129,6 +129,11 @@ class Browser:
         # parks in state=loading forever (found live: clicking a library
         # song did nothing audible OR visible)
         cmd.append("--autoplay-policy=no-user-gesture-required")
+        # VPS kindness (#found-live: the tab burned ~33% of a core rendering
+        # music.apple.com's animations even when nothing played): freeze the
+        # page's decorative animation — the player state still works
+        cmd += ["--blink-settings=imageAnimationPolicy=2",
+                "--force-prefers-reduced-motion"]
         cmd.append("about:blank")
         log.info("launching chrome: %s (audio=%s)", " ".join(cmd), config.audio_enabled)
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

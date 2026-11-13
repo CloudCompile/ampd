@@ -35,12 +35,10 @@ async def lifespan(app):
     # audio pipeline starts eagerly, BEFORE the process is multithreaded:
     # spawning subprocesses from the running event loop wedges the loop
     # (fork-vs-GIL deadlock — found with py-spy the hard way)
-    if config.audio_enabled and not config.mock_enabled:
-        try:
-            from .audio import broadcaster
-            broadcaster.prestart()
-        except Exception as e:
-            log.error("audio pipeline failed to start: %s", e)
+    # Audio pipelines are LAZY: they start on first subscribe and stop on
+    # last unsubscribe (audio.py does both). The old boot-time prestart()
+    # burned a core encoding silence 24/7 on the VPS even with zero
+    # listeners — found live (ffmpeg + chrome ~10% CPU for nothing).
     # local store (v0.3 Memory): opens the db and arms the history writer —
     # one flat daemon thread that drains the stream-hook buffer. Never
     # started when TONEARM_STORE is unset; everything history answers 501 then.

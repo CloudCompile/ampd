@@ -36,7 +36,10 @@ class Config:
     # CONSECUTIVE failed pings; then it's recycled and hot-recovered instead
     # of waiting for the next request to fail.
     watchdog: bool = os.environ.get("TONEARM_WATCHDOG", "1") == "1"
-    watchdog_interval: int = int(os.environ.get("TONEARM_WATCHDOG_INTERVAL", "20"))
+    # 60s (was 20s): each ping is a CDP eval into the tab; on a small VPS
+    # that collides with real work. A stall only acts after watchdog_tries
+    # consecutive failures anyway, so pinging less costs nothing.
+    watchdog_interval: int = int(os.environ.get("TONEARM_WATCHDOG_INTERVAL", "60"))
     watchdog_tries: int = int(os.environ.get("TONEARM_WATCHDOG_TRIES", "3"))
 
     # --- audio streaming (so a UI on YOUR computer can HEAR what the server plays)
