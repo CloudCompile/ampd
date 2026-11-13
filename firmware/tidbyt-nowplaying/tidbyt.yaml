@@ -109,15 +109,10 @@ online_image:
     type: RGB565
     resize: 64x32
     update_interval: never
-  - id: artwork
-    url: "http://placeholder/art.jpg"
-    format: JPEG
-    type: RGB565
-    resize: 24x24
-    update_interval: never
 
 web_server:
   port: 80
+  version: 2                         # lower RAM than the v3 UI on this board
 
 select:
   - platform: template
@@ -157,9 +152,6 @@ globals:
     type: bool
     initial_value: 'false'
   - id: np_song_id
-    type: std::string
-    initial_value: '""'
-  - id: last_art
     type: std::string
     initial_value: '""'
   - id: last_background
@@ -204,14 +196,9 @@ interval:
                     size_t pos = art.find("600x600");
                     if (pos != std::string::npos) art.replace(pos, 7, "96x96");
                     id(np_has_art) = true;
-                    if (art != id(last_art)) {
-                      id(last_art) = art;
-                      id(artwork)->set_url(art);
-                      id(artwork)->update();
-                    }
                     // Tonearm generates one cached blurred/darkened
-                    // background when the cover changes. The device does
-                    // not do blur work and never regenerates per frame.
+                    // background plus the clear art tile when the cover
+                    // changes. The device has only one image buffer.
                     if (art != id(last_background)) {
                       id(last_background) = art;
                       id(background_art)->set_url(
@@ -298,9 +285,9 @@ display:
 
       bool lyrics_mode = id(display_mode).state == "lyrics" ||
         (id(display_mode).state == "auto" && !id(lyric_lines).empty());
-      if (!lyrics_mode && id(np_has_art)) {
-        it.image(40, 4, id(artwork));
-      } else if (lyrics_mode && !id(lyric_lines).empty()) {
+      if (lyrics_mode && !id(lyric_lines).empty()) {
+        // Cover the server-composited art tile only in lyrics mode.
+        it.filled_rectangle(40, 4, 63, 27, Color::BLACK);
         int current = -1;
         for (size_t i = 0; i < id(lyric_times).size(); i++) {
           if (id(lyric_times)[i] <= id(np_elapsed)) current = (int)i;
@@ -312,7 +299,8 @@ display:
           it.printf(41, 13, id(roboto6bold), "%s", id(lyric_lines)[current].c_str());
           if (next < (int)id(lyric_lines).size()) it.printf(41, 23, id(roboto5), "%s", id(lyric_lines)[next].c_str());
         }
-      } else {
+      } else if (lyrics_mode) {
+        it.filled_rectangle(40, 4, 63, 27, Color::BLACK);
         it.printf(42, 14, id(roboto5), "no lyrics");
       }
       // restrained playback pulse: the background becomes slightly brighter

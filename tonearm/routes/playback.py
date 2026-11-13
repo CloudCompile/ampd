@@ -31,9 +31,15 @@ def artwork_background():
             with urlopen(url, timeout=15) as r:
                 source = r.read(2_000_000)
             image = Image.open(BytesIO(source)).convert("RGB")
+            tile = ImageOps.fit(image, (24, 24), method=Image.Resampling.LANCZOS)
             image = ImageOps.fit(image, (64, 32), method=Image.Resampling.LANCZOS)
             image = image.filter(ImageFilter.GaussianBlur(radius=4))
             image = ImageEnhance.Brightness(image).enhance(0.38)
+            # One device-side image buffer: the clear 24x24 artwork tile is
+            # composited into the right-hand position server-side. Lyrics
+            # mode simply paints over this tile; no second online_image
+            # decoder/buffer is needed on the ESP32.
+            image.paste(tile, (40, 4))
             out = BytesIO()
             image.save(out, format="JPEG", quality=78, optimize=True)
             _background_cache[url] = out.getvalue()
