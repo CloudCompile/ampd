@@ -783,8 +783,11 @@ plan (effort- and priority-tagged, with non-goals stated honestly).
   optional auto-add — **the artist→catalog mapping strategy is
   name-search and remains verify-live gated**); Home Assistant recipes in
   `docs/ha-recipes.md`
-* **Next**: **Multi-user** (scoped keys) → **1.0 Polish**; the watcher's
-  artist→catalog mapping stays behind a live-verification gate (see ROADMAP)
+* **The road to 1.0, in trains** (ROADMAP.md carries the detail):
+  **v0.7.0** multi-user (scoped keys, audit log) → **v0.8.0** the API
+  freeze + docs site (+ batch endpoint, multi-storefront before the
+  freeze) → **v0.9.0** install script + offline test harness (+ the
+  tunnel-era deploy docs) → **v1.0.0-rc** soak → **v1.0.0**
 
 ## Deploying
 
