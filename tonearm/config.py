@@ -74,6 +74,16 @@ class Config:
                 or os.path.join(os.path.dirname(self.store_db_path()),
                                 "lastfm.json"))
 
+    # --- multi-key auth (v0.7, opt-in) ---
+    # TONEARM_API_KEY stays the MASTER key (all scopes, unlimited). Extra
+    # scoped keys (read / read,write, per-key rate ceilings) live in a
+    # 0600 keys file managed by `python -m tonearm keys add|list|revoke`.
+    # No keys file = exactly the old behavior: master or keyless.
+    def keys_file_path(self):
+        return (os.environ.get("TONEARM_KEYS_FILE")
+                or os.path.join(os.path.dirname(self.store_db_path()),
+                                "keys.json"))
+
     # --- outbound webhooks (v0.6 Automation, opt-in) ---
     # Apple has no webhooks. tonearm can be the webhook: track changes,
     # write mutations, renderer recoveries and library diffs are POSTed to

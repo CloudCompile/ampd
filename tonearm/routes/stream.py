@@ -15,9 +15,10 @@ import threading
 import time
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from .. import musickit as mk
+from .. import keys as keys_mod
 from ..browser import BrowserError
 from ..metrics import METRICS
 
@@ -100,10 +101,22 @@ async def _events(request: Request):
         return
     finally:
         _listener_delta(-1)
+        if identity is not None:
+            keys_mod.sse_cap.leave(identity)
 
 
 @router.get("/stream")
 def stream(request: Request):
+    # per-key SSE connection cap (#118): the master is unlimited; a scoped
+    # key gets a small concurrent-stream allowance (a tab family, not a
+    # fleet of tabs). Rejected here, before the generator starts.
+    identity = getattr(request.state, "identity", None)
+    if identity is not None and not keys_mod.sse_cap.enter(identity):
+        return JSONResponse(
+            status_code=429,
+            content={"error": {"code": "rate_limited",
+                               "hint": f"key {identity.describe()} hit its "
+                                       f"concurrent-stream cap"}})
     return StreamingResponse(_events(request), media_type="text/event-stream",
                              headers={"Cache-Control": "no-store",
                                       "X-Accel-Buffering": "no"})
