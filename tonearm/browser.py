@@ -116,7 +116,11 @@ class Browser:
                 **os.environ,                      # merge — a bare {DISPLAY,
                 "DISPLAY": config.audio_display,   # PULSE_SINK} env strips PATH
                 "PULSE_SINK": config.audio_sink,   # and XDG_RUNTIME_DIR, leaving
-            }                                      # chrome unable to find pulse
+            }   # chrome unable to find pulse (found live: the tab plays, the
+                # playhead moves, and the captured stream is DIGITAL SILENCE —
+                # chrome never found the daemon without the runtime dir)
+            env.setdefault("XDG_RUNTIME_DIR",
+                           f"/run/user/{os.getuid()}")
         else:
             if config.headless:
                 cmd.append("--headless=new")
