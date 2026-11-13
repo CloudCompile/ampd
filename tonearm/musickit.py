@@ -455,6 +455,28 @@ def playback_command(cmd):
         }})()""", timeout=15)
 
 
+def playback_back(threshold_ms=10000):
+    """The hardware-button 'back' (hardware-button gestures, sandbox era):
+    past `threshold_ms`, 'back' means RESTART this song; before it,
+    previous track. One eval, decided on-device-side by the server so the
+    button stays dumb. MusicKit's own skipToPreviousItem restarts at ~3s —
+    not the rule remote controls want."""
+    return browser.eval("""(async () => {
+      const mk = MusicKit.getInstance();
+      const elapsed = (mk.currentPlaybackTime || 0) * 1000;
+      if (elapsed > THRESHOLD) {
+        try { await mk.seekToSeconds(0); return {back: "restart", elapsed}; }
+        catch (e) {
+          // older builds: rewind the playhead the crude way
+          try { mk.currentPlaybackTime = 0; return {back: "restart-crude", elapsed}; }
+          catch (e2) { return {warn: String(e2).slice(0, 120)}; }
+        }
+      }
+      await mk.skipToPreviousItem();
+      return {back: "previous", elapsed};
+    })()""".replace("THRESHOLD", str(threshold_ms)), timeout=15)
+
+
 def now_playing():
     return browser.eval("""(() => {
       const mk = MusicKit.getInstance();
@@ -470,6 +492,10 @@ def now_playing():
       return {
         isPlaying: !!mk.isPlaying,
         state: mk.playbackState,
+        // catalog id when the queue holds one; library rows carry their
+        // library id — callers treat it as "playable-ish", not gospel
+        id: item ? (item.id || item.attributes?.playParams?.id) || null : null,
+        isLibrary: item ? !!String(item.id || "").startsWith("i.") : false,
         title: item ? (item.title || item.attributes?.name) : null,
         artist: item ? item.artistName : null,
         album: item ? (item.albumName || item.attributes?.albumName) : null,

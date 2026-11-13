@@ -237,6 +237,8 @@ class NowPlaying(_PassThrough):
     artworkUrl: str | None = None
     progress: float | None = None
     elapsedMs: int | None = None
+    id: str | None = None            # playable id (catalog, or library i.X)
+    isLibrary: bool | None = None
 
 
 class OverlayNowPlaying(NowPlaying):
