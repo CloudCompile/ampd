@@ -557,6 +557,22 @@ class SmartlistRefresh(_PassThrough):
     count: int = 0
 
 
+class AuditEntry(_PassThrough):
+    ts: float
+    key_id: str
+    method: str
+    path: str
+    status: int
+
+
+class AuditExport(_PassThrough):
+    total: int
+    count: int
+    items: list[AuditEntry]
+    next_offset: int | None = None
+    source: str = "store"
+
+
 # ---- errors / system ----
 
 class ErrorBody(_PassThrough):

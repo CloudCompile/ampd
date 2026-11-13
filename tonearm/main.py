@@ -19,7 +19,8 @@ from .routes import (library, favorites, playback, passthrough, catalog,
                      personal, writes, sweeps, stream, audio, metrics, debug,
                      history, overlay, webhooks as webhooks_routes,
                      smartlists as smartlists_routes,
-                     watcher as watcher_routes)
+                     watcher as watcher_routes,
+                     audit as audit_routes)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -264,6 +265,14 @@ async def auth_guard(request: Request, call_next):
                 {"key": identity.describe(),
                  "code": f"{response.status_code // 100}xx"},
                 help_text="API requests by key and status class")
+    # the audit trail (#47): every authenticated MUTATION — who did what
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        try:
+            from . import audit
+            audit.record(identity, request.method, path,
+                         response.status_code)
+        except Exception:                 # the audit never breaks the request
+            pass
     return response
 
 
@@ -301,6 +310,7 @@ app.include_router(overlay.router, prefix="/api")
 app.include_router(webhooks_routes.router, prefix="/api")
 app.include_router(smartlists_routes.router, prefix="/api")
 app.include_router(watcher_routes.router, prefix="/api")
+app.include_router(audit_routes.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)
