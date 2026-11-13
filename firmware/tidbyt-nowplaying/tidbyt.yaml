@@ -167,10 +167,10 @@ globals:
     initial_value: '""'
   - id: lyric_times
     type: std::vector<int>
-    initial_value: '{}'
+    initial_value: 'std::vector<int>()'
   - id: lyric_lines
     type: std::vector<std::string>
-    initial_value: '{}'
+    initial_value: 'std::vector<std::string>()'
 
 # Current metadata and art. The player remains static; only the right tile
 # changes between art and lyrics.
@@ -245,6 +245,7 @@ interval:
                             id(lyric_times).push_back(line["timeMs"] | 0);
                             id(lyric_lines).push_back(std::string(line["text"] | ""));
                           }
+                          return true;
                         });
 
 display:
