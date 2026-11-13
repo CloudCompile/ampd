@@ -38,9 +38,9 @@ esphome:
       # the speaker IS the tonearm stream: start listening on boot and
       # keep it (tonearm's lazy pipeline wakes on first listener —
       # silence when idle, live the moment something plays)
-      - media_player.speaker.play:
+      - media_player.play_media:
           id: speaker
-          url: "${tonearm_base}/api/audio/stream.mp3?api_key=${tonearm_key}"
+          media_url: "${tonearm_base}/api/audio/stream.mp3?api_key=${tonearm_key}"
       - media_player.volume_set:
           id: speaker
           volume: 80%
