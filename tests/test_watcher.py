@@ -6,6 +6,7 @@ The whole point: the FIRST pass is a silent baseline (never a flood of
 """
 import os
 import sys
+import time
 import unittest
 import unittest.mock
 import urllib.parse
@@ -92,9 +93,10 @@ class FakeMk:
 
 
 def make_watcher(store=None, mk=None, emit=None, **kw):
+    kw.setdefault("interval", 3600)
     return ReleaseWatcher(store or FakeStore(), FakeBrowser({}),
                           mk or FakeMk(), emit_fn=emit or (lambda t, d: None),
-                          interval=3600, **kw)
+                          **kw)
 
 
 class FakeBrowser:
@@ -300,6 +302,41 @@ class TestAutoAdd(unittest.TestCase):
         mk, summary, events = self._with_auto_add(enable_writes=False)
         self.assertEqual(mk.added, [], "writes off = no Apple mutation")
         self.assertIn("auto_add_skipped", events[-1][1])
+
+
+class TestDiscipline(unittest.TestCase):
+    """#176: restarts must not stampede the rate budget; passes must end
+    even when Apple 429s every lookup."""
+
+    def test_fresh_boot_pass_is_skipped(self):
+        store = FakeStore()
+        watcher = make_watcher(store=store, interval=86400)
+        # a pass completed 5 minutes ago — inside half the daily interval
+        store.set_cursor("watcher.pass", {"completed_at": time.time() - 300})
+        self.assertTrue(watcher._boot_pass_fresh())
+        # 12 hours old — half of 86400 — stale enough to run
+        store.set_cursor("watcher.pass", {"completed_at": time.time() - 43200})
+        self.assertFalse(watcher._boot_pass_fresh())
+        # no pass ever — nothing to skip
+        self.assertFalse(make_watcher(store=FakeStore(),
+                                      interval=86400)._boot_pass_fresh())
+
+    def test_pass_stops_at_the_time_budget(self):
+        calls = []
+
+        def slow_check(art, summary):
+            calls.append(1)
+            time.sleep(0.05)
+            return True
+
+        watcher = make_watcher()
+        watcher._check_artist = slow_check
+        watcher.time_budget_s = 0.09
+        summary = watcher.run_pass()
+        self.assertTrue(summary.get("time_budget_exhausted"),
+                        "the wall-clock budget ends the pass")
+        self.assertLess(len(calls), len(ARTISTS),
+                        "fewer artists than the whole list ran")
 
 
 if __name__ == "__main__":
