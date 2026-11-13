@@ -191,6 +191,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# the freeze (#50/#127): the pinnable surface (major.minor). The
+# deprecation middleware is registered further down, after auth_guard,
+# so it wraps it.
+from . import deprecate                      # module-level import (house rule)
+
+SURFACE = deprecate.init_surface(__version__)
+
+
 
 # the auth dialect is enforced by middleware, not a FastAPI dependency, so
 # OpenAPI can't see it — document it explicitly. Generated clients (CI on
@@ -279,20 +287,40 @@ async def auth_guard(request: Request, call_next):
 install_error_handlers(app)
 
 
+install_error_handlers(app)
+
+
+# the deprecation/surface middleware (#127) — registered AFTER auth_guard
+# so it sits OUTSIDE it: deprecated routes get their loud headers even on
+# the 401 a keyless client receives. Headers never break a response.
+@app.middleware("http")
+async def deprecation_guard(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/api/") or path == "/health":
+        try:
+            deprecate.stamp(response, path, SURFACE)
+        except Exception:
+            pass
+    return response
+
+
 @app.get("/health", response_model=Health)
 def health():
     if config.mock_enabled:
         return {"status": "ok", "browser": "mock (TONEARM_MOCK=1)",
-                "watchdog": None,
+                "watchdog": None, "surface": SURFACE,
                 "session": {"state": "mock", "since": time.time()}}
     wd = browser.health()
     try:
         browser.check()
         return {"status": "ok", "browser": "authorized", "watchdog": wd,
+                "surface": SURFACE,
                 "session": dict(mk.session_state)}
     except BrowserError as e:
         return JSONResponse(status_code=503, content={
             "status": "degraded", "detail": str(e), "watchdog": wd,
+            "surface": SURFACE,
             "session": dict(mk.session_state)})
 
 

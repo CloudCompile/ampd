@@ -1,0 +1,7625 @@
+{
+ "components": {
+  "schemas": {
+   "AuditEntry": {
+    "additionalProperties": true,
+    "properties": {
+     "key_id": {
+      "title": "Key Id",
+      "type": "string"
+     },
+     "method": {
+      "title": "Method",
+      "type": "string"
+     },
+     "path": {
+      "title": "Path",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "integer"
+     },
+     "ts": {
+      "title": "Ts",
+      "type": "number"
+     }
+    },
+    "required": [
+     "ts",
+     "key_id",
+     "method",
+     "path",
+     "status"
+    ],
+    "title": "AuditEntry",
+    "type": "object"
+   },
+   "AuditExport": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/AuditEntry"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next_offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Offset"
+     },
+     "source": {
+      "default": "store",
+      "title": "Source",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "count",
+     "items"
+    ],
+    "title": "AuditExport",
+    "type": "object"
+   },
+   "DebugInfo": {
+    "additionalProperties": true,
+    "properties": {
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "recent_calls": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Recent Calls",
+      "type": "array"
+     },
+     "renderer": {
+      "additionalProperties": true,
+      "title": "Renderer",
+      "type": "object"
+     },
+     "tab_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tab Url"
+     },
+     "webhooks": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Webhooks"
+     }
+    },
+    "required": [
+     "renderer",
+     "recent_calls"
+    ],
+    "title": "DebugInfo",
+    "type": "object"
+   },
+   "DedupePlan": {
+    "additionalProperties": true,
+    "properties": {
+     "duplicate_groups": {
+      "title": "Duplicate Groups",
+      "type": "integer"
+     },
+     "groups": {
+      "items": {
+       "items": {
+        "$ref": "#/components/schemas/ItemRow"
+       },
+       "type": "array"
+      },
+      "title": "Groups",
+      "type": "array"
+     },
+     "library_size": {
+      "title": "Library Size",
+      "type": "integer"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "removable_rows": {
+      "title": "Removable Rows",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "library_size",
+     "duplicate_groups",
+     "removable_rows",
+     "groups"
+    ],
+    "title": "DedupePlan",
+    "type": "object"
+   },
+   "DedupeReport": {
+    "additionalProperties": true,
+    "properties": {
+     "errors": {
+      "items": {
+       "$ref": "#/components/schemas/WriteError"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "removed": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Removed",
+      "type": "array"
+     },
+     "removed_count": {
+      "title": "Removed Count",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "ok",
+     "removed",
+     "errors",
+     "removed_count"
+    ],
+    "title": "DedupeReport",
+    "type": "object"
+   },
+   "DiffAdded": {
+    "additionalProperties": false,
+    "properties": {
+     "added": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     }
+    },
+    "required": [
+     "added"
+    ],
+    "title": "DiffAdded",
+    "type": "object"
+   },
+   "DiffAll": {
+    "additionalProperties": false,
+    "description": "`what=all` (the default): all three pages + the last walk cursor.",
+    "properties": {
+     "added": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     },
+     "removed": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     },
+     "updated": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     },
+     "walk": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Walk"
+     }
+    },
+    "required": [
+     "added",
+     "updated",
+     "removed"
+    ],
+    "title": "DiffAll",
+    "type": "object"
+   },
+   "DiffRemoved": {
+    "additionalProperties": false,
+    "properties": {
+     "removed": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     }
+    },
+    "required": [
+     "removed"
+    ],
+    "title": "DiffRemoved",
+    "type": "object"
+   },
+   "DiffUpdated": {
+    "additionalProperties": false,
+    "properties": {
+     "updated": {
+      "$ref": "#/components/schemas/StoreRowPage"
+     }
+    },
+    "required": [
+     "updated"
+    ],
+    "title": "DiffUpdated",
+    "type": "object"
+   },
+   "ExportPlaylist": {
+    "additionalProperties": true,
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "tracks": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/SongRow"
+      },
+      "title": "Tracks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "ExportPlaylist",
+    "type": "object"
+   },
+   "Favorites": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "playlist_id": {
+      "title": "Playlist Id",
+      "type": "string"
+     },
+     "tracks": {
+      "items": {
+       "$ref": "#/components/schemas/SongRow"
+      },
+      "title": "Tracks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "count",
+     "playlist_id",
+     "tracks"
+    ],
+    "title": "Favorites",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "Health": {
+    "additionalProperties": true,
+    "properties": {
+     "browser": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Browser"
+     },
+     "detail": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Detail"
+     },
+     "session": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SessionState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "surface": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Surface"
+     },
+     "watchdog": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/WatchdogState"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "title": "Health",
+    "type": "object"
+   },
+   "ItemList": {
+    "additionalProperties": true,
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "ItemList",
+    "type": "object"
+   },
+   "ItemRow": {
+    "additionalProperties": true,
+    "description": "mk.item_row \u2014 any resource: song fields + kind + the RAW attributes\nblob (every field Apple exposes, unfiltered).",
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artwork": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artwork"
+     },
+     "attributes": {
+      "additionalProperties": true,
+      "title": "Attributes",
+      "type": "object"
+     },
+     "catalog_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Id"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "genres": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Genres"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "library_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Library Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "play_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Play Count"
+     },
+     "release_date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Release Date"
+     },
+     "track_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Track Number"
+     },
+     "type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Type"
+     }
+    },
+    "title": "ItemRow",
+    "type": "object"
+   },
+   "LibraryExport": {
+    "additionalProperties": true,
+    "properties": {
+     "exported_at": {
+      "title": "Exported At",
+      "type": "string"
+     },
+     "playlist_count": {
+      "title": "Playlist Count",
+      "type": "integer"
+     },
+     "playlists": {
+      "items": {
+       "$ref": "#/components/schemas/ExportPlaylist"
+      },
+      "title": "Playlists",
+      "type": "array"
+     },
+     "song_count": {
+      "title": "Song Count",
+      "type": "integer"
+     },
+     "songs": {
+      "items": {
+       "$ref": "#/components/schemas/SongRow"
+      },
+      "title": "Songs",
+      "type": "array"
+     }
+    },
+    "required": [
+     "exported_at",
+     "song_count",
+     "songs",
+     "playlist_count",
+     "playlists"
+    ],
+    "title": "LibraryExport",
+    "type": "object"
+   },
+   "LibraryItem": {
+    "additionalProperties": true,
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artwork": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artwork"
+     },
+     "attributes": {
+      "additionalProperties": true,
+      "title": "Attributes",
+      "type": "object"
+     },
+     "catalog_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Id"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "genres": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Genres"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "library_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Library Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "play_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Play Count"
+     },
+     "relationships": {
+      "additionalProperties": {
+       "$ref": "#/components/schemas/RelationshipGroup"
+      },
+      "title": "Relationships",
+      "type": "object"
+     },
+     "release_date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Release Date"
+     },
+     "track_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Track Number"
+     },
+     "type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Type"
+     }
+    },
+    "title": "LibraryItem",
+    "type": "object"
+   },
+   "LibraryList": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next_offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Offset"
+     }
+    },
+    "required": [
+     "items",
+     "count"
+    ],
+    "title": "LibraryList",
+    "type": "object"
+   },
+   "LyricLine": {
+    "additionalProperties": true,
+    "properties": {
+     "text": {
+      "title": "Text",
+      "type": "string"
+     },
+     "timeMs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Timems"
+     }
+    },
+    "required": [
+     "text"
+    ],
+    "title": "LyricLine",
+    "type": "object"
+   },
+   "Lyrics": {
+    "additionalProperties": true,
+    "properties": {
+     "lines": {
+      "items": {
+       "$ref": "#/components/schemas/LyricLine"
+      },
+      "title": "Lines",
+      "type": "array"
+     },
+     "song_id": {
+      "title": "Song Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "song_id",
+     "lines"
+    ],
+    "title": "Lyrics",
+    "type": "object"
+   },
+   "MadeForYou": {
+    "additionalProperties": true,
+    "properties": {
+     "playlists": {
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Playlists",
+      "type": "array"
+     }
+    },
+    "required": [
+     "playlists"
+    ],
+    "title": "MadeForYou",
+    "type": "object"
+   },
+   "NeverPlayedPlan": {
+    "additionalProperties": true,
+    "properties": {
+     "library_size": {
+      "title": "Library Size",
+      "type": "integer"
+     },
+     "never_played": {
+      "title": "Never Played",
+      "type": "integer"
+     },
+     "play_count_available": {
+      "title": "Play Count Available",
+      "type": "boolean"
+     },
+     "songs": {
+      "items": {
+       "$ref": "#/components/schemas/NeverPlayedRow"
+      },
+      "title": "Songs",
+      "type": "array"
+     }
+    },
+    "required": [
+     "library_size",
+     "never_played",
+     "play_count_available",
+     "songs"
+    ],
+    "title": "NeverPlayedPlan",
+    "type": "object"
+   },
+   "NeverPlayedRow": {
+    "additionalProperties": true,
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artwork": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artwork"
+     },
+     "attributes": {
+      "additionalProperties": true,
+      "title": "Attributes",
+      "type": "object"
+     },
+     "catalog_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Id"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "genres": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Genres"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "library_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Library Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "play_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Play Count"
+     },
+     "release_date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Release Date"
+     },
+     "track_number": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Track Number"
+     },
+     "type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Type"
+     }
+    },
+    "title": "NeverPlayedRow",
+    "type": "object"
+   },
+   "NowPlaying": {
+    "additionalProperties": true,
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artworkUrl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artworkurl"
+     },
+     "durationMs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Durationms"
+     },
+     "elapsedMs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Elapsedms"
+     },
+     "isPlaying": {
+      "title": "Isplaying",
+      "type": "boolean"
+     },
+     "progress": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Progress"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "State"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "required": [
+     "isPlaying"
+    ],
+    "title": "NowPlaying",
+    "type": "object"
+   },
+   "Ok": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "title": "Ok",
+    "type": "object"
+   },
+   "OkPlaylist": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "playlist_id": {
+      "title": "Playlist Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "playlist_id"
+    ],
+    "title": "OkPlaylist",
+    "type": "object"
+   },
+   "OkRating": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "rating": {
+      "title": "Rating",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rating"
+    ],
+    "title": "OkRating",
+    "type": "object"
+   },
+   "OkRepeat": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "repeat": {
+      "title": "Repeat",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "repeat"
+    ],
+    "title": "OkRepeat",
+    "type": "object"
+   },
+   "OkShuffle": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "shuffle": {
+      "title": "Shuffle",
+      "type": "string"
+     }
+    },
+    "required": [
+     "shuffle"
+    ],
+    "title": "OkShuffle",
+    "type": "object"
+   },
+   "OkStatus": {
+    "additionalProperties": true,
+    "properties": {
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "status": {
+      "title": "Status",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "title": "OkStatus",
+    "type": "object"
+   },
+   "OkVolume": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "default": true,
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "volume": {
+      "title": "Volume",
+      "type": "number"
+     }
+    },
+    "required": [
+     "volume"
+    ],
+    "title": "OkVolume",
+    "type": "object"
+   },
+   "OverlayNowPlaying": {
+    "additionalProperties": true,
+    "description": "OBS overlay payload \u2014 NowPlaying + the playing item's id (what the\nSSE `update` events carry), so overlays can also resolve lyrics/art.",
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artworkUrl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artworkurl"
+     },
+     "durationMs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Durationms"
+     },
+     "elapsedMs": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Elapsedms"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "isPlaying": {
+      "title": "Isplaying",
+      "type": "boolean"
+     },
+     "progress": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Progress"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "State"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "required": [
+     "isPlaying"
+    ],
+    "title": "OverlayNowPlaying",
+    "type": "object"
+   },
+   "PlayRow": {
+    "additionalProperties": true,
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artwork": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artwork"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "played_at": {
+      "title": "Played At",
+      "type": "string"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "required": [
+     "id",
+     "played_at"
+    ],
+    "title": "PlayRow",
+    "type": "object"
+   },
+   "PlaybackSettings": {
+    "additionalProperties": true,
+    "properties": {
+     "isPlaying": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Isplaying"
+     },
+     "repeat": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Repeat"
+     },
+     "shuffle": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Shuffle"
+     },
+     "volume": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Volume"
+     }
+    },
+    "title": "PlaybackSettings",
+    "type": "object"
+   },
+   "PlaylistTrackList": {
+    "additionalProperties": true,
+    "properties": {
+     "tracks": {
+      "items": {
+       "$ref": "#/components/schemas/SongRow"
+      },
+      "title": "Tracks",
+      "type": "array"
+     }
+    },
+    "required": [
+     "tracks"
+    ],
+    "title": "PlaylistTrackList",
+    "type": "object"
+   },
+   "Queue": {
+    "additionalProperties": true,
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/QueueItem"
+      },
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "Queue",
+    "type": "object"
+   },
+   "QueueItem": {
+    "additionalProperties": true,
+    "properties": {
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "title": "QueueItem",
+    "type": "object"
+   },
+   "QueueReorder": {
+    "additionalProperties": true,
+    "description": "PUT /api/playback/queue body \u2014 the FULL ordered list of queue item\nids (#87: whole-list PUT, never deltas). The playhead stays on the same\ntrack at its new index.",
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ids"
+    ],
+    "title": "QueueReorder",
+    "type": "object"
+   },
+   "RatePlan": {
+    "additionalProperties": true,
+    "properties": {
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "songs": {
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Songs",
+      "type": "array"
+     },
+     "would_heart": {
+      "title": "Would Heart",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "would_heart",
+     "songs"
+    ],
+    "title": "RatePlan",
+    "type": "object"
+   },
+   "RateReport": {
+    "additionalProperties": true,
+    "properties": {
+     "already_hearted": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Already Hearted",
+      "type": "array"
+     },
+     "errors": {
+      "items": {
+       "$ref": "#/components/schemas/WriteError"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "hearted": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Hearted",
+      "type": "array"
+     },
+     "hearted_count": {
+      "title": "Hearted Count",
+      "type": "integer"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "ok",
+     "hearted",
+     "already_hearted",
+     "errors",
+     "hearted_count"
+    ],
+    "title": "RateReport",
+    "type": "object"
+   },
+   "RatingState": {
+    "additionalProperties": true,
+    "properties": {
+     "song_id": {
+      "title": "Song Id",
+      "type": "string"
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Value"
+     }
+    },
+    "required": [
+     "song_id"
+    ],
+    "title": "RatingState",
+    "type": "object"
+   },
+   "RecentlyPlayed": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/PlayRow"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next_offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Offset"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "count",
+     "items"
+    ],
+    "title": "RecentlyPlayed",
+    "type": "object"
+   },
+   "RecommendationGroup": {
+    "additionalProperties": true,
+    "properties": {
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "items": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reason"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "title": "RecommendationGroup",
+    "type": "object"
+   },
+   "Recommendations": {
+    "additionalProperties": true,
+    "properties": {
+     "groups": {
+      "items": {
+       "$ref": "#/components/schemas/RecommendationGroup"
+      },
+      "title": "Groups",
+      "type": "array"
+     }
+    },
+    "required": [
+     "groups"
+    ],
+    "title": "Recommendations",
+    "type": "object"
+   },
+   "RelationshipGroup": {
+    "additionalProperties": true,
+    "properties": {
+     "items": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "title": "RelationshipGroup",
+    "type": "object"
+   },
+   "RelationshipPage": {
+    "additionalProperties": true,
+    "properties": {
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next"
+     }
+    },
+    "required": [
+     "items"
+    ],
+    "title": "RelationshipPage",
+    "type": "object"
+   },
+   "RestoreExecuted": {
+    "additionalProperties": true,
+    "properties": {
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "plan_totals": {
+      "additionalProperties": true,
+      "title": "Plan Totals",
+      "type": "object"
+     },
+     "report": {
+      "$ref": "#/components/schemas/RestoreReport"
+     }
+    },
+    "required": [
+     "ok",
+     "plan_totals",
+     "report"
+    ],
+    "title": "RestoreExecuted",
+    "type": "object"
+   },
+   "RestorePlan": {
+    "additionalProperties": true,
+    "properties": {
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "playlists": {
+      "items": {
+       "$ref": "#/components/schemas/RestorePlanItem"
+      },
+      "title": "Playlists",
+      "type": "array"
+     },
+     "totals": {
+      "additionalProperties": true,
+      "title": "Totals",
+      "type": "object"
+     }
+    },
+    "required": [
+     "totals",
+     "playlists"
+    ],
+    "title": "RestorePlan",
+    "type": "object"
+   },
+   "RestorePlanItem": {
+    "additionalProperties": true,
+    "properties": {
+     "actions": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Actions",
+      "type": "array"
+     },
+     "mode": {
+      "title": "Mode",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "playlist_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Playlist Id"
+     },
+     "track_count": {
+      "title": "Track Count",
+      "type": "integer"
+     },
+     "unmatched": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Unmatched",
+      "type": "array"
+     }
+    },
+    "required": [
+     "name",
+     "mode",
+     "track_count",
+     "actions",
+     "unmatched"
+    ],
+    "title": "RestorePlanItem",
+    "type": "object"
+   },
+   "RestoreReport": {
+    "additionalProperties": true,
+    "properties": {
+     "created": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Created",
+      "type": "array"
+     },
+     "errors": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "mismatch": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Mismatch",
+      "type": "array"
+     },
+     "unmatched_total": {
+      "title": "Unmatched Total",
+      "type": "integer"
+     },
+     "verified": {
+      "items": {
+       "$ref": "#/components/schemas/RestoreVerified"
+      },
+      "title": "Verified",
+      "type": "array"
+     }
+    },
+    "required": [
+     "created",
+     "verified",
+     "mismatch",
+     "errors",
+     "unmatched_total"
+    ],
+    "title": "RestoreReport",
+    "type": "object"
+   },
+   "RestoreVerified": {
+    "additionalProperties": true,
+    "properties": {
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "playlist_id": {
+      "title": "Playlist Id",
+      "type": "string"
+     },
+     "tracks": {
+      "title": "Tracks",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "name",
+     "playlist_id",
+     "tracks"
+    ],
+    "title": "RestoreVerified",
+    "type": "object"
+   },
+   "SearchHints": {
+    "additionalProperties": true,
+    "properties": {
+     "hints": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Hints",
+      "type": "array"
+     }
+    },
+    "required": [
+     "hints"
+    ],
+    "title": "SearchHints",
+    "type": "object"
+   },
+   "SeriesPoint": {
+    "additionalProperties": true,
+    "properties": {
+     "day": {
+      "title": "Day",
+      "type": "string"
+     },
+     "plays": {
+      "title": "Plays",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "day",
+     "plays"
+    ],
+    "title": "SeriesPoint",
+    "type": "object"
+   },
+   "SessionState": {
+    "additionalProperties": true,
+    "description": "The Apple session, as far as tonearm's own calls can tell (#189).",
+    "properties": {
+     "since": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Since"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "state"
+    ],
+    "title": "SessionState",
+    "type": "object"
+   },
+   "Smartlist": {
+    "additionalProperties": true,
+    "properties": {
+     "created_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Created At"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "last_count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Count"
+     },
+     "last_eval": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Eval"
+     },
+     "last_sync": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Sync"
+     },
+     "limit": {
+      "default": 0,
+      "title": "Limit",
+      "type": "integer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "playlist_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Playlist Id"
+     },
+     "refresh_s": {
+      "default": 0,
+      "title": "Refresh S",
+      "type": "integer"
+     },
+     "rules": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Rules",
+      "type": "array"
+     },
+     "sort": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sort"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "rules"
+    ],
+    "title": "Smartlist",
+    "type": "object"
+   },
+   "SmartlistCreate": {
+    "additionalProperties": true,
+    "properties": {
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": "",
+      "title": "Description"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Limit"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "refresh_s": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh S"
+     },
+     "rules": {
+      "default": [],
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Rules",
+      "type": "array"
+     },
+     "sort": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sort"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "SmartlistCreate",
+    "type": "object"
+   },
+   "SmartlistPreview": {
+    "additionalProperties": true,
+    "description": "The local evaluation \u2014 store rows only, no Apple touched.",
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "total",
+     "count",
+     "items"
+    ],
+    "title": "SmartlistPreview",
+    "type": "object"
+   },
+   "SmartlistRefresh": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "default": 0,
+      "title": "Count",
+      "type": "integer"
+     },
+     "created": {
+      "default": false,
+      "title": "Created",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "playlist_id": {
+      "title": "Playlist Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "playlist_id"
+    ],
+    "title": "SmartlistRefresh",
+    "type": "object"
+   },
+   "SmartlistUpdate": {
+    "additionalProperties": true,
+    "properties": {
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Limit"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     },
+     "refresh_s": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Refresh S"
+     },
+     "rules": {
+      "anyOf": [
+       {
+        "items": {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rules"
+     },
+     "sort": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sort"
+     }
+    },
+    "title": "SmartlistUpdate",
+    "type": "object"
+   },
+   "Smartlists": {
+    "additionalProperties": true,
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/Smartlist"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "scheduler_interval": {
+      "default": 0,
+      "title": "Scheduler Interval",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "enabled",
+     "items"
+    ],
+    "title": "Smartlists",
+    "type": "object"
+   },
+   "SongRow": {
+    "additionalProperties": true,
+    "description": "mk.song_row \u2014 the normalized song shape.",
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "artwork": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artwork"
+     },
+     "catalog_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Id"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "library_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Library Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "title": "SongRow",
+    "type": "object"
+   },
+   "Stats": {
+    "additionalProperties": true,
+    "properties": {
+     "top_artists": {
+      "items": {
+       "$ref": "#/components/schemas/TopArtist"
+      },
+      "title": "Top Artists",
+      "type": "array"
+     },
+     "top_tracks": {
+      "items": {
+       "$ref": "#/components/schemas/TopTrack"
+      },
+      "title": "Top Tracks",
+      "type": "array"
+     },
+     "total_plays": {
+      "title": "Total Plays",
+      "type": "integer"
+     },
+     "window_since": {
+      "title": "Window Since",
+      "type": "number"
+     }
+    },
+    "required": [
+     "window_since",
+     "total_plays",
+     "top_tracks",
+     "top_artists"
+    ],
+    "title": "Stats",
+    "type": "object"
+   },
+   "StatsSeries": {
+    "additionalProperties": true,
+    "properties": {
+     "days": {
+      "title": "Days",
+      "type": "integer"
+     },
+     "series": {
+      "items": {
+       "$ref": "#/components/schemas/SeriesPoint"
+      },
+      "title": "Series",
+      "type": "array"
+     }
+    },
+    "required": [
+     "days",
+     "series"
+    ],
+    "title": "StatsSeries",
+    "type": "object"
+   },
+   "StoreRow": {
+    "additionalProperties": true,
+    "properties": {
+     "album": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Album"
+     },
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "catalog_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Id"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "first_seen": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "First Seen"
+     },
+     "kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kind"
+     },
+     "last_changed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Changed"
+     },
+     "last_seen": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Seen"
+     },
+     "library_id": {
+      "title": "Library Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "required": [
+     "library_id"
+    ],
+    "title": "StoreRow",
+    "type": "object"
+   },
+   "StoreRowPage": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/StoreRow"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "next_offset": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Next Offset"
+     },
+     "total": {
+      "title": "Total",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "total",
+     "count",
+     "items"
+    ],
+    "title": "StoreRowPage",
+    "type": "object"
+   },
+   "SweepDigest": {
+    "additionalProperties": true,
+    "properties": {
+     "duplicate_groups": {
+      "title": "Duplicate Groups",
+      "type": "integer"
+     },
+     "generated_at": {
+      "title": "Generated At",
+      "type": "string"
+     },
+     "library_size": {
+      "title": "Library Size",
+      "type": "integer"
+     },
+     "never_played": {
+      "title": "Never Played",
+      "type": "integer"
+     },
+     "play_count_available": {
+      "title": "Play Count Available",
+      "type": "boolean"
+     },
+     "removable_rows": {
+      "title": "Removable Rows",
+      "type": "integer"
+     },
+     "sample_duplicates": {
+      "default": [],
+      "items": {
+       "items": {
+        "$ref": "#/components/schemas/ItemRow"
+       },
+       "type": "array"
+      },
+      "title": "Sample Duplicates",
+      "type": "array"
+     },
+     "sample_never_played": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/ItemRow"
+      },
+      "title": "Sample Never Played",
+      "type": "array"
+     }
+    },
+    "required": [
+     "generated_at",
+     "library_size",
+     "duplicate_groups",
+     "removable_rows",
+     "never_played",
+     "play_count_available"
+    ],
+    "title": "SweepDigest",
+    "type": "object"
+   },
+   "TopArtist": {
+    "additionalProperties": true,
+    "properties": {
+     "artist": {
+      "title": "Artist",
+      "type": "string"
+     },
+     "plays": {
+      "title": "Plays",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "artist",
+     "plays"
+    ],
+    "title": "TopArtist",
+    "type": "object"
+   },
+   "TopTrack": {
+    "additionalProperties": true,
+    "properties": {
+     "artist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "plays": {
+      "title": "Plays",
+      "type": "integer"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     }
+    },
+    "required": [
+     "id",
+     "plays"
+    ],
+    "title": "TopTrack",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   },
+   "VolumeState": {
+    "additionalProperties": true,
+    "properties": {
+     "volume": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Volume"
+     }
+    },
+    "title": "VolumeState",
+    "type": "object"
+   },
+   "WatchdogState": {
+    "additionalProperties": true,
+    "properties": {
+     "consecutive_failures": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Consecutive Failures"
+     },
+     "last_action": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Action"
+     },
+     "last_ok": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Ok"
+     },
+     "last_ping_ts": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Ping Ts"
+     },
+     "recycles": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recycles"
+     },
+     "running": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Running"
+     }
+    },
+    "title": "WatchdogState",
+    "type": "object"
+   },
+   "WatcherArtist": {
+    "additionalProperties": true,
+    "description": "One row of watcher state: the mapping cache + newest release seen.",
+    "properties": {
+     "artist_id": {
+      "title": "Artist Id",
+      "type": "string"
+     },
+     "artist_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Artist Name"
+     },
+     "catalog_artist_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Artist Id"
+     },
+     "catalog_artist_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Artist Name"
+     },
+     "checked_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Checked At"
+     },
+     "last_album_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Album Id"
+     },
+     "last_album_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Album Name"
+     },
+     "last_release_date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Release Date"
+     }
+    },
+    "required": [
+     "artist_id"
+    ],
+    "title": "WatcherArtist",
+    "type": "object"
+   },
+   "WatcherInfo": {
+    "additionalProperties": true,
+    "properties": {
+     "artists": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/WatcherArtist"
+      },
+      "title": "Artists",
+      "type": "array"
+     },
+     "auto_add_active": {
+      "default": false,
+      "title": "Auto Add Active",
+      "type": "boolean"
+     },
+     "auto_playlist": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Auto Playlist"
+     },
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "interval": {
+      "title": "Interval",
+      "type": "integer"
+     },
+     "last_pass": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Pass"
+     },
+     "mapped": {
+      "default": 0,
+      "title": "Mapped",
+      "type": "integer"
+     },
+     "max_artists_per_pass": {
+      "default": 100,
+      "title": "Max Artists Per Pass",
+      "type": "integer"
+     },
+     "unmapped": {
+      "default": 0,
+      "title": "Unmapped",
+      "type": "integer"
+     },
+     "watched": {
+      "default": 0,
+      "title": "Watched",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "enabled",
+     "interval"
+    ],
+    "title": "WatcherInfo",
+    "type": "object"
+   },
+   "WatcherPass": {
+    "additionalProperties": true,
+    "properties": {
+     "artists_seen": {
+      "default": 0,
+      "title": "Artists Seen",
+      "type": "integer"
+     },
+     "auto_added": {
+      "default": 0,
+      "title": "Auto Added",
+      "type": "integer"
+     },
+     "checked": {
+      "default": 0,
+      "title": "Checked",
+      "type": "integer"
+     },
+     "completed_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Completed At"
+     },
+     "mapped": {
+      "default": 0,
+      "title": "Mapped",
+      "type": "integer"
+     },
+     "new_releases": {
+      "default": 0,
+      "title": "New Releases",
+      "type": "integer"
+     },
+     "ran": {
+      "default": true,
+      "title": "Ran",
+      "type": "boolean"
+     },
+     "seconds": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seconds"
+     },
+     "skipped_budget": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skipped Budget"
+     },
+     "unmapped": {
+      "default": 0,
+      "title": "Unmapped",
+      "type": "integer"
+     }
+    },
+    "title": "WatcherPass",
+    "type": "object"
+   },
+   "WebhookCreate": {
+    "additionalProperties": true,
+    "properties": {
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "events": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Events"
+     },
+     "secret": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Secret"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ],
+    "title": "WebhookCreate",
+    "type": "object"
+   },
+   "WebhookDeliveries": {
+    "additionalProperties": true,
+    "properties": {
+     "count": {
+      "title": "Count",
+      "type": "integer"
+     },
+     "items": {
+      "items": {
+       "$ref": "#/components/schemas/WebhookDelivery"
+      },
+      "title": "Items",
+      "type": "array"
+     }
+    },
+    "required": [
+     "count",
+     "items"
+    ],
+    "title": "WebhookDeliveries",
+    "type": "object"
+   },
+   "WebhookDelivery": {
+    "additionalProperties": true,
+    "properties": {
+     "at": {
+      "title": "At",
+      "type": "number"
+     },
+     "attempt": {
+      "title": "Attempt",
+      "type": "integer"
+     },
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "event": {
+      "title": "Event",
+      "type": "string"
+     },
+     "event_id": {
+      "title": "Event Id",
+      "type": "string"
+     },
+     "hook_id": {
+      "title": "Hook Id",
+      "type": "string"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "retry_scheduled": {
+      "default": false,
+      "title": "Retry Scheduled",
+      "type": "boolean"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "event_id",
+     "event",
+     "hook_id",
+     "url",
+     "attempt",
+     "ok",
+     "at"
+    ],
+    "title": "WebhookDelivery",
+    "type": "object"
+   },
+   "WebhookHook": {
+    "additionalProperties": true,
+    "properties": {
+     "created_at": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Created At"
+     },
+     "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "events": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "has_secret": {
+      "default": false,
+      "title": "Has Secret",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "stats": {
+      "additionalProperties": true,
+      "title": "Stats",
+      "type": "object"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "url"
+    ],
+    "title": "WebhookHook",
+    "type": "object"
+   },
+   "WebhookList": {
+    "additionalProperties": true,
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "hooks": {
+      "items": {
+       "$ref": "#/components/schemas/WebhookHook"
+      },
+      "title": "Hooks",
+      "type": "array"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Note"
+     },
+     "pending": {
+      "default": 0,
+      "title": "Pending",
+      "type": "integer"
+     },
+     "recent": {
+      "default": [],
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Recent",
+      "type": "array"
+     }
+    },
+    "required": [
+     "enabled",
+     "hooks"
+    ],
+    "title": "WebhookList",
+    "type": "object"
+   },
+   "WebhookTest": {
+    "additionalProperties": true,
+    "properties": {
+     "duration_ms": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Ms"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Status"
+     }
+    },
+    "required": [
+     "ok"
+    ],
+    "title": "WebhookTest",
+    "type": "object"
+   },
+   "WebhookUpdate": {
+    "additionalProperties": true,
+    "properties": {
+     "enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Enabled"
+     },
+     "events": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Events"
+     },
+     "secret": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Secret"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "title": "WebhookUpdate",
+    "type": "object"
+   },
+   "WriteError": {
+    "additionalProperties": true,
+    "properties": {
+     "error": {
+      "title": "Error",
+      "type": "string"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Name"
+     }
+    },
+    "required": [
+     "error"
+    ],
+    "title": "WriteError",
+    "type": "object"
+   }
+  },
+  "securitySchemes": {
+   "apiKeyQuery": {
+    "description": "?api_key=<TONEARM_API_KEY> \u2014 the fallback EventSource needs (it cannot send headers)",
+    "in": "query",
+    "name": "api_key",
+    "type": "apiKey"
+   },
+   "bearerAuth": {
+    "description": "Authorization: Bearer <TONEARM_API_KEY>",
+    "scheme": "bearer",
+    "type": "http"
+   }
+  }
+ },
+ "info": {
+  "description": "Unofficial personal Apple Music API \u2014 powered by your own logged-in web player session. Not affiliated with Apple.",
+  "title": "tonearm",
+  "version": "0.7.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/amp-api/{path}": {
+   "delete": {
+    "operationId": "passthrough_delete_amp_api",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "path",
+      "required": true,
+      "schema": {
+       "title": "Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Passthrough-Delete",
+    "tags": [
+     "amp-api pass-through"
+    ]
+   },
+   "get": {
+    "operationId": "passthrough_get_amp_api",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "path",
+      "required": true,
+      "schema": {
+       "title": "Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Passthrough-Get",
+    "tags": [
+     "amp-api pass-through"
+    ]
+   },
+   "patch": {
+    "operationId": "passthrough_patch_amp_api",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "path",
+      "required": true,
+      "schema": {
+       "title": "Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Passthrough-Patch",
+    "tags": [
+     "amp-api pass-through"
+    ]
+   },
+   "post": {
+    "operationId": "passthrough_post_amp_api",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "path",
+      "required": true,
+      "schema": {
+       "title": "Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Passthrough-Post",
+    "tags": [
+     "amp-api pass-through"
+    ]
+   },
+   "put": {
+    "operationId": "passthrough_put_amp_api",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "path",
+      "required": true,
+      "schema": {
+       "title": "Path",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Passthrough-Put",
+    "tags": [
+     "amp-api pass-through"
+    ]
+   }
+  },
+  "/api/audio/status": {
+   "get": {
+    "operationId": "status_api_audio_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Status",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
+  "/api/audio/stream.mp3": {
+   "get": {
+    "description": "Live mp3 of whatever the server's Apple Music session is playing.\nPoint an <audio> element at it. ~1-2 s behind the reported playhead \u2014\nX-Tonearm-Join-* headers describe the alignment at subscribe time.",
+    "operationId": "stream_mp3_api_audio_stream_mp3_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "bitrate",
+      "required": false,
+      "schema": {
+       "title": "Bitrate",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "loudnorm",
+      "required": false,
+      "schema": {
+       "title": "Loudnorm",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stream Mp3",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
+  "/api/audio/stream.ogg": {
+   "get": {
+    "description": "Live Ogg Vorbis of the session's audio (same capture as mp3).",
+    "operationId": "stream_ogg_api_audio_stream_ogg_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "bitrate",
+      "required": false,
+      "schema": {
+       "title": "Bitrate",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "loudnorm",
+      "required": false,
+      "schema": {
+       "title": "Loudnorm",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stream Ogg",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
+  "/api/audio/stream.opus": {
+   "get": {
+    "description": "Live Opus (in Ogg) of the session's audio \u2014 smallest bandwidth.",
+    "operationId": "stream_opus_api_audio_stream_opus_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "bitrate",
+      "required": false,
+      "schema": {
+       "title": "Bitrate",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "loudnorm",
+      "required": false,
+      "schema": {
+       "title": "Loudnorm",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stream Opus",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
+  "/api/audit": {
+   "get": {
+    "operationId": "export_api_audit_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "default": 0.0,
+       "title": "Since",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuditExport"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Export",
+    "tags": [
+     "audit"
+    ]
+   }
+  },
+  "/api/catalog/charts": {
+   "get": {
+    "description": "Catalog charts: most-played songs/albums/playlists. `genre` = genre id.",
+    "operationId": "charts_api_catalog_charts_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "types",
+      "required": false,
+      "schema": {
+       "default": "songs",
+       "title": "Types",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 25,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "genre",
+      "required": false,
+      "schema": {
+       "title": "Genre",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "items": {
+           "$ref": "#/components/schemas/ItemRow"
+          },
+          "type": "array"
+         },
+         "title": "Response Charts Api Catalog Charts Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Charts",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/hints": {
+   "get": {
+    "description": "Search suggestions (what the web player's autocomplete shows).\nReturns flat rows: {term/title, id, kind}.",
+    "operationId": "hints_api_catalog_hints_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "term",
+      "required": true,
+      "schema": {
+       "title": "Term",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "types",
+      "required": false,
+      "schema": {
+       "default": "songs,artists,albums,playlists",
+       "title": "Types",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SearchHints"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Hints",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/search": {
+   "get": {
+    "description": "Multi-type catalog search. `types` is a comma list, e.g.\nsongs,albums,artists,playlists,stations,curators,music-videos",
+    "operationId": "catalog_search_api_catalog_search_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "term",
+      "required": true,
+      "schema": {
+       "title": "Term",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "types",
+      "required": false,
+      "schema": {
+       "default": "songs,albums,artists,playlists",
+       "title": "Types",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 10,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "items": {
+           "$ref": "#/components/schemas/ItemRow"
+          },
+          "type": "array"
+         },
+         "title": "Response Catalog Search Api Catalog Search Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Catalog Search",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/songs/{song_id}/lyrics": {
+   "get": {
+    "description": "Synced lyrics for a catalog song (Apple's TTML, parsed to lines).\n`raw=1` returns the raw TTML document. Songs without lyrics -> 404.",
+    "operationId": "song_lyrics_api_catalog_songs__song_id__lyrics_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "song_id",
+      "required": true,
+      "schema": {
+       "title": "Song Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "raw",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Raw",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Lyrics"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Song Lyrics",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/{resource}": {
+   "get": {
+    "description": "Fetch specific catalog resources by (comma-separated) id.",
+    "operationId": "catalog_by_ids_api_catalog__resource__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "ids",
+      "required": true,
+      "schema": {
+       "title": "Ids",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ItemList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Catalog By Ids",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/{resource}/{resource_id}": {
+   "get": {
+    "description": "One catalog item; `extend=tracks` etc. includes relationships inline.",
+    "operationId": "catalog_item_api_catalog__resource___resource_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "resource_id",
+      "required": true,
+      "schema": {
+       "title": "Resource Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "extend",
+      "required": false,
+      "schema": {
+       "title": "Extend",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LibraryItem"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Catalog Item",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/catalog/{resource}/{resource_id}/{relationship}": {
+   "get": {
+    "description": "e.g. /catalog/artists/{id}/albums, /catalog/albums/{id}/tracks.",
+    "operationId": "catalog_relationship_api_catalog__resource___resource_id___relationship__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "resource_id",
+      "required": true,
+      "schema": {
+       "title": "Resource Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "relationship",
+      "required": true,
+      "schema": {
+       "title": "Relationship",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RelationshipPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Catalog Relationship",
+    "tags": [
+     "catalog"
+    ]
+   }
+  },
+  "/api/debug": {
+   "get": {
+    "operationId": "debug_api_debug_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DebugInfo"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Debug",
+    "tags": [
+     "debug"
+    ]
+   }
+  },
+  "/api/favorites": {
+   "get": {
+    "description": "Every song in your Favorite Songs playlist (auto-paginated, with art).\nAlso returns `playlist_id` so clients can browse it like any playlist.\nApple's favorites auto-sync lags ~60s+; `?fresh=1` bypasses the read\ncache when you need the live state.",
+    "operationId": "list_favorites_api_favorites_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "fresh",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Fresh",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Favorites"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Favorites",
+    "tags": [
+     "favorites"
+    ]
+   }
+  },
+  "/api/history/recently-played": {
+   "get": {
+    "description": "Everything you've played since TONEARM_STORE=1 was first enabled,\nnewest first. No backfill: Apple only ever exposed ~20 recent items,\nso coverage starts when the store turns on.",
+    "operationId": "recently_played_api_history_recently_played_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecentlyPlayed"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Recently Played",
+    "tags": [
+     "history (local store)"
+    ]
+   }
+  },
+  "/api/history/stats": {
+   "get": {
+    "description": "Top artists / tracks from the LOCAL play archive (not Apple's).\nwindow: day | week | month | all. Plays dedupe on (track_id, started_at)\nis the writer's guarantee, so counts are play-starts.",
+    "operationId": "stats_api_history_stats_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "window",
+      "required": false,
+      "schema": {
+       "default": "all",
+       "title": "Window",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 25,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Stats"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stats",
+    "tags": [
+     "history (local store)"
+    ]
+   }
+  },
+  "/api/history/stats/series": {
+   "get": {
+    "description": "Plays per day, last N days \u2014 bucketed in SQL, ready for a chart.",
+    "operationId": "stats_series_api_history_stats_series_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "days",
+      "required": false,
+      "schema": {
+       "default": 30,
+       "title": "Days",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StatsSeries"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Stats Series",
+    "tags": [
+     "history (local store)"
+    ]
+   }
+  },
+  "/api/library/diff": {
+   "get": {
+    "description": "What changed in your library since a unix timestamp.\n\nApple has no \"changed since\" filter \u2014 this diff is OURS, computed from\nthe local store's watermark columns (first_seen / last_seen /\nlast_changed) across snapshot walks. So:\n  * `since=0` (default) -> the whole library as `added`\n  * removals become visible on the FIRST walk AFTER they happen\n  * `what` filters: added | updated | removed | all",
+    "operationId": "library_diff_api_library_diff_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "since",
+      "required": false,
+      "schema": {
+       "default": 0.0,
+       "title": "Since",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "what",
+      "required": false,
+      "schema": {
+       "default": "all",
+       "title": "What",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/DiffAdded"
+          },
+          {
+           "$ref": "#/components/schemas/DiffUpdated"
+          },
+          {
+           "$ref": "#/components/schemas/DiffRemoved"
+          },
+          {
+           "$ref": "#/components/schemas/DiffAll"
+          }
+         ],
+         "title": "Response Library Diff Api Library Diff Get"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Library Diff",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/export": {
+   "get": {
+    "description": "Full library dump as JSON \u2014 every song + every playlist (with track\nids). Slow by design: walks the entire library (~100 s per 9k songs).\nPoint a cron at this for backups; the output is a complete restore\nreference (ids) if the library is ever lost.",
+    "operationId": "export_library_api_library_export_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "songs_limit",
+      "required": false,
+      "schema": {
+       "default": 100000,
+       "title": "Songs Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LibraryExport"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Export Library",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/playlists/{playlist_id}/tracks": {
+   "get": {
+    "description": "Every track of a library playlist (auto-paginated to the end).\nNOTE: declared before the generic routes so it wins the match.",
+    "operationId": "playlist_tracks_api_library_playlists__playlist_id__tracks_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "playlist_id",
+      "required": true,
+      "schema": {
+       "title": "Playlist Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlaylistTrackList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Playlist Tracks",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/recently-added": {
+   "get": {
+    "description": "Most recently added library items (any kind).\nApple caps this endpoint's limit at 25 \u2014 asked for 100 it 400s\n(found live from the Radar page).",
+    "operationId": "recently_added_api_library_recently_added_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 25,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ItemList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Recently Added",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/search": {
+   "get": {
+    "description": "Search YOUR library across songs/albums/artists/playlists.",
+    "operationId": "library_search_api_library_search_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "term",
+      "required": true,
+      "schema": {
+       "title": "Term",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 25,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "items": {
+           "$ref": "#/components/schemas/ItemRow"
+          },
+          "type": "array"
+         },
+         "title": "Response Library Search Api Library Search Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Library Search",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/{resource}": {
+   "get": {
+    "description": "List any library resource, fully paginated by the caller.",
+    "operationId": "list_resource_api_library__resource__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "term",
+      "required": false,
+      "schema": {
+       "title": "Term",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "extend",
+      "required": false,
+      "schema": {
+       "title": "Extend",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LibraryList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Resource",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/{resource}/{resource_id}": {
+   "get": {
+    "description": "One library item, with its relationships (e.g. an album's track list).",
+    "operationId": "get_resource_api_library__resource___resource_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "resource_id",
+      "required": true,
+      "schema": {
+       "title": "Resource Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LibraryItem"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Resource",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/library/{resource}/{resource_id}/{relationship}": {
+   "get": {
+    "description": "A relationship collection, e.g. /library/albums/{id}/tracks.",
+    "operationId": "get_relationship_api_library__resource___resource_id___relationship__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "resource",
+      "required": true,
+      "schema": {
+       "title": "Resource",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "resource_id",
+      "required": true,
+      "schema": {
+       "title": "Resource Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "relationship",
+      "required": true,
+      "schema": {
+       "title": "Relationship",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RelationshipPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Relationship",
+    "tags": [
+     "library"
+    ]
+   }
+  },
+  "/api/overlay/now-playing.json": {
+   "get": {
+    "description": "Now-playing as JSON \u2014 for OBS browser sources and bots.",
+    "operationId": "now_playing_json_api_overlay_now_playing_json_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OverlayNowPlaying"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Now Playing Json",
+    "tags": [
+     "overlay"
+    ]
+   }
+  },
+  "/api/overlay/now-playing.txt": {
+   "get": {
+    "description": "Now-playing as one text line. `?format=` is a template with\n{title} {artist} {album} {elapsed} {duration} placeholders \u2014 unknown\nfields and missing values render as ''. Text (not JSON) on purpose:\nOBS's classic Text source wants a plain line.",
+    "operationId": "now_playing_txt_api_overlay_now_playing_txt_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "format",
+      "required": false,
+      "schema": {
+       "default": "{title} \u2014 {artist}",
+       "maxLength": 300,
+       "title": "Format",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "text/plain": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Now Playing Txt",
+    "tags": [
+     "overlay"
+    ]
+   }
+  },
+  "/api/personal/heavy-rotation": {
+   "get": {
+    "description": "Albums and playlists you've had in heavy rotation.",
+    "operationId": "heavy_rotation_api_personal_heavy_rotation_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ItemList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Heavy Rotation",
+    "tags": [
+     "personal"
+    ]
+   }
+  },
+  "/api/personal/made-for-you": {
+   "get": {
+    "description": "Apple's auto-generated personal playlists (Favorites Mix, New Music\u2026).",
+    "operationId": "made_for_you_api_personal_made_for_you_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MadeForYou"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Made For You",
+    "tags": [
+     "personal"
+    ]
+   }
+  },
+  "/api/personal/recently-played": {
+   "get": {
+    "description": "Your recently played items (Apple caps this at 20).",
+    "operationId": "recently_played_api_personal_recently_played_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 20,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ItemList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Recently Played",
+    "tags": [
+     "personal"
+    ]
+   }
+  },
+  "/api/personal/recommendations": {
+   "get": {
+    "description": "'Listen Now' / For You recommendations (albums & playlists, grouped).",
+    "operationId": "recommendations_api_personal_recommendations_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Recommendations"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Recommendations",
+    "tags": [
+     "personal"
+    ]
+   }
+  },
+  "/api/playback/now-playing": {
+   "get": {
+    "operationId": "now_playing_api_playback_now_playing_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NowPlaying"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Now Playing",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/play-collection": {
+   "post": {
+    "description": "Queue a whole album/playlist/station and play it.\nkind: album | playlist | station  (catalog ids)",
+    "operationId": "play_collection_api_playback_play_collection_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "kind",
+      "required": true,
+      "schema": {
+       "title": "Kind",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "id",
+      "required": true,
+      "schema": {
+       "title": "Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Play Collection",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/play-later": {
+   "post": {
+    "description": "Append a catalog song to play later.",
+    "operationId": "play_later_api_playback_play_later_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "catalog_id",
+      "required": true,
+      "schema": {
+       "title": "Catalog Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Play Later",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/play-next": {
+   "post": {
+    "description": "Insert a catalog song to play next.",
+    "operationId": "play_next_api_playback_play_next_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "catalog_id",
+      "required": true,
+      "schema": {
+       "title": "Catalog Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Play Next",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/play-song/{catalog_id}": {
+   "post": {
+    "description": "Start playing a catalog song by id (clears the queue).",
+    "operationId": "play_song_api_playback_play_song__catalog_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "catalog_id",
+      "required": true,
+      "schema": {
+       "title": "Catalog Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Play Song",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/queue": {
+   "get": {
+    "description": "The current queue (also pushed by the SSE stream \u2014 prefer the\nstream; this is the one-shot read).",
+    "operationId": "queue_api_playback_queue_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Queue"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Queue",
+    "tags": [
+     "playback"
+    ]
+   },
+   "put": {
+    "description": "Reorder the queue: send the FULL ordered list of item ids (#87 \u2014\nwhole-list PUT semantics, last write wins, no deltas). The playhead\nstays on the same track at its new index. Best-effort like every\ntransport op: MusicKit has no public reorder, so the queue is rebuilt\nand the playhead is moved back onto the same track.",
+    "operationId": "queue_reorder_api_playback_queue_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/QueueReorder"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Queue Reorder",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/repeat/{mode}": {
+   "post": {
+    "operationId": "repeat_api_playback_repeat__mode__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "mode",
+      "required": true,
+      "schema": {
+       "title": "Mode",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkRepeat"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Repeat",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/settings": {
+   "get": {
+    "description": "shuffle / repeat / volume / playing state in one shot.",
+    "operationId": "settings_api_playback_settings_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PlaybackSettings"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Settings",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/shuffle/{mode}": {
+   "post": {
+    "operationId": "shuffle_api_playback_shuffle__mode__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "mode",
+      "required": true,
+      "schema": {
+       "title": "Mode",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkShuffle"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Shuffle",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/volume": {
+   "get": {
+    "operationId": "get_volume_api_playback_volume_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VolumeState"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Volume",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/volume/{value}": {
+   "post": {
+    "operationId": "set_volume_api_playback_volume__value__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "value",
+      "required": true,
+      "schema": {
+       "title": "Value",
+       "type": "number"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkVolume"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Volume",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/playback/{command}": {
+   "post": {
+    "description": "play | pause | toggle | next | previous.",
+    "operationId": "command_api_playback__command__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "command",
+      "required": true,
+      "schema": {
+       "title": "Command",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Command",
+    "tags": [
+     "playback"
+    ]
+   }
+  },
+  "/api/smartlists": {
+   "get": {
+    "description": "All smart-playlist definitions with their last evaluation/sync state.",
+    "operationId": "list_smartlists_api_smartlists_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Smartlists"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Smartlists",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   },
+   "post": {
+    "description": "Define a smart playlist. Rules are validated eagerly \u2014 a bad rule is\na 400 here, never a silent empty list later.",
+    "operationId": "create_smartlist_api_smartlists_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SmartlistCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Smartlist"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Smartlist",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   }
+  },
+  "/api/smartlists/{list_id}": {
+   "delete": {
+    "operationId": "delete_smartlist_api_smartlists__list_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "list_id",
+      "required": true,
+      "schema": {
+       "title": "List Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Smartlist",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   },
+   "get": {
+    "operationId": "get_smartlist_api_smartlists__list_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "list_id",
+      "required": true,
+      "schema": {
+       "title": "List Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Smartlist"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Smartlist",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   },
+   "patch": {
+    "description": "Partial update. Replaces whichever fields are present; rules are\nre-validated in full whenever they appear.",
+    "operationId": "update_smartlist_api_smartlists__list_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "list_id",
+      "required": true,
+      "schema": {
+       "title": "List Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SmartlistUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Smartlist"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Smartlist",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   }
+  },
+  "/api/smartlists/{list_id}/preview": {
+   "get": {
+    "description": "The evaluation, served from the store \u2014 no Apple calls at all.",
+    "operationId": "preview_api_smartlists__list_id__preview_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "list_id",
+      "required": true,
+      "schema": {
+       "title": "List Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SmartlistPreview"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Preview",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   }
+  },
+  "/api/smartlists/{list_id}/refresh": {
+   "post": {
+    "description": "Evaluate + materialize: find-or-create the live playlist, then one\nfull-list PUT so Apple matches the evaluation exactly. Requires\nTONEARM_ENABLE_WRITES=1 (evaluation-only? use /preview).",
+    "operationId": "refresh_api_smartlists__list_id__refresh_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "list_id",
+      "required": true,
+      "schema": {
+       "title": "List Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SmartlistRefresh"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Refresh",
+    "tags": [
+     "smartlists (automation)"
+    ]
+   }
+  },
+  "/api/stream": {
+   "get": {
+    "operationId": "stream_api_stream_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Stream",
+    "tags": [
+     "stream"
+    ]
+   }
+  },
+  "/api/watcher": {
+   "get": {
+    "description": "Watcher state. Artists that have never resolved to a catalog id are\nreported honestly (`mapped` vs `watched`) \u2014 a bad mapping is data, not\na silent zero.",
+    "operationId": "info_api_watcher_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WatcherInfo"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Info",
+    "tags": [
+     "watcher (automation)"
+    ]
+   }
+  },
+  "/api/watcher/refresh": {
+   "post": {
+    "description": "One bounded pass, synchronously. Same code the scheduler runs \u2014\nuseful for the live verification (and for cron'ing it yourself).",
+    "operationId": "refresh_api_watcher_refresh_post",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WatcherPass"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Refresh",
+    "tags": [
+     "watcher (automation)"
+    ]
+   }
+  },
+  "/api/webhooks": {
+   "get": {
+    "description": "Configured hooks (secrets redacted), pending deliveries and the last\nfew attempts. Delivery is at-least-once; consumers dedupe on event `id`.",
+    "operationId": "list_hooks_api_webhooks_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookList"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Hooks",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   },
+   "post": {
+    "description": "Add a webhook. `events` is an optional filter (empty = everything);\n`secret` enables HMAC-SHA256 signing. Adding an existing URL updates it.",
+    "operationId": "create_hook_api_webhooks_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WebhookCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookHook"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Hook",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   }
+  },
+  "/api/webhooks/deliveries": {
+   "get": {
+    "description": "The last N delivery attempts (newest first), retries included.",
+    "operationId": "list_deliveries_api_webhooks_deliveries_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookDeliveries"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "List Deliveries",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   }
+  },
+  "/api/webhooks/{hook_id}": {
+   "delete": {
+    "description": "Remove a hook. Already-queued deliveries for it still go out.",
+    "operationId": "delete_hook_api_webhooks__hook_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hook_id",
+      "required": true,
+      "schema": {
+       "title": "Hook Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Hook",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   },
+   "patch": {
+    "description": "Partial update. Omitted fields stay as they are; `secret: \"\"` clears\nthe signing secret.",
+    "operationId": "update_hook_api_webhooks__hook_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hook_id",
+      "required": true,
+      "schema": {
+       "title": "Hook Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/WebhookUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookHook"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Hook",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   }
+  },
+  "/api/webhooks/{hook_id}/test": {
+   "post": {
+    "description": "Deliver a `webhook.test` event right now and report the result.\nNo background retry \u2014 this is a diagnostic, not an event.",
+    "operationId": "test_hook_api_webhooks__hook_id__test_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "hook_id",
+      "required": true,
+      "schema": {
+       "title": "Hook Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/WebhookTest"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Test Hook",
+    "tags": [
+     "webhooks (automation)"
+    ]
+   }
+  },
+  "/api/write/favorites/{song_id}": {
+   "delete": {
+    "description": "Unfavorite a song. Verify with GET /api/favorites \u2014 a wrong-key delete\nreturns success without doing anything.",
+    "operationId": "unfavorite_api_write_favorites__song_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "song_id",
+      "required": true,
+      "schema": {
+       "title": "Song Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "library_key",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Library Key",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Unfavorite",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   },
+   "post": {
+    "description": "Favorite (heart) a song. `library_key=true` for library-keyed tracks.",
+    "operationId": "favorite_api_write_favorites__song_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "song_id",
+      "required": true,
+      "schema": {
+       "title": "Song Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "library_key",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Library Key",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Favorite",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/library/add": {
+   "post": {
+    "description": "Add catalog songs to your library. Body is a bare JSON array of\ncatalog song ids. NOTE: 202-accepted (async on Apple's side); the\nsongs appear in the library a moment later.",
+    "operationId": "add_to_library_api_write_library_add_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "items": {
+         "type": "string"
+        },
+        "title": "Catalog Ids",
+        "type": "array"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Add To Library",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/library/add-albums": {
+   "post": {
+    "description": "Add catalog albums (all their tracks) to your library.\nBody: bare JSON array of catalog album ids. 202-async.",
+    "operationId": "add_albums_to_library_api_write_library_add_albums_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "items": {
+         "type": "string"
+        },
+        "title": "Catalog Album Ids",
+        "type": "array"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Add Albums To Library",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/library/albums/{library_album_id}": {
+   "delete": {
+    "description": "Remove a whole library album (l.XXX) \u2014 all its songs go too.\nDestructive \u2014 no undo.",
+    "operationId": "remove_album_from_library_api_write_library_albums__library_album_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_album_id",
+      "required": true,
+      "schema": {
+       "title": "Library Album Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Remove Album From Library",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/library/{library_song_id}": {
+   "delete": {
+    "description": "Remove a song from your library by its library id (i.XXX).\nThis is NOT the same as unfavoriting. Destructive \u2014 no undo.",
+    "operationId": "remove_from_library_api_write_library__library_song_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "library_song_id",
+      "required": true,
+      "schema": {
+       "title": "Library Song Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Remove From Library",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/playlists": {
+   "post": {
+    "description": "Create a library playlist. Returns the new playlist id.",
+    "operationId": "create_playlist_api_write_playlists_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "name",
+      "required": false,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "description",
+      "required": false,
+      "schema": {
+       "default": "",
+       "title": "Description",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkPlaylist"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Playlist",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/playlists/{playlist_id}": {
+   "delete": {
+    "description": "Delete a library playlist. Destructive \u2014 no undo.",
+    "operationId": "delete_playlist_api_write_playlists__playlist_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "playlist_id",
+      "required": true,
+      "schema": {
+       "title": "Playlist Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Playlist",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   },
+   "patch": {
+    "description": "Rename / re-describe a library playlist.",
+    "operationId": "rename_playlist_api_write_playlists__playlist_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "playlist_id",
+      "required": true,
+      "schema": {
+       "title": "Playlist Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "name",
+      "required": false,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "description",
+      "required": false,
+      "schema": {
+       "title": "Description",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rename Playlist",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/playlists/{playlist_id}/tracks": {
+   "post": {
+    "description": "Append catalog songs to a playlist (auto-adds them to the library).\nBody is a bare JSON array of catalog song ids.",
+    "operationId": "add_tracks_api_write_playlists__playlist_id__tracks_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "playlist_id",
+      "required": true,
+      "schema": {
+       "title": "Playlist Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "items": {
+         "type": "string"
+        },
+        "title": "Track Ids",
+        "type": "array"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Add Tracks",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   },
+   "put": {
+    "description": "REPLACE the track list, in order. Body is a bare JSON array of\nlibrary-songs ids. This is both reorder and removal: send the full\nlist minus any song you want gone.\ne.g.  curl -X PUT -d '[\"i.abc\",\"i.def\"]' /api/write/playlists/{pid}/tracks",
+    "operationId": "set_tracks_api_write_playlists__playlist_id__tracks_put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "playlist_id",
+      "required": true,
+      "schema": {
+       "title": "Playlist Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "items": {
+         "type": "string"
+        },
+        "title": "Ordered Library Ids",
+        "type": "array"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Ok"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Set Tracks",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/ratings/songs/{song_id}": {
+   "get": {
+    "description": "Current rating of a song: null = none, 1 = like.\nRatings lag server-side after a mutation; `?fresh=1` bypasses cache.",
+    "operationId": "get_rating_api_write_ratings_songs__song_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "song_id",
+      "required": true,
+      "schema": {
+       "title": "Song Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "fresh",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Fresh",
+       "type": "boolean"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RatingState"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Rating",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   },
+   "put": {
+    "description": "rating: 'like' or 'none'.",
+    "operationId": "rate_song_api_write_ratings_songs__song_id__put",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "song_id",
+      "required": true,
+      "schema": {
+       "title": "Song Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "rating",
+      "required": false,
+      "schema": {
+       "title": "Rating",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OkRating"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rate Song",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/restore": {
+   "post": {
+    "description": "Restore playlists from a /api/library/export JSON body.\n\nDRY-RUN BY DEFAULT: returns the plan (per playlist: exists/create,\nper track: catalog-id / name-match / unmatched-with-reason).\n`?execute=1` runs it: creates missing playlists, adds tracks, verifies\ncounts with bounded retries (Apple's applies are async).\n\nThe unmatched report is the contract: nothing is ever dropped silently.",
+    "operationId": "restore_api_write_restore_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "execute",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Execute",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "match_budget",
+      "required": false,
+      "schema": {
+       "default": 2000,
+       "title": "Match Budget",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "additionalProperties": true,
+        "title": "Source",
+        "type": "object"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/RestorePlan"
+          },
+          {
+           "$ref": "#/components/schemas/RestoreExecuted"
+          }
+         ],
+         "title": "Response Restore Api Write Restore Post"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Restore",
+    "tags": [
+     "writes (disabled by default)"
+    ]
+   }
+  },
+  "/api/write/sweeps/dedupe": {
+   "get": {
+    "description": "Dry-run: groups of duplicate library rows. Nothing is touched.",
+    "operationId": "dedupe_plan_api_write_sweeps_dedupe_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DedupePlan"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Dedupe Plan",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   },
+   "post": {
+    "description": "Remove all-but-first row of each duplicate group.\nPass ?execute=1 to actually run it.",
+    "operationId": "dedupe_execute_api_write_sweeps_dedupe_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "execute",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Execute",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/DedupePlan"
+          },
+          {
+           "$ref": "#/components/schemas/DedupeReport"
+          }
+         ],
+         "title": "Response Dedupe Execute Api Write Sweeps Dedupe Post"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Dedupe Execute",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   }
+  },
+  "/api/write/sweeps/digest": {
+   "get": {
+    "description": "Dry-run digest: dedupe + never-played from ONE library walk.\nThe same payload is emitted as `sweep.digest` on the scheduled cadence\n(TONEARM_DIGEST_INTERVAL + TONEARM_WEBHOOKS=1).",
+    "operationId": "digest_api_write_sweeps_digest_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SweepDigest"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Digest",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   }
+  },
+  "/api/write/sweeps/never-played": {
+   "get": {
+    "description": "Read-only report: library songs with no reported plays.\nNOTE: Apple's API currently does not expose play counts on\nlibrary-songs at all \u2014 when that's the case this reports\n`play_count_available: false` rather than pretending every song is\nunplayed.",
+    "operationId": "never_played_api_write_sweeps_never_played_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 100,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "offset",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Offset",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NeverPlayedPlan"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Never Played",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   }
+  },
+  "/api/write/sweeps/rate": {
+   "get": {
+    "description": "Dry-run: which library songs a batch-rate would heart.\n(Execution re-checks each song's current rating and skips hearts.)",
+    "operationId": "rate_plan_api_write_sweeps_rate_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "artist",
+      "required": false,
+      "schema": {
+       "title": "Artist",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "album",
+      "required": false,
+      "schema": {
+       "title": "Album",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 500,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RatePlan"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rate Plan",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   },
+   "post": {
+    "description": "Heart every library song matching the filter, skipping songs that\nalready have a rating. Pass ?execute=1 to actually run it.",
+    "operationId": "rate_execute_api_write_sweeps_rate_post",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "artist",
+      "required": false,
+      "schema": {
+       "title": "Artist",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "album",
+      "required": false,
+      "schema": {
+       "title": "Album",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 500,
+       "title": "Limit",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "execute",
+      "required": false,
+      "schema": {
+       "default": 0,
+       "title": "Execute",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/RatePlan"
+          },
+          {
+           "$ref": "#/components/schemas/RateReport"
+          }
+         ],
+         "title": "Response Rate Execute Api Write Sweeps Rate Post"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Rate Execute",
+    "tags": [
+     "sweeps (batch, dry-run default)"
+    ]
+   }
+  },
+  "/health": {
+   "get": {
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Health"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Health"
+   }
+  },
+  "/metrics": {
+   "get": {
+    "description": "Prometheus text format. Carries no user data, but sits behind\nTONEARM_API_KEY when one is set (scrape config: `authorization` block with\n`Authorization: Bearer <key>`).",
+    "operationId": "metrics_metrics_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Metrics",
+    "tags": [
+     "metrics"
+    ]
+   }
+  }
+ },
+ "security": [
+  {
+   "bearerAuth": []
+  },
+  {
+   "apiKeyQuery": []
+  }
+ ]
+}

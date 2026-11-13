@@ -17,7 +17,22 @@ from ..browser import BrowserError
 router = APIRouter(prefix="/amp-api", tags=["amp-api pass-through"])
 
 
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+# one registration per method: a multi-method api_route gets ONE
+# unique_id shared by all five operations, and FastAPI's OpenAPI
+# collision resolution is a warning + last-write — the schema's
+# operationId flip-flopped between runs (hash order), which made the
+# snapshot un-diffable (#128). Five registrations = five stable ids.
+def _passthrough_route(method):
+    return router.api_route(
+        "/{path:path}", methods=[method], name=f"passthrough-{method.lower()}",
+        generate_unique_id_function=lambda r, m=method: f"passthrough_{m.lower()}_amp_api")
+
+
+@_passthrough_route("GET")
+@_passthrough_route("POST")
+@_passthrough_route("PUT")
+@_passthrough_route("DELETE")
+@_passthrough_route("PATCH")
 async def passthrough(path: str, request: Request):
     body = None
     if request.method in ("POST", "PUT", "PATCH", "DELETE"):
