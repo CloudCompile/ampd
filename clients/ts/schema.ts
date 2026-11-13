@@ -689,17 +689,17 @@ export interface paths {
             cookie?: never;
         };
         /** Passthrough */
-        get: operations["passthrough_api_amp_api__path__post"];
+        get: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        put: operations["passthrough_api_amp_api__path__post"];
+        put: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        post: operations["passthrough_api_amp_api__path__post"];
+        post: operations["passthrough_api_amp_api__path__delete"];
         /** Passthrough */
-        delete: operations["passthrough_api_amp_api__path__post"];
+        delete: operations["passthrough_api_amp_api__path__delete"];
         options?: never;
         head?: never;
         /** Passthrough */
-        patch: operations["passthrough_api_amp_api__path__post"];
+        patch: operations["passthrough_api_amp_api__path__delete"];
         trace?: never;
     };
     "/api/write/favorites/{song_id}": {
@@ -1500,10 +1500,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export */
+        get: operations["export_api_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuditEntry */
+        AuditEntry: {
+            /** Ts */
+            ts: number;
+            /** Key Id */
+            key_id: string;
+            /** Method */
+            method: string;
+            /** Path */
+            path: string;
+            /** Status */
+            status: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** AuditExport */
+        AuditExport: {
+            /** Total */
+            total: number;
+            /** Count */
+            count: number;
+            /** Items */
+            items: components["schemas"]["AuditEntry"][];
+            /** Next Offset */
+            next_offset?: number | null;
+            /**
+             * Source
+             * @default store
+             */
+            source: string;
+        } & {
+            [key: string]: unknown;
+        };
         /** DebugInfo */
         DebugInfo: {
             /** Tab Url */
@@ -1615,6 +1665,7 @@ export interface components {
             /** Browser */
             browser?: string | null;
             watchdog?: components["schemas"]["WatchdogState"] | null;
+            session?: components["schemas"]["SessionState"] | null;
             /** Detail */
             detail?: string | null;
         } & {
@@ -2194,6 +2245,18 @@ export interface components {
             day: string;
             /** Plays */
             plays: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SessionState
+         * @description The Apple session, as far as tonearm's own calls can tell (#189).
+         */
+        SessionState: {
+            /** State */
+            state: string;
+            /** Since */
+            since?: number | null;
         } & {
             [key: string]: unknown;
         };
@@ -3781,7 +3844,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3812,7 +3875,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3843,7 +3906,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3874,7 +3937,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -3905,7 +3968,7 @@ export interface operations {
             };
         };
     };
-    passthrough_api_amp_api__path__post: {
+    passthrough_api_amp_api__path__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -5322,6 +5385,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WatcherPass"];
+                };
+            };
+        };
+    };
+    export_api_audit_get: {
+        parameters: {
+            query?: {
+                since?: number;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditExport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
