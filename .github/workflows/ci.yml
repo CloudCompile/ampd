@@ -328,3 +328,39 @@ jobs:
           kill $KEYED 2>/dev/null || true
           sleep 1
           echo "mock integration step done"
+
+  openapi-gate:
+    # The contract of record (#128): the committed api/openapi.json is
+    # diffed against the schema this branch generates. Breaking changes
+    # fail the job UNLESS the PR carries the `api-breaking` label — which
+    # per docs/deprecation.md swears the break went through a deprecation
+    # cycle (the labeled PR must also regenerate the snapshot).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Generate the current schema
+        run: python scripts/openapi_dump.py > /tmp/current-openapi.json
+      - name: Diff against the contract of record
+        run: |
+          set -o pipefail
+          if python scripts/openapi_diff.py api/openapi.json /tmp/current-openapi.json; then
+            echo "surface intact — no breaking changes"
+            exit 0
+          fi
+          LABELED=$(python3 -c "
+          import json, os
+          ev = json.load(open(os.environ.get('GITHUB_EVENT_PATH', '/dev/null')))
+          names = [l['name'] for l in (ev.get('pull_request', {}).get('labels') or [])]
+          print('yes' if 'api-breaking' in names else 'no')
+          " 2>/dev/null || echo no)
+          if [ "$LABELED" = "yes" ]; then
+            echo "::warning::breaking diff allowed by the api-breaking label"
+            exit 0
+          fi
+          echo "::error::breaking changes without the api-breaking label — see docs/deprecation.md"
+          exit 1

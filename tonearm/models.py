@@ -605,6 +605,7 @@ class Health(_PassThrough):
     watchdog: WatchdogState | None = None
     session: SessionState | None = None
     detail: str | None = None
+    surface: str | None = None        # the pinnable surface (#127)
 
 
 class DebugInfo(_PassThrough):
