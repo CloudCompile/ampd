@@ -4,11 +4,21 @@
 // opencode --scopes read,write --rate 600, then TONEARM_KEY below/env.
 
 import { Plugin } from "@opencode/plugin"
+import { readFileSync } from "node:fs"
 import { Tonearm } from "./rpc.ts"
 
 const BASE = process.env.TONEARM_BASE || "http://127.0.0.1:8200"
-const KEY = process.env.TONEARM_KEY || "toneark_WPHEjAx8wWDq_0msh53Su_KDZMBcTmuc"
-const LISTEN = process.env.TONEARM_LISTEN_URL || "https://remote.tail4c21bf.ts.net:8443"
+// the key NEVER lives in this file (it's committed): env first, then a
+// 0600 file next to tonearm's own state. `python3 -m tonearm keys add
+// opencode --scopes read,write --rate 600` and paste the raw key there.
+const KEY = process.env.TONEARM_KEY || (() => {
+  try {
+    return readFileSync(
+      process.env.TONEARM_KEY_FILE ||
+      `${process.env.HOME}/.config/tonearm/opencode-key.txt`, "utf8").trim()
+  } catch { return "" }
+})()
+const LISTEN = process.env.TONEARM_LISTEN_URL || BASE
 
 async function api(path: string, init?: RequestInit): Promise<any> {
   const res = await fetch(BASE + path, {
