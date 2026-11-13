@@ -186,16 +186,6 @@ class Pipeline:
                 except Exception:
                     pass                           # queue full — client lagged
 
-    def stop(self):
-        with self._lock:
-            if self._proc:
-                try:
-                    self._proc.terminate()
-                except Exception:
-                    pass
-            self._started = False
-            self._proc = None
-
 
 class Broadcaster:
     """The capture source fans out to per-format encoders; each encoder
