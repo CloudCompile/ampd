@@ -1,81 +1,31 @@
-#!/usr/bin/env python3
-"""Render the CarPlay-style layout: art right (24x24), text stack left,
-progress bar + elapsed under it. Same math as the ESPHome display lambda."""
-
 from PIL import Image, ImageDraw, ImageFont
-
-W, H = 64, 32
-SCALE = 12
-DOT = SCALE - 2
-
-accent = (250, 45, 72)
-dim = (77, 77, 77)
-white = (255, 255, 255)
-
-font8 = ImageFont.truetype("/tmp/roboto.ttf", 8)
-
-def frame(title, album, artist, elapsed, duration, playing, has_art, ms):
-    img = Image.new("RGB", (W, H), (0, 0, 0))
-    d = ImageDraw.Draw(img)
-
-    # ── left column (0-38): text stack ──
-    tw = d.textlength(title, font=font8)
-    span = tw + 38
-    off = (ms // 60) % span
-    x = 38 - off
-    d.text((x, 0), title, font=font8, fill=white)
-    d.text((0, 9), album, font=font8, fill=(200, 200, 200))
-    d.text((0, 17), artist, font=font8, fill=(200, 200, 200))
-    # bar + time
-    frac = elapsed / duration if duration else 0.0
-    d.rectangle((0, 27, 25, 30), outline=dim, width=1)
-    if int(frac * 26) > 0:
-        d.rectangle((0, 27, int(frac * 26), 30), fill=accent)
-    secs = int(elapsed / 1000)
-    d.text((29, 25), f"{secs // 60}:{secs % 60:02d}", font=font8, fill=white)
-
-    # ── right column (40-63): album art ──
-    if has_art:
-        # pretend art: a 24x24 gradient square with a vinyl-circle
-        art = Image.new("RGB", (24, 24), (0, 0, 0))
-        ad = ImageDraw.Draw(art)
-        for yy in range(24):
-            t = yy / 23.0
-            ad.line((0, yy, 23, yy), fill=(int(90 + t * 60), int(20 + t * 20), int(110 - t * 40)))
-        ad.ellipse((5, 5, 18, 18), outline=(250, 45, 72), width=2)
-        ad.ellipse((10, 10, 13, 13), fill=white)
-        img.paste(art, (40, 4))
-        if playing:
-            d.rectangle((40, 4, 42, 6), fill=accent)
-
-    # upscale to LED grid
-    out = Image.new("RGB", (W * SCALE, H * SCALE), (10, 9, 10))
-    od = ImageDraw.Draw(out)
-    for yy in range(H):
-        for xx in range(W):
-            c = img.getpixel((xx, yy))
-            if c == (0, 0, 0):
-                continue
-            x0, y0 = xx * SCALE + 1, yy * SCALE + 1
-            od.rounded_rectangle((x0, y0, x0 + DOT - 1, y0 + DOT - 1), radius=2, fill=c)
-    return out
-
-frames = [
-    ("playing — Heavy Rotation, shuffled", "Just Between Us — natori", "Just Between Us",
-     "natori", 96000, 260000, True, True, 3600),
-    ("playing — scrolled to album", "Just Between Us — natori", "Just Between Us",
-     "natori", 150000, 260000, True, True, 5200),
-    ("paused", "Just Between Us — natori", "Just Between Us",
-     "natori", 41000, 260000, False, True, 0),
-    ("idle — no art yet", "(idle)", "tonearm", "", 0, 0, False, False, 0),
-]
-
-sheet = Image.new("RGB", (W * SCALE + 40, (H * SCALE + 60) * len(frames)), (24, 24, 28))
-d = ImageDraw.Draw(sheet)
-y = 20
-for label, title, album, artist, el, dur, playing, art, ms in frames:
-    d.text((20, y), label, font=ImageFont.truetype("/tmp/roboto.ttf", 22), fill=(210, 210, 210))
-    sheet.paste(frame(title, album, artist, el, dur, playing, art, ms), (20, y + 32))
-    y += H * SCALE + 60
-sheet.save("/home/inferenceport/tidbyt-mockup.png")
-print("saved", sheet.size)
+W,H,S=64,32,12
+font8=ImageFont.truetype("/tmp/roboto.ttf",8); font6=ImageFont.truetype("/tmp/roboto.ttf",6); font5=ImageFont.truetype("/tmp/roboto.ttf",5)
+accent=(250,45,72); white=(245,245,245); dim=(105,105,105); bg=(20,15,28)
+def frame(title,album,artist,elapsed,duration,mode,playing=True):
+ im=Image.new("RGB",(W,H),bg); d=ImageDraw.Draw(im)
+ # blurred/pixelated background wash
+ for y in range(H):
+  d.line((0,y,W-1,y),fill=(24+(y%5)*5,12+(y%4)*4,32+(y%7)*7))
+ # static clipped metadata
+ def clip(x): return x[:7]+"." if len(x)>8 else x
+ d.text((0,0),clip(title),font=font8,fill=white); d.text((0,8),clip(album),font=font8,fill=(220,220,220)); d.text((0,16),clip(artist),font=font8,fill=(210,210,210))
+ frac=elapsed/duration if duration else 0; d.rectangle((0,27,25,30),outline=dim,width=1); d.rectangle((0,27,max(0,int(frac*25)),30),fill=accent) if frac else None
+ sec=int(elapsed/1000); d.text((28,25),f"{sec//60}:{sec%60:02d}",font=font5,fill=white)
+ if mode=="art":
+  art=Image.new("RGB",(24,24),(80,20,110)); ad=ImageDraw.Draw(art); ad.ellipse((4,4,19,19),outline=accent,width=2); ad.ellipse((10,10,13,13),fill=white); im.paste(art,(40,4))
+ elif mode=="lyrics":
+  d.text((41,6),"before",font=font5,fill=dim); d.text((41,13),"CURRENT",font=font6,fill=white); d.text((41,23),"after",font=font5,fill=dim)
+ else: d.text((42,14),"no lyrics",font=font5,fill=white)
+ if playing: d.rectangle((40,4,42,6),fill=accent)
+ out=Image.new("RGB",(W*S,H*S),(10,9,10)); od=ImageDraw.Draw(out)
+ for y in range(H):
+  for x in range(W):
+   c=im.getpixel((x,y)); x0,y0=x*S+1,y*S+1; od.rounded_rectangle((x0,y0,x0+S-2,y0+S-2),radius=2,fill=c)
+ return out
+states=[("auto — lyrics available",frame("Just Between Us — natori","Just Between Us","natori",96000,260000,"lyrics")),("artwork fallback",frame("Overdose","Overdose - Single","natori",41000,197094,"art")),("paused",frame("Overdose","Overdose - Single","natori",41000,197094,"art",False)),("idle",frame("(idle)","tonearm","",0,0,"none",False))]
+for name,im in states: im.save("/home/inferenceport/tidbyt-"+name.replace(" ","-").replace("—","-").replace("/","-")+'.png')
+# contact sheet
+sheet=Image.new("RGB",(W*S+40,(H*S+55)*len(states)),(24,24,28)); d=ImageDraw.Draw(sheet); y=15
+for name,im in states: d.text((20,y),name,font=ImageFont.truetype("/tmp/roboto.ttf",20),fill=(220,220,220)); sheet.paste(im,(20,y+28)); y+=H*S+55
+sheet.save("/home/inferenceport/tidbyt-carplay-mockup.png")
