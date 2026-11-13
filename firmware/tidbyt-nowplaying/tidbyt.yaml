@@ -124,7 +124,10 @@ interval:
         on_response:
           then:
             - lambda: |-
-                json::parse_json(id(this->last_response_body_), [](JsonObject root) {
+                // response->body arrives as std::string; status first —
+                // 404s carry an error envelope we don't want to render
+                if (response->status_code != 200) return;
+                json::parse_json(response->body, [](JsonObject root) {
                   id(np_title_state) = std::string(root["title"] | "(idle)");
                   id(np_artist_state) = std::string(root["artist"] | "");
                   id(np_elapsed) = root["elapsedMs"] | 0;
@@ -158,9 +161,11 @@ display:
     update_interval: 16ms
     lambda: |-
       const int W = 64;
-      // title (top row) — horizontal pixel-scroll, loops forever
+      // title (top row) — horizontal pixel-scroll, loops forever.
+      // (Font::get_width doesn't exist in esphome's API; size-10 Roboto
+      // averages ~6px/glyph, good enough for a scroll period.)
       const std::string title = id(np_title_state);
-      const int title_w = id(roboto10).get_width(title);
+      const int title_w = (int)(title.length() * 6) + 1;
       const int scroll_span = title_w + W;
       const int offset = (millis() / 60) % scroll_span;
       const int x = W - offset;
