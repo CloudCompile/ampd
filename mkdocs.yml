@@ -1,0 +1,39 @@
+site_name: tonearm
+site_description: Self-hosted Apple Music API — your session, your server, your stream
+site_url: https://cloudcompile.github.io/tonearm/
+repo_url: https://github.com/CloudCompile/tonearm
+repo_name: CloudCompile/tonearm
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: red
+      accent: pink
+      toggle:
+        icon: material/weather-night
+        name: dark (there is only dark)
+  icon:
+    logo: material/album
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.tracking
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - API reference: api-reference.md
+  - Configuration (env vars): env.md
+  - Field notes: field-notes.md
+  - Deprecation policy: deprecation.md
+  - Home Assistant recipes: ha-recipes.md
+  - Lyrics contract: lyrics-contract.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - tables
+  - toc:
+      permalink: true

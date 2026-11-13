@@ -1,0 +1,74 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install deps (runtime + site)
+        run: |
+          pip install -r requirements.txt
+          pip install mkdocs-material
+
+      - name: Generate derived pages (env table, field notes, API reference)
+        run: python scripts/gen_docs.py
+
+      - name: Route-coverage check (#130) — the reference can't drift
+        run: |
+          python - <<'EOF'
+          import json, re, sys
+
+          spec = json.load(open("api/openapi.json"))
+          built = open("docs/api-reference.md").read()
+          # every route path in the contract must appear in the reference,
+          # and the built site must include the reference page
+          missing = [p for p in spec.get("paths", {})
+                     if p not in built and p.replace("/", "") not in built]
+          assert not missing, f"api-reference.md is missing routes: {missing}"
+          print(f"route coverage OK — {len(spec['paths'])} paths all present")
+          EOF
+
+      - name: Build the site
+        run: mkdocs build --strict --site-dir site
+
+      - name: Pages config
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact (Pages deploys from this)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    # same trigger as the Docker images (#129): a release tag publishes
+    # the site alongside the images
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
