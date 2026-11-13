@@ -278,30 +278,34 @@ class Browser:
         raise BrowserError(f"{method} timed out after {deadline_s}s: {str(what)[:120]}")
 
     def call(self, method, deadline_s=60, **params):
-        """Raw CDP command with ONE reconnect attempt — flat, never recursive.
-        The lock wait is bounded: when Chrome stalls, waiters get a fast 502
-        instead of piling up behind a 60s+ zombie eval."""
+        """Raw CDP command. The lock wait is bounded, but a BUSY lock is
+        retried without ever touching the socket (#174, found live): a
+        busy-waiter that closed the shared ws killed the lock-HOLDER's
+        in-flight eval — both failed, every waiter reconnected, and the
+        layer stormed 'CDP busy' for minutes while SSE and playback
+        starved. Only a genuine socket failure closes+reconnects; an eval
+        timeout keeps the socket (msg ids disambiguate any late reply),
+        because a stuck renderer is the WATCHDOG's problem, not ours."""
         last = None
         for attempt in (1, 2):
+            if not self._lock.acquire(timeout=15):
+                last = BrowserError("CDP busy — another call is in flight")
+                continue                      # retry the wait; socket untouched
             try:
-                if not self._lock.acquire(timeout=15):
-                    raise BrowserError("CDP busy — another call is in flight")
-                try:
-                    if self._ws is None:
-                        self._connect()
-                    return self._raw_call(method, deadline_s=deadline_s, **params)
-                finally:
-                    self._lock.release()
-            except (websocket.WebSocketException, OSError, json.JSONDecodeError,
-                    AttributeError, BrowserError) as e:
+                if self._ws is None:
+                    self._connect()
+                return self._raw_call(method, deadline_s=deadline_s, **params)
+            except (websocket.WebSocketException, OSError,
+                    json.JSONDecodeError, AttributeError) as e:
                 last = e
+                self._close_ws()              # the socket itself is dead
                 log.warning("cdp %s failed (%s), reconnecting", method, e)
-                with self._lock:               # discard the poisoned socket
-                    self._close_ws()
                 if attempt == 2:
                     raise BrowserError(f"CDP call failed after reconnect: {e}")
                 time.sleep(1)
-        raise BrowserError(f"CDP call failed: {last}")
+            finally:
+                self._lock.release()
+        raise last
 
     def eval(self, js, timeout=60):
         """Evaluate JS (must be IIFE-wrapped or async IIFE), return the value.
