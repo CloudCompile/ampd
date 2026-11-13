@@ -24,10 +24,12 @@ This is the build that turns it into:
 
 The display defaults to **auto** mode: when synced lyrics exist, the
 right-hand art tile becomes a three-line lyrics tile (previous dim,
-current bright, next dim); otherwise it remains album art. The left-side
-player never changes. `http://tidbyt.local/` exposes the speaker volume
-and display mode controls; the full library remote is served by tonearm
-at `/tidbyt`.
+current bright, next dim); otherwise it remains album art.
+
+**Volume**: the speaker boots at 80%. Adjust the source loudness from
+the tonearm PWA (`POST /api/playback/volume/<0-100>`), or edit the
+`media_player.volume_set` value in the yaml and reflash for a different
+boot volume.
 
 The 10s rule lives **server-side** (`POST /api/playback/back`) so the
 button stays dumb — Apple's own skipToPreviousItem restarts at ~3s,
