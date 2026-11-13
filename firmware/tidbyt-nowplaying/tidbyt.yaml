@@ -325,12 +325,15 @@ font:
   - file: "gfonts://Roboto"
     id: roboto8
     size: 8
+    bpp: 2
   - file: "gfonts://Roboto"
     id: roboto6bold
     size: 6
+    bpp: 2
   - file: "gfonts://Roboto"
     id: roboto5
     size: 5
+    bpp: 2
 
 color:
   - id: accent
