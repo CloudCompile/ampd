@@ -158,6 +158,14 @@ class Store:
                     (str(version),))
                 self._conn.commit()
                 log.info("store schema migrated to v%d", version)
+        if current > 0:
+            # self-heal: an OLD db stamped at a version whose script was
+            # later edited (mid-release table additions) never re-runs it —
+            # a real install was found missing the scrobbles table exactly
+            # this way. CREATE IF NOT EXISTS is idempotent; drift is not.
+            self._conn.executescript("".join(_MIGRATIONS[v] for v in
+                                             sorted(_MIGRATIONS)))
+            self._conn.commit()
 
     def close(self):
         with self._lock:

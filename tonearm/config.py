@@ -169,10 +169,18 @@ class Config:
     def store_db_path(cls):
         """Where the sqlite file lives. Explicit env wins; else the /data
         volume (docker convention, HOME=/data there anyway); else under the
-        user's local state dir."""
+        user's local state dir.
+        MOCK MODE NEVER SHARES THE REAL DB: a mock session defaulting to
+        the real path wrote fixture plays ("Mock Artist 1") into a real
+        listening archive — the Ledger then reported fake listens as fact.
+        Mock now gets its own db unless TONEARM_STORE_PATH is explicit."""
         env = os.environ.get("TONEARM_STORE_PATH", "")
         if env:
             return env
+        if cls.mock_enabled:
+            d = "/data" if os.path.isdir("/data") else str(
+                Path.home() / ".local" / "share" / "tonearm")
+            return os.path.join(d, "tonearm-mock.db")
         if os.path.isdir("/data"):
             return "/data/tonearm.db"
         return str(Path.home() / ".local" / "share" / "tonearm" / "store.db")

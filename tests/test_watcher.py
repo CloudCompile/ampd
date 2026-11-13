@@ -13,7 +13,8 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tonearm import watcher as w
-from tonearm.watcher import ReleaseWatcher, norm_name, newest_album, _date_gt
+from tonearm.watcher import ReleaseWatcher, name_candidates, norm_name, \
+    newest_album, _date_gt
 
 
 def artist(n, name):
@@ -201,6 +202,34 @@ class TestPass(unittest.TestCase):
             {"last_ok": False, "consecutive_failures": 2}), FakeMk(),
             interval=3600)
         self.assertTrue(stalled._stalled())
+
+
+class TestNameCandidates(unittest.TestCase):
+    def test_collab_strings_fall_back_to_the_primary_artist(self):
+        self.assertEqual(name_candidates("Alan Walker & Ava Max"),
+                         ["Alan Walker & Ava Max", "Alan Walker"])
+        self.assertEqual(name_candidates("Adb.nts44, BXN$HEE & Anitor"),
+                         ["Adb.nts44, BXN$HEE & Anitor", "Adb.nts44"])
+        self.assertEqual(name_candidates("Ado feat. Hatsune Miku"),
+                         ["Ado feat. Hatsune Miku", "Ado"])
+        self.assertEqual(name_candidates("ABBA"), ["ABBA"],
+                         "solo names get one candidate")
+
+    def test_primary_artist_mapping_lands_in_the_store(self):
+        SEARCH_HITS["alan walker"] = [
+            {"id": "4000", "attributes": {"name": "Alan Walker"}}]
+        store, seen = FakeStore(), []
+        watcher = make_watcher(store=store,
+                               emit=lambda t, d: seen.append((t, d)))
+        ARTISTS.append(artist(4, "Alan Walker & Ava Max"))
+        try:
+            summary = watcher.run_pass()
+        finally:
+            ARTISTS.pop()
+        self.assertEqual(summary["mapped"], 3,
+                         "r.1 + r.2 + the collab mapped via its primary artist")
+        self.assertEqual(summary["unmapped"], 1)   # Nobody Real, as always
+        self.assertEqual(store.rows["r.4"]["catalog_artist_id"], "4000")
 
 
 class TestAutoAdd(unittest.TestCase):

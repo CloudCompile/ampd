@@ -8,6 +8,9 @@ import { esc, fmt } from "./util.js";
 import * as library from "./views/library.js";
 import * as queue from "./views/queue.js";
 import * as lyrics from "./views/lyrics.js";
+import { initListen } from "./views/listen.js";
+
+initListen();
 
 const $ = (id) => document.getElementById(id);
 

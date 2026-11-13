@@ -117,10 +117,14 @@ class Browser:
                 "DISPLAY": config.audio_display,   # PULSE_SINK} env strips PATH
                 "PULSE_SINK": config.audio_sink,   # and XDG_RUNTIME_DIR, leaving
             }                                      # chrome unable to find pulse
-            cmd.append("--autoplay-policy=no-user-gesture-required")
         else:
             if config.headless:
                 cmd.append("--headless=new")
+        # ALWAYS: the API has no user gesture to offer Chrome's autoplay
+        # policy — without this, play-song loads the queue and playback
+        # parks in state=loading forever (found live: clicking a library
+        # song did nothing audible OR visible)
+        cmd.append("--autoplay-policy=no-user-gesture-required")
         cmd.append("about:blank")
         log.info("launching chrome: %s (audio=%s)", " ".join(cmd), config.audio_enabled)
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

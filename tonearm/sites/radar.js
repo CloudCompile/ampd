@@ -1,5 +1,5 @@
-import { get, post, guard, toast, spinner, initHeader, fmtDate, fmtWhen,
-         esc } from "./common.js";
+import { get, post, qs, guard, toast, spinner, initHeader, fmtDate,
+         fmtWhen, esc } from "./common.js";
 
 initHeader("Radar");
 const panel = () => document.getElementById("panel");

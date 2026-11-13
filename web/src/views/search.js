@@ -74,6 +74,12 @@ async function run() {
     const cat = await get("/api/catalog/search", { term, types: "songs", limit: 10 });
     for (const r of (cat.songs || []))
       hits.push({ ...r, kind: "songs", source: "catalog" });
-  } catch { /* keyed down mid-keystroke — next input re-runs */ }
+  } catch (e) {
+    // an error is not "no results" — say what actually happened
+    // (a silent catch here made a dead catalog leg read as an empty
+    // library; found live: Apple 429s from the watcher read as "no results")
+    scopeEl.textContent = e.status === 0 ? "tonearm unreachable"
+      : `search failed: ${e.hint || e.message || e}`;
+  }
   render();
 }
