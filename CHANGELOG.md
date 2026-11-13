@@ -11,6 +11,14 @@ Release notes for each version are drafted by `scripts/release_notes.py`
 ## [Unreleased]
 
 ### Added
+- **Batch reads** (#183): `POST /api/batch` — N reads in one round trip
+  (a dashboard render was 5 tunnel round trips; now it's 1). Entries
+  `{path, params}`, answers `[{status, body}]` with per-entry failure
+  isolation; reads only, cap 10.
+- **Multi-storefront catalog** (#184): `?storefront=` (validated ISO
+  alpha-2) on every catalog route — regional charts/search/availability;
+  library/me routes stay on the account's home storefront. Live-verified
+  us/gb/de.
 - **The freeze** (#50, #126–128): documented deprecation policy
   ([docs/deprecation.md](docs/deprecation.md)), `Deprecation:`/`Sunset:`
   headers middleware, the pinnable surface marker (`/health` `surface`

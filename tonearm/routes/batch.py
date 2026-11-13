@@ -17,7 +17,7 @@ Rules that keep it safe and boring:
 
 from __future__ import annotations
 
-import httpx as httpx2                  # the httpx fork; TestClient's dep
+import httpx2                           # the httpx fork (TestClient's dep)
 from fastapi import APIRouter, HTTPException, Request
 
 from ..models import _PassThrough
