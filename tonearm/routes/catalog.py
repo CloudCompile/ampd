@@ -14,7 +14,22 @@ from ..models import (ItemList, ItemRow, LibraryItem, Lyrics, RelationshipPage,
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
-STOREFRONT = "us"  # could become configurable later
+STOREFRONT = "us"  # the home storefront; catalog routes accept ?storefront=
+
+_SF_RE = re.compile(r"^[a-z]{2}$")
+
+
+def _sf(storefront: str | None) -> str:
+    """Validated storefront for a catalog call (#184): ISO 3166-1 alpha-2,
+    lowercase; defaults to the server's home storefront ('us'). Bad codes
+    400 — Apple would 404 anyway, but a typed error is kinder. Library/me
+    routes stay on the account's home storefront (Apple binds them)."""
+    sf = (storefront or STOREFRONT).lower()
+    if not _SF_RE.match(sf):
+        raise HTTPException(400, f"bad storefront {storefront!r} — use a "
+                                 f"2-letter ISO code (us, gb, de, jp, …)")
+    return sf
+
 
 CATALOG_RESOURCES = {"songs", "albums", "artists", "playlists", "music-videos",
                      "stations", "curators", "search-hints", "record-labels"}
@@ -22,14 +37,14 @@ CATALOG_RESOURCES = {"songs", "albums", "artists", "playlists", "music-videos",
 
 @router.get("/search", response_model=dict[str, list[ItemRow]])
 def catalog_search(term: str, types: str = "songs,albums,artists,playlists",
-                   limit: int = 10):
+                   limit: int = 10, storefront: str | None = None):
     """Multi-type catalog search. `types` is a comma list, e.g.
     songs,albums,artists,playlists,stations,curators,music-videos"""
     if not term:
         raise HTTPException(400, "term is required")
     try:
         data = mk.api_music(
-            f"/v1/catalog/{STOREFRONT}/search?term={urllib.parse.quote(term)}"
+            f"/v1/catalog/{_sf(storefront)}/search?term={urllib.parse.quote(term)}"
             f"&types={types}&limit={min(limit, 25)}")
         out = {}
         for kind, group in (data.get("results", {}) or {}).items():
@@ -40,14 +55,15 @@ def catalog_search(term: str, types: str = "songs,albums,artists,playlists",
 
 
 @router.get("/hints", response_model=SearchHints)
-def hints(term: str, types: str = "songs,artists,albums,playlists"):
+def hints(term: str, types: str = "songs,artists,albums,playlists",
+          storefront: str | None = None):
     """Search suggestions (what the web player's autocomplete shows).
     Returns flat rows: {term/title, id, kind}."""
     if not term:
         raise HTTPException(400, "term is required")
     try:
         data = mk.api_music(
-            f"/v1/catalog/{STOREFRONT}/search/suggestions?term={urllib.parse.quote(term)}"
+            f"/v1/catalog/{_sf(storefront)}/search/suggestions?term={urllib.parse.quote(term)}"
             f"&kinds=topResults&types={types}")
         out = []
         for s in data.get("results", {}).get("suggestions", []):
@@ -90,11 +106,11 @@ def _parse_ttml(ttml):
 
 
 @router.get("/songs/{song_id}/lyrics", response_model=Lyrics)
-def song_lyrics(song_id: str, raw: bool = False):
+def song_lyrics(song_id: str, raw: bool = False, storefront: str | None = None):
     """Synced lyrics for a catalog song (Apple's TTML, parsed to lines).
     `raw=1` returns the raw TTML document. Songs without lyrics -> 404."""
     try:
-        data = mk.api_music(f"/v1/catalog/{STOREFRONT}/songs/{song_id}/lyrics")
+        data = mk.api_music(f"/v1/catalog/{_sf(storefront)}/songs/{song_id}/lyrics")
         attrs = (data.get("data") or [{}])[0].get("attributes", {})
         ttml = attrs.get("ttml")
         if not ttml:
@@ -109,13 +125,14 @@ def song_lyrics(song_id: str, raw: bool = False):
 
 
 @router.get("/charts", response_model=dict[str, list[ItemRow]])
-def charts(types: str = "songs", limit: int = 25, genre: str = None):
+def charts(types: str = "songs", limit: int = 25, genre: str = None,
+           storefront: str | None = None):
     """Catalog charts: most-played songs/albums/playlists. `genre` = genre id."""
     try:
         q = f"types={types}&limit={min(limit, 50)}"
         if genre:
             q += f"&genre={genre}"
-        data = mk.api_music(f"/v1/catalog/{STOREFRONT}/charts?{q}")
+        data = mk.api_music(f"/v1/catalog/{_sf(storefront)}/charts?{q}")
         out = {}
         for kind, chart in (data.get("results", {}) or {}).items():
             out[kind] = [mk.item_row(t) for c in chart
@@ -126,20 +143,21 @@ def charts(types: str = "songs", limit: int = 25, genre: str = None):
 
 
 @router.get("/{resource}", response_model=ItemList)
-def catalog_by_ids(resource: str, ids: str):
+def catalog_by_ids(resource: str, ids: str, storefront: str | None = None):
     """Fetch specific catalog resources by (comma-separated) id."""
     if resource not in CATALOG_RESOURCES:
         raise HTTPException(404, f"unknown catalog resource {resource!r}. "
                                  f"Valid: {sorted(CATALOG_RESOURCES)}")
     try:
-        data = mk.api_music(f"/v1/catalog/{STOREFRONT}/{resource}?ids={ids}")
+        data = mk.api_music(f"/v1/catalog/{_sf(storefront)}/{resource}?ids={ids}")
         return {"items": [mk.item_row(t) for t in data.get("data", [])]}
     except BrowserError as e:
         raise HTTPException(502, str(e))
 
 
 @router.get("/{resource}/{resource_id}", response_model=LibraryItem)
-def catalog_item(resource: str, resource_id: str, extend: str = None):
+def catalog_item(resource: str, resource_id: str, extend: str = None,
+                 storefront: str | None = None):
     """One catalog item; `extend=tracks` etc. includes relationships inline."""
     if resource not in CATALOG_RESOURCES:
         raise HTTPException(404, f"unknown catalog resource {resource!r}. "
@@ -147,7 +165,7 @@ def catalog_item(resource: str, resource_id: str, extend: str = None):
     try:
         q = f"extend={extend}" if extend else ""
         data = mk.api_music(
-            f"/v1/catalog/{STOREFRONT}/{resource}/{resource_id}" + (f"?{q}" if q else ""))
+            f"/v1/catalog/{_sf(storefront)}/{resource}/{resource_id}" + (f"?{q}" if q else ""))
         items = data.get("data", [])
         if not items:
             raise HTTPException(404, "not found in catalog")
@@ -160,11 +178,12 @@ def catalog_item(resource: str, resource_id: str, extend: str = None):
 
 @router.get("/{resource}/{resource_id}/{relationship}", response_model=RelationshipPage)
 def catalog_relationship(resource: str, resource_id: str, relationship: str,
-                         limit: int = 100, offset: int = 0):
+                         limit: int = 100, offset: int = 0,
+                         storefront: str | None = None):
     """e.g. /catalog/artists/{id}/albums, /catalog/albums/{id}/tracks."""
     try:
         data = mk.api_music(
-            f"/v1/catalog/{STOREFRONT}/{resource}/{resource_id}/{relationship}"
+            f"/v1/catalog/{_sf(storefront)}/{resource}/{resource_id}/{relationship}"
             f"?limit={min(limit, 100)}&offset={offset}")
         return {"items": [mk.item_row(t) for t in data.get("data", [])],
                 "next": data.get("next")}

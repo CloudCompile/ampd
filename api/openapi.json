@@ -78,6 +78,42 @@
     "title": "AuditExport",
     "type": "object"
    },
+   "BatchEntry": {
+    "additionalProperties": true,
+    "description": "One inner result: {status, body} \u2014 body is whatever the inner\nroute would have answered (error envelope on 4xx/5xx).",
+    "properties": {
+     "body": {
+      "title": "Body"
+     },
+     "status": {
+      "title": "Status",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "status"
+    ],
+    "title": "BatchEntry",
+    "type": "object"
+   },
+   "BatchRequest": {
+    "additionalProperties": true,
+    "properties": {
+     "requests": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Requests",
+      "type": "array"
+     }
+    },
+    "required": [
+     "requests"
+    ],
+    "title": "BatchRequest",
+    "type": "object"
+   },
    "DebugInfo": {
     "additionalProperties": true,
     "properties": {
@@ -4176,6 +4212,52 @@
     ]
    }
   },
+  "/api/batch": {
+   "post": {
+    "description": "N reads, one round trip. Every entry is answered as its own\nenvelope: {status, body} (4xx/5xx per-entry \u2014 one bad request never\nsinks the batch).",
+    "operationId": "batch_api_batch_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BatchRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/BatchEntry"
+         },
+         "title": "Response Batch Api Batch Post",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Batch",
+    "tags": [
+     "batch"
+    ]
+   }
+  },
   "/api/catalog/charts": {
    "get": {
     "description": "Catalog charts: most-played songs/albums/playlists. `genre` = genre id.",
@@ -4208,6 +4290,22 @@
       "schema": {
        "title": "Genre",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
       }
      }
     ],
@@ -4268,6 +4366,22 @@
        "default": "songs,artists,albums,playlists",
        "title": "Types",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
       }
      }
     ],
@@ -4332,6 +4446,22 @@
        "title": "Limit",
        "type": "integer"
       }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
+      }
      }
     ],
     "responses": {
@@ -4392,6 +4522,22 @@
        "title": "Raw",
        "type": "boolean"
       }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
+      }
      }
     ],
     "responses": {
@@ -4443,6 +4589,22 @@
       "schema": {
        "title": "Ids",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
       }
      }
     ],
@@ -4504,6 +4666,22 @@
       "schema": {
        "title": "Extend",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
       }
      }
     ],
@@ -4585,6 +4763,22 @@
        "default": 0,
        "title": "Offset",
        "type": "integer"
+      }
+     },
+     {
+      "in": "query",
+      "name": "storefront",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Storefront"
       }
      }
     ],
