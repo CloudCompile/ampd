@@ -164,10 +164,13 @@ class FakeStore:
         self.played.append(kw)
 
 
-def ev(seq, ev_name, track_id, title, ts, playing=True):
-    return {"seq": seq, "ev": ev_name, "id": track_id, "title": title,
-            "artist": "a", "album": "al", "artworkUrl": None,
-            "durationMs": 1000, "ts": ts, "isPlaying": playing}
+def ev(seq, ev_name, track_id, title, ts, playing=True, elapsed=None):
+    out = {"seq": seq, "ev": ev_name, "id": track_id, "title": title,
+           "artist": "a", "album": "al", "artworkUrl": None,
+           "durationMs": 1000, "ts": ts, "isPlaying": playing}
+    if elapsed is not None:
+        out["elapsedMs"] = elapsed        # progress proof (#178)
+    return out
 
 
 class TestHistoryWriter(unittest.TestCase):
@@ -175,25 +178,57 @@ class TestHistoryWriter(unittest.TestCase):
         w = HistoryWriter(FakeStore(), None, None)
         T = 1700000000000
         w.process_events([
-            ev(1, "playbackProgressDidChange", "t1", "Song A", T),
-            ev(2, "playbackProgressDidChange", "t1", "Song A", T + 5000),
+            ev(1, "playbackProgressDidChange", "t1", "Song A", T,
+               elapsed=0),                 # queued/loaded — no sound yet
+            ev(2, "playbackProgressDidChange", "t1", "Song A", T + 5000,
+               elapsed=5000),              # progress PROVEN -> a play
             ev(3, "playbackStateDidChange", "t1", "Song A", T + 6000,
-               playing=False),                       # pause — same track
-            ev(4, "nowPlayingItemDidChange", "t2", "Song B", T + 10000),
-            ev(5, "playbackStateDidChange", "t2", "Song B", T + 11000),
+               playing=False),             # pause — same track
+            ev(4, "nowPlayingItemDidChange", "t2", "Song B", T + 10000,
+               elapsed=0),                 # staged...
+            ev(5, "playbackStateDidChange", "t2", "Song B", T + 11000,
+               elapsed=300),               # ...and proven
         ])
         titles = [p["title"] for p in w.store.played]
         self.assertEqual(titles, ["Song A", "Song B"],
                          "progress ticks and same-track state changes are "
                          "not plays")
 
+    def test_queue_load_never_records_a_play_that_made_no_sound(self):
+        """#178: the autoplay-blocked case — the queue loads, a transient
+        isPlaying tick fires, but elapsedMs stays 0 forever. NO play row."""
+        w = HistoryWriter(FakeStore(), None, None)
+        T = 1700000000000
+        w.process_events([
+            ev(1, "playbackStateDidChange", "t1", "Ghost", T, elapsed=0),
+            ev(2, "playbackProgressDidChange", "t1", "Ghost", T + 9000,
+               elapsed=0),                 # still zero: nothing played
+        ])
+        self.assertEqual(w.store.played, [],
+                         "a play that made no sound is not a play")
+        self.assertIsNotNone(w._pending, "staged for a real start")
+
+    def test_staged_start_keeps_the_original_start_time(self):
+        w = HistoryWriter(FakeStore(), None, None)
+        T = 1700000000000
+        w.process_events([
+            ev(1, "playbackStateDidChange", "t1", "S", T, elapsed=0),
+            ev(2, "playbackProgressDidChange", "t1", "S", T + 1200,
+               elapsed=1200),
+        ])
+        self.assertEqual(w.store.played[0]["started_at"], T / 1000,
+                         "the play is stamped when the track STARTED, "
+                         "not when progress confirmed it")
+
     def test_resume_from_pause_counts(self):
         w = HistoryWriter(FakeStore(), None, None)
         T = 1700000000000
-        w.process_events([ev(1, "playbackProgressDidChange", "t1", "S", T)])
+        w.process_events([ev(1, "playbackProgressDidChange", "t1", "S", T,
+                             elapsed=4000)])
         w.process_events([ev(2, "playbackStateDidChange", "t1", "S", T + 1,
                              playing=False)])
-        w.process_events([ev(3, "playbackStateDidChange", "t1", "S", T + 2)])
+        w.process_events([ev(3, "playbackStateDidChange", "t1", "S", T + 2,
+                             elapsed=6000)])
         titles = [p["title"] for p in w.store.played]
         self.assertEqual(titles, ["S", "S"],
                          "pause->play of the same track is a new start")
