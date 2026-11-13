@@ -614,6 +614,32 @@ creates missing playlists, adds tracks, verifies counts async; every un-restorab
 Every mutation returns `501` until you set `TONEARM_ENABLE_WRITES=1`. All shapes
 above were validated live against a real account.
 
+### Multi-user keys — `python -m tonearm keys` (v0.7)
+
+Hand the link to friends without handing them your write power:
+
+```bash
+python3 -m tonearm keys add laptop --scopes read        # a friend's UI: watches only
+python3 -m tonearm keys add phone  --scopes read,write  # yours: full control
+python3 -m tonearm keys list                            # ids + scopes, never hashes
+python3 -m tonearm keys revoke k-ab12cd34
+```
+
+* **Scopes**: `read` (GETs) vs `write` (every mutation — playback control
+  included: a friend's UI watches, yours drives). `write` implies `read`.
+* **Ceilings**: `--rate 120` = requests/min for that key — over it, `429
+  rate_limited` + `Retry-After`. The master (`TONEARM_API_KEY`) is never
+  limited.
+* **SSE caps**: 3 concurrent live-stream connections per key (`TONEARM_SSE_CAP`).
+* Stored as **hashes** in a 0600 file; the raw key is shown once. Added
+  keys work without restarting the server.
+* **`GET /api/audit`** (master only): who did what — every authenticated
+  mutation, newest first, exportable; store-backed when `TONEARM_STORE=1`,
+  a 1000-entry ring otherwise (stated in the response).
+* `/health` now carries **`session`** — `ok` / `expired` / `unknown`: when
+  Apple's session dies, the API says `502 session_expired — run
+  `python -m tonearm login`` instead of scattered 403s (#189).
+
 ### Errors — one shape everywhere
 
 Every non-2xx response, from any route, is:
@@ -644,7 +670,9 @@ Every non-2xx response, from any route, is:
 | `TONEARM_AUTO_CHROME` | `1` | launch Chrome automatically if not reachable |
 | `TONEARM_HEADLESS` | `1` | headless chrome (set `0` for audible playback) |
 | `TONEARM_HOST` / `TONEARM_PORT` | `127.0.0.1` / `8188` | bind address |
-| `TONEARM_API_KEY` | *(unset)* | require `Authorization: Bearer <key>` on all routes |
+| `TONEARM_API_KEY` | *(unset)* | the MASTER key — full access, never rate-limited. Scoped keys for friends live in the keys file (below) |
+| `TONEARM_KEYS_FILE` | next to the store db | the multi-key registry (0600 JSON, hashes only) |
+| `TONEARM_SSE_CAP` | `3` | concurrent live-stream connections per scoped key |
 | `TONEARM_STRICT_BIND` | `0` | make a non-localhost bind **without** `TONEARM_API_KEY` fatal instead of a loud warning (default warn-only — inside a container, binding `0.0.0.0` is normal; the port mapping is the boundary) |
 | `TONEARM_ENABLE_WRITES` | `0` | unlocks favorite/playlist mutations |
 | `TONEARM_CACHE` / `TONEARM_CACHE_TTL` | `1` / `30` | read cache for amp-api GETs (single-flight coalesced; catalog 10×, favorites/ratings capped at 10s; mutations bust everything and open an 8s no-cache grace window — see `tonearm/cache.py`) |

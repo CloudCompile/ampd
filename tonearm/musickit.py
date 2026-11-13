@@ -15,6 +15,23 @@ from .metrics import METRICS
 
 read_cache = _cache_mod.read_cache
 
+# the Apple session's state, as far as OUR calls can tell (#189): "ok"
+# after any 200, "expired" after Apple's 403/40300 (Invalid
+# authentication — the session died; the fix is `python -m tonearm
+# login`), "unknown" before the first call. /health surfaces it.
+session_state = {"state": "unknown", "since": 0.0}
+
+
+def _note_session(status, body):
+    if status == 200:
+        if session_state["state"] != "ok":
+            session_state.update(state="ok", since=time.time())
+    elif status == 403 and "40300" in (body or "")[:400]:
+        if session_state["state"] != "expired":
+            session_state.update(state="expired", since=time.time())
+            log.warning("apple session EXPIRED (403 40300) — run "
+                        "`python -m tonearm login` to re-authenticate")
+
 log = logging.getLogger("tonearm.musickit")
 
 
@@ -32,6 +49,7 @@ def api_music(path, timeout=90, fresh=False):
     `fresh=True` bypasses it (clients: `?fresh=1` on the favorites/ratings
     routes) — for when Apple's own auto-sync lag makes even a 10s TTL lie."""
     res = raw_api(path, method="GET", timeout=timeout, fresh=fresh)
+    _note_session(res["status"], res["body"])
     if res["status"] != 200:
         raise BrowserError(f"apple api: HTTP {res['status']} — {res['body'][:150]}")
     return json.loads(res["body"])
