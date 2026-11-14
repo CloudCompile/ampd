@@ -20,7 +20,7 @@
 
 substitutions:
   # ── filled in for this device ────────────────────────────────────────
-  tonearm_base: "https://remote.tail4c21bf.ts.net:8443"
+  tonearm_base: "http://20.221.210.24/tidbyt-relay"
   tonearm_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"   # tidbyt, read,write, 120/min
   playlist_1_id: "p.0YU08k07L9"        # Favorite Songs (the hearts playlist)
   playlist_2_id: "p.KoKOBXDS3Wm3o9P"   # Heavy Rotation
