@@ -17,7 +17,7 @@ class TidbytA2DPSource : public esphome::Component {
       : device_name_(device_name), url_(url) {}
 
   void setup() override;
-  void loop() override {}
+  void loop() override;
   float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
   void dump_config() override;
 
@@ -29,6 +29,7 @@ class TidbytA2DPSource : public esphome::Component {
   bool connect_stream(WiFiClient &client);
   int read_stream_bytes(WiFiClient &client, uint8_t *buffer, size_t capacity);
 
+  static constexpr unsigned kMinHeapForBt = 150 * 1024;
   BluetoothA2DPSource source_;
   std::string device_name_;
   std::string url_;
@@ -37,6 +38,9 @@ class TidbytA2DPSource : public esphome::Component {
   TaskHandle_t task_{nullptr};
   bool chunked_{false};
   size_t chunk_remaining_{0};
+  unsigned long boot_ms_{0};
+  bool started_{false};
+  bool failed_{false};
 };
 
 }  // namespace tidbyt_a2dp

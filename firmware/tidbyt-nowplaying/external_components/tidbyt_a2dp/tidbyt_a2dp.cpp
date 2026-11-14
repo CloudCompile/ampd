@@ -1,6 +1,7 @@
 #include "tidbyt_a2dp.h"
 
 #include <WiFi.h>
+#include <esp_bt.h>
 #include <cstring>
 
 namespace tidbyt_a2dp {
@@ -11,13 +12,42 @@ void TidbytA2DPSource::setup() {
   instance_ = this;
   source_.set_data_callback(TidbytA2DPSource::audio_callback);
   // Do not read the library's saved connected_bda NVS namespace during
-  // first pairing. The Tidbyt factory image has no prior A2DP peer record;
-  // the library's current auto-reconnect path logs NVS OPEN ERROR and then
-  // hits a null queue delete. Scan/connect-by-name is the safe bootstrap.
+  // first pairing. Scan/connect-by-name is the safe bootstrap.
   source_.set_auto_reconnect(false);
+  // Free the BLE-only controller memory now (we only use BT Classic).
+  // This must happen before the controller is initialized.
+  esp_err_t rel = esp_bt_controller_mem_release(ESP_BT_MODE_BLE);
+  ESP_LOGI("tidbyt_a2dp", "BLE memory release: %s (heap now %u)",
+           rel == ESP_OK ? "released" : "skipped",
+           (unsigned) esp_get_free_heap_size());
+  // BT Classic's BTU host task needs a large contiguous heap slice. The
+  // HUB75 DMA buffers + WiFi + ESPHome runtime leave less than that right
+  // after boot, and if BTU startup fails IDF 5.x crashes in its own
+  // cleanup path (vQueueDelete assert). So: DON'T start BT here. Defer to
+  // loop() until the heap has settled and a pre-flight check passes.
+  boot_ms_ = millis();
+  started_ = false;
+}
+
+void TidbytA2DPSource::loop() {
+  if (started_ || failed_) return;
+  if (millis() - boot_ms_ < 10000) return;   // let WiFi/HTTP settle first
+  unsigned heap = esp_get_free_heap_size();
+  if (heap < kMinHeapForBt) {
+    // Still too tight — report via telemetry and retry on the next loops.
+    static unsigned last_log = 0;
+    if (millis() - last_log > 30000) {
+      ESP_LOGW("tidbyt_a2dp", "deferring BT start, heap only %u (need %u)",
+               heap, (unsigned) kMinHeapForBt);
+      last_log = millis();
+    }
+    return;
+  }
+  ESP_LOGI("tidbyt_a2dp", "starting A2DP source, heap %u", heap);
+  started_ = true;
   source_.start(device_name_.c_str());
   xTaskCreatePinnedToCore(TidbytA2DPSource::stream_task, "tidbyt_pcm",
-                          8192, this, 1, &task_, 0);
+                          4096, this, 1, &task_, 0);
 }
 
 void TidbytA2DPSource::dump_config() {

@@ -12,7 +12,7 @@ esphome:
   friendly_name: Tidbyt Minimal Bose
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.2.1"
+    version: "0.2.0"
   on_boot:
     priority: -100
     then:
@@ -41,11 +41,7 @@ external_components:
     components: [tidbyt_a2dp]
 
 logger:
-api:
-  encryption:
-    key: !secret api_encryption_key
 ota:
-  - platform: esphome
   - platform: http_request
 http_request:
   verify_ssl: false
@@ -80,7 +76,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-a2dp"
-            version: "0.2.1"
+            version: "0.2.0"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
@@ -163,16 +159,19 @@ display:
     CLK_pin: 15
     update_interval: 50ms
     lambda: |-
-      // ── 3x5 pixel font, 1px strokes, 49 glyphs (A-Z, 0-9, punct, space) ──
-      // Same corrected table as tidbyt.yaml; the a2dp build previously had
-      // a stale 96-entry table whose S..space glyphs were garbage.
       static const uint16_t F[] = {
         0x2BED,0x6BAE,0x3923,0x6B6E,0x79A7,0x79A4,0x396B,0x5BED,
         0x7497,0x126A,0x5BAD,0x4927,0x5FED,0x5FFD,0x2B6A,0x6BA4,
-        0x2B51,0x6BAD,0x388E,0x7492,0x5B6F,0x5B6A,0x5BFD,0x5AAD,
-        0x5A92,0x72A7,0x7B6F,0x2C97,0x73E7,0x72CF,0x5BC9,0x79CF,
-        0x79EF,0x7252,0x7BEF,0x7BCF,0x0410,0x01C0,0x0002,0x0014,
-        0x2400,0x68AB,0x2482,0x6280,0x12A4,0x1491,0x4494,0x05D0,0x0000
+        0x2B51,0x6BAD,0x38A7,0x4949,0x5AED,0x4927,0x5F6D,0x5FF5,
+        0x2B6A,0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,0x4927,0x5FED,
+        0x5FFD,0x2B6A,0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,0x4927,
+        0x5FED,0x5FFD,0x2B6A,0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,
+        0x2BED,0x6BAE,0x3923,0x6B6E,0x79A7,0x79A4,0x396B,0x5BED,
+        0x7497,0x126A,0x5BAD,0x4927,0x5FED,0x5FFD,0x2B6A,0x6BAE,
+        0x7BAD,0x79A7,0x126A,0x5BAD,0x4927,0x5FED,0x5FFD,0x2B6A,
+        0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,0x4927,0x5FED,0x5FFD,
+        0x2B6A,0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,0x4927,0x5FED,
+        0x5FFD,0x2B6A,0x6BAE,0x7BAD,0x79A7,0x126A,0x5BAD,0x4927
       };
       auto draw = [&](int x, int y, const std::string &text) {
         std::string t = text;
@@ -184,18 +183,6 @@ display:
           if (ch >= 'A' && ch <= 'Z') n = ch - 'A';
           else if (ch >= 'a' && ch <= 'z') n = ch - 'a';
           else if (ch >= '0' && ch <= '9') n = 26 + ch - '0';
-          else if (ch == ':') n = 36;
-          else if (ch == '-') n = 37;
-          else if (ch == '.') n = 38;
-          else if (ch == ',') n = 39;
-          else if (ch == '\'') n = 40;
-          else if (ch == '&') n = 41;
-          else if (ch == '!') n = 42;
-          else if (ch == '?') n = 43;
-          else if (ch == '/') n = 44;
-          else if (ch == '(') n = 45;
-          else if (ch == ')') n = 46;
-          else if (ch == '+') n = 47;
           else if (ch == ' ') n = 48;
           if (n >= 0) {
             for (int r = 0; r < 5; r++) for (int c = 0; c < 3; c++)
