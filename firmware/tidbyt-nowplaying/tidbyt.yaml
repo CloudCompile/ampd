@@ -338,7 +338,6 @@ number:
   - platform: hub75_matrix_display
     matrix_id: matrix
     name: "Brightness"
-    initial_value: 32
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
