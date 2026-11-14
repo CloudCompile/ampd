@@ -57,7 +57,7 @@ captive_portal:
 
 time:
   - platform: sntp
-    id: clock
+    id: ntp_time
     timezone: America/New_York
 
 display:
@@ -87,8 +87,8 @@ display:
       it.fill(Color::BLACK);
       // Big obvious heartbeat: STATUS / HH:MM / WIFI
       it.printf(2, 1, id(font), "STATUS");
-      if (id(clock).now().is_valid()) {
-        it.strftime(2, 11, id(font), "%H:%M", id(clock).now());
+      if (id(ntp_time).now().is_valid()) {
+        it.strftime(2, 11, id(font), "%H:%M", id(ntp_time).now());
       } else {
         it.printf(2, 11, id(font), "--:--");
       }
