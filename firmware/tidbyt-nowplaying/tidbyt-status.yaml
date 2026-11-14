@@ -105,7 +105,7 @@ font:
     bpp: 2
 
 color:
-  - id: on
+  - id: "on"
     red: 100%
     green: 100%
     blue: 100%
