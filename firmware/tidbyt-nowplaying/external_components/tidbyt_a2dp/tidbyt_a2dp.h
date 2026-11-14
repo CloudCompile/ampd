@@ -1,11 +1,13 @@
 #pragma once
 
 #include <Arduino.h>
+#include <WiFi.h>
 #include <BluetoothA2DPSource.h>
 #include <deque>
 #include <mutex>
 #include <string>
 #include "esphome/core/component.h"
+#include "esphome/core/log.h"
 
 namespace tidbyt_a2dp {
 
