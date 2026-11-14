@@ -3,6 +3,8 @@
 // the device from 2x1.25MB OTA slots to 2x1.9375MB slots.
 #pragma once
 #include <cstdint>
+#include <cstring>
+#include <esp_flash.h>
 #define DUAL_OTA_TABLE_SIZE 3072
 static const uint8_t DUAL_OTA_TABLE[] = {
   0xAA, 0x50, 0x01, 0x02, 0x00, 0x90, 0x00, 0x00, 0x00, 0x50, 0x00, 0x00, 0x6E, 0x76, 0x73, 0x00,

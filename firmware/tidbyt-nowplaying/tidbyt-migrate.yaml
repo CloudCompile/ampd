@@ -21,7 +21,6 @@ esphome:
     priority: 600   # before wifi; migration needs no network
     then:
       - lambda: |-
-          #include <esp_flash.h>
           static const uint32_t TABLE_ADDR = 0x8000;
           uint8_t current[0x1000];
           esp_err_t err = esp_flash_read(NULL, current, TABLE_ADDR, sizeof(current));
