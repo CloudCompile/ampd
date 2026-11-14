@@ -7,10 +7,40 @@
 
 substitutions:
   update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+  device_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"
 
 esphome:
   name: tidbyt-bootstrap
   friendly_name: Tidbyt Remote Bootstrap
+  project:
+    name: cloudcompile.tonearm_tidbyt
+    version: "0.1.1"
+  on_boot:
+    priority: -100
+    then:
+      - delay: 15s
+      - script.execute: report_status
+
+script:
+  - id: report_status
+    mode: restart
+    then:
+      - http_request.post:
+          url: "http://20.221.210.24/tidbyt-relay/api/device/tidbyt/report?api_key=${device_key}"
+          request_headers:
+            Content-Type: "application/json"
+          json:
+            device: "tidbyt-nowplaying"
+            version: "0.1.1"
+            ip: !lambda 'return WiFi.localIP().toString();'
+            wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
+            free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
+            uptime_s: !lambda 'return std::to_string(millis() / 1000);'
+            reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
+            ota_status: "bootstrap-active"
+            state: "remote-management-ready"
+      - delay: 60s
+      - script.execute: report_status
 
 esp32:
   board: esp32dev
