@@ -31,7 +31,7 @@ script:
           json:
             device: "tidbyt-status"
             version: "0.1.2"
-            ip: !lambda 'return WiFi.localIP().toString();'
+            ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
             uptime_s: !lambda 'return std::to_string(millis() / 1000);'
