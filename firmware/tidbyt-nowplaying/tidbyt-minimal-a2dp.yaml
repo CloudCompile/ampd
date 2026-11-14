@@ -21,9 +21,10 @@ esphome:
   platformio_options:
     build_flags:
       - "-DFORCE_COLOR_DEPTH=2"
+      - "-DBOARD_HAS_PSRAM"
     # Tidbyt Gen 2: WROVER-class module with PSRAM + 16MB flash. qio_opi is
     # the memory type that makes Arduino initialize the PSRAM.
-    board_build.arduino.memory_type: qio_opi
+    board_build.arduino.memory_type: qio_qspi
   libraries:
     - "ESP32-A2DP=https://github.com/pschatzmann/ESP32-A2DP"
 
