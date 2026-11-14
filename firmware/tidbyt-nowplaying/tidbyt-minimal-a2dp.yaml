@@ -200,9 +200,9 @@ display:
       draw(0, 10, id(album_state));
       draw(0, 18, id(artist_state));
       float frac = id(duration_ms) > 0 ? (float)id(elapsed_ms) / id(duration_ms) : 0;
-      it.rectangle(4, 27, 59, 29, Color(80,80,80));
-      if (frac > 0) it.filled_rectangle(4, 27, 4 + (int)(frac * 55), 29, Color::WHITE);
-      if (id(playing)) it.filled_rectangle(30, 31, 33, 31, Color::WHITE);
+      it.rectangle(4, 27, 56, 3, Color(80,80,80));
+      if (frac > 0) it.filled_rectangle(4, 27, (int)(frac * 56), 3, Color::WHITE);
+      if (id(playing)) it.filled_rectangle(30, 31, 4, 1, Color::WHITE);
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
