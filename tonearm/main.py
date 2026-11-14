@@ -388,6 +388,12 @@ def tidbyt_page():
                         media_type="text/html")
 
 
+@app.get("/tidbyt/status", include_in_schema=False)
+def tidbyt_status_page():
+    return FileResponse(os.path.join(_SITES, "tidbyt-status.html"),
+                        media_type="text/html")
+
+
 @app.get("/sites/{filename}", include_in_schema=False)
 def site_asset(filename: str):
     """Static assets for the companion pages (js/css). Path-traversal safe:
