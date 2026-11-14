@@ -216,7 +216,7 @@ display:
   - platform: hub75_matrix_display
     id: matrix
     driver: FM6126A
-    i2sspeed: HZ_5M
+    i2sspeed: HZ_8M
     clock_phase: false
     latch_blanking: 1
     width: 64
