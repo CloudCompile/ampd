@@ -35,12 +35,13 @@ esphome:
       # 1px-stroke/near-monochrome; 2-bit planes cut the DMA framebuffer
       # enough to leave room for I2S1 speaker DMA.
       - "-DFORCE_COLOR_DEPTH=2"
+    board_build.partitions: huge_app.csv
   libraries:
     - "ESP32-A2DP=https://github.com/pschatzmann/ESP32-A2DP"
 esp32:
   board: esp32dev
   framework:
-    type: esp-idf
+    type: arduino
 
 external_components:
   - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
