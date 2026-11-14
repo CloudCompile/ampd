@@ -12,12 +12,14 @@ esphome:
   friendly_name: Tidbyt Minimal Bose
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.3.2"
+    version: "0.4.0"
   on_boot:
     priority: -100
     then:
       - delay: 15s
       - script.execute: report_status
+  includes:
+    - external_components/art_buf.h
   platformio_options:
     build_flags:
       - "-DFORCE_COLOR_DEPTH=2"
@@ -80,7 +82,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-a2dp"
-            version: "0.3.2"
+            version: "0.4.0"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
@@ -124,6 +126,18 @@ globals:
     initial_value: 'false'
 
 interval:
+  - interval: 10s
+    then:
+      - http_request.get:
+          url: "${tonearm_base}/api/playback/artwork-raw?size=32&api_key=${tonearm_key}"
+          capture_response: true
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code != 200) return;
+                  if (body.size() < 32 * 32 * 2) return;
+                  memcpy(art_buf, body.data(), 32 * 32 * 2);
+                  art_have = true;
   - interval: 5s
     then:
       - http_request.get:
@@ -183,9 +197,9 @@ display:
       };
       auto draw = [&](int x, int y, const std::string &text) {
         std::string t = text;
-        if (t.length() > 15) t = t.substr(0, 14) + ".";
+        if (t.length() > 7) t = t.substr(0, 6) + ".";
         int width = t.length() * 4;
-        x = (64 - width) / 2;
+        x = (32 - width) / 2;
         for (char ch : t) {
           int n = -1;
           if (ch >= 'A' && ch <= 'Z') n = ch - 'A';
@@ -200,13 +214,25 @@ display:
         }
       };
       it.fill(Color::BLACK);
-      draw(0, 2, id(title_state));
-      draw(0, 10, id(album_state));
-      draw(0, 18, id(artist_state));
+      // right half: album art blit (RGB565 from /artwork-raw)
+      if (art_have) {
+        for (int py = 0; py < 32; py++)
+          for (int px = 0; px < 32; px++) {
+            int i = (py * 32 + px) * 2;
+            int v = (art_buf[i] << 8) | art_buf[i + 1];
+            it.draw_pixel_at(32 + px, py, Color(((v >> 11) & 0x1f) << 3,
+                                                ((v >> 5) & 0x3f) << 2,
+                                                (v & 0x1f) << 3));
+          }
+      }
+      // left half: text stack
+      draw(0, 3, id(title_state));
+      draw(0, 11, id(album_state));
+      draw(0, 19, id(artist_state));
       float frac = id(duration_ms) > 0 ? (float)id(elapsed_ms) / id(duration_ms) : 0;
-      it.rectangle(4, 27, 56, 3, Color(80,80,80));
-      if (frac > 0) it.filled_rectangle(4, 27, (int)(frac * 56), 3, Color::WHITE);
-      if (id(playing)) it.filled_rectangle(30, 31, 4, 1, Color::WHITE);
+      it.rectangle(2, 27, 28, 3, Color(80,80,80));
+      if (frac > 0) it.filled_rectangle(2, 27, (int)(frac * 28), 3, Color::WHITE);
+      if (id(playing)) it.filled_rectangle(14, 31, 4, 1, Color::WHITE);
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
