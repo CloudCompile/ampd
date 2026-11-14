@@ -12,7 +12,7 @@ esphome:
   friendly_name: Tidbyt Minimal Bose
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.3.0"
+    version: "0.3.1"
   on_boot:
     priority: -100
     then:
@@ -32,6 +32,10 @@ esp32:
   # to PlatformIO, which resolves it relative to the build dir — our e2b
   # pipeline always clones the repo to /home/user/tonearm.
   partitions: /home/user/tonearm/firmware/tidbyt-nowplaying/dual_ota.csv
+  # Tidbyt Gen 2: WROVER-class module with PSRAM + 16MB flash. qio_opi is
+  # the memory type that makes Arduino initialize the PSRAM.
+  platformio_options:
+    board_build.arduino.memory_type: qio_opi
 
 external_components:
   - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
@@ -76,7 +80,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-a2dp"
-            version: "0.3.0"
+            version: "0.3.1"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
