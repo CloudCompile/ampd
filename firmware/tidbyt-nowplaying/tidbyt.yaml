@@ -29,6 +29,12 @@ substitutions:
 esphome:
   name: tidbyt-nowplaying
   friendly_name: Tidbyt Now Playing
+  platformio_options:
+    build_flags:
+      # HUB75's library defaults to 8-bit planes. This UI is deliberately
+      # 1px-stroke/near-monochrome; 2-bit planes cut the DMA framebuffer
+      # enough to leave room for I2S1 speaker DMA.
+      - "-DFORCE_COLOR_DEPTH=2"
   on_boot:
     priority: 600
     then:
