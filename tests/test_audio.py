@@ -17,7 +17,7 @@ from tonearm.audio import FORMATS, BITRATE_RE, Pipeline, join_playhead, \
 
 class TestFormats(unittest.TestCase):
     def test_three_formats_with_browser_safe_types(self):
-        self.assertEqual(set(FORMATS), {"mp3", "ogg", "opus"})
+        self.assertEqual(set(FORMATS), {"mp3", "ogg", "opus", "pcm"})
         self.assertEqual(FORMATS["mp3"]["type"], "audio/mpeg")
         for f in ("ogg", "opus"):
             self.assertEqual(FORMATS[f]["type"], "audio/ogg")

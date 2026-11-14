@@ -95,6 +95,15 @@ async def stream_opus(request: Request, bitrate: str = None,
     return await _stream("opus", bitrate, ln, request)
 
 
+@router.get("/stream.pcm")
+async def stream_pcm(request: Request):
+    """Raw signed 16-bit little-endian stereo PCM at 44.1kHz for the
+    Tidbyt's Bluetooth A2DP source prototype. No codec or TLS is needed on
+    the device; the plain relay carries only this scoped-key stream."""
+    _mock_404()
+    return await _stream("pcm", "160k", False, request)
+
+
 @router.get("/status")
 def status():
     _mock_404()

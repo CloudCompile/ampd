@@ -4182,6 +4182,26 @@
     ]
    }
   },
+  "/api/audio/stream.pcm": {
+   "get": {
+    "description": "Raw signed 16-bit little-endian stereo PCM at 44.1kHz for the\nTidbyt's Bluetooth A2DP source prototype. No codec or TLS is needed on\nthe device; the plain relay carries only this scoped-key stream.",
+    "operationId": "stream_pcm_api_audio_stream_pcm_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Stream Pcm",
+    "tags": [
+     "audio"
+    ]
+   }
+  },
   "/api/audit": {
    "get": {
     "operationId": "export_api_audit_get",

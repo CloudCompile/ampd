@@ -32,7 +32,7 @@ def artwork_tile():
         if url not in _tile_cache:
             with urlopen(url, timeout=15) as r:
                 source = r.read(300_000)
-            image = Image.open(BytesIO(source)).convert("RGB")
+            image = Image.open(BytesIO(source)).convert("L").convert("RGB")
             image = ImageOps.fit(image, (24, 24), method=Image.Resampling.LANCZOS)
             out = BytesIO()
             image.save(out, format="JPEG", quality=82, optimize=True)

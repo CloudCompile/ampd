@@ -49,6 +49,11 @@ FORMATS = {
              "rate": 44100},
     "opus": {"codec": "libopus",    "muxer": "ogg", "type": "audio/ogg",
              "rate": 48000},
+    # Raw PCM for the Tidbyt Bluetooth A2DP prototype. The ESP32 A2DP
+    # source consumes signed 16-bit stereo at 44.1kHz directly; no MP3
+    # decoder or I2S speaker path is needed on the device.
+    "pcm":  {"codec": None,          "muxer": None, "type": "audio/pcm",
+             "rate": 44100},
 }
 
 BITRATE_RE = re.compile(r"^\d{2,3}k?$")
@@ -105,6 +110,8 @@ class Pipeline:
 
     def _ffmpeg_tail(self):
         s = self.spec
+        if s["codec"] is None:
+            return "-f s16le pipe:1"
         return (f"-c:a {s['codec']} -b:a {self.bitrate} "
                 f"-ar {s['rate']} -ac 2 -f {s['muxer']} pipe:1")
 
