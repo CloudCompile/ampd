@@ -28,6 +28,8 @@ class DeviceReport(BaseModel):
     reset_reason: str | None = Field(default=None, max_length=64)
     ota_status: str | None = Field(default=None, max_length=32)
     state: str | None = Field(default=None, max_length=64)
+    psram_bytes: str | None = Field(default=None, max_length=20)
+    flash_bytes: str | None = Field(default=None, max_length=20)
 
 
 class DeviceAck(BaseModel):
