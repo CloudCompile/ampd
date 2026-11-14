@@ -1,0 +1,121 @@
+# One-shot partition-table migrator. OTAs onto the stock 2x1.25MB slot
+# layout, rewrites the flash partition table to dual_ota.csv (2x1.9375MB),
+# verifies the write by read-back, and reboots. After the reboot it finds
+# the new table already in place, skips, and reports "migrated" — at which
+# point the big (2MB) A2DP image fits in the OTA slot and installs remotely.
+
+substitutions:
+  update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+  tonearm_base: "http://20.221.210.24/tidbyt-relay"
+  device_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"
+
+esphome:
+  name: tidbyt-migrate
+  friendly_name: Tidbyt Partition Migrator
+  project:
+    name: cloudcompile.tonearm_tidbyt
+    version: "0.1.7"
+  includes:
+    - external_components/dual_ota_table.h
+  on_boot:
+    priority: 600   # before wifi; migration needs no network
+    then:
+      - lambda: |-
+          #include <esp_flash.h>
+          static const uint32_t TABLE_ADDR = 0x8000;
+          uint8_t current[0x1000];
+          esp_err_t err = esp_flash_read(NULL, current, TABLE_ADDR, sizeof(current));
+          if (err != ESP_OK) {
+            ESP_LOGE("migrate", "flash read failed: %d", err);
+            return;
+          }
+          if (current[0] != 0xAA || current[1] != 0x50) {
+            ESP_LOGE("migrate", "no partition table magic at 0x8000, aborting");
+            return;
+          }
+          // already migrated? ota_1 entry (type 0x00 subtype 0x11) with the
+          // big slot size means nothing to do
+          for (int off = 0; off + 32 <= (int) DUAL_OTA_TABLE_SIZE; off += 32) {
+            const uint8_t *e = current + off;
+            if (e[0] == 0xAA && e[1] == 0x50 && e[2] == 0x00 && e[3] == 0x11) {
+              uint32_t sz = e[11] << 24 | e[10] << 16 | e[9] << 8 | e[8];
+              if (sz >= 0x1F0000) {
+                ESP_LOGI("migrate", "table already migrated, skipping");
+                id(migrated) = true;
+                return;
+              }
+            }
+          }
+          ESP_LOGW("migrate", "rewriting partition table at 0x8000 (%u bytes)",
+                   DUAL_OTA_TABLE_SIZE);
+          err = esp_flash_erase_region(NULL, TABLE_ADDR, 0x1000);
+          if (err != ESP_OK) { ESP_LOGE("migrate", "erase failed: %d", err); return; }
+          for (int attempt = 1; attempt <= 3; attempt++) {
+            err = esp_flash_write(NULL, DUAL_OTA_TABLE, TABLE_ADDR,
+                                  DUAL_OTA_TABLE_SIZE);
+            if (err != ESP_OK) { ESP_LOGE("migrate", "write %d failed: %d", attempt, err); continue; }
+            uint8_t back[0x1000];
+            if (esp_flash_read(NULL, back, TABLE_ADDR, sizeof(back)) != ESP_OK) continue;
+            if (memcmp(back, DUAL_OTA_TABLE, DUAL_OTA_TABLE_SIZE) != 0) {
+              ESP_LOGE("migrate", "readback mismatch, attempt %d", attempt);
+              continue;
+            }
+            ESP_LOGW("migrate", "table verified, rebooting in 2s");
+            delay(2000);
+            esp_restart();
+          }
+          ESP_LOGE("migrate", "migration FAILED after retries — do not power off");
+
+  platformio_options:
+    build_flags:
+      - "-DFORCE_COLOR_DEPTH=2"
+
+script:
+  - id: report_status
+    mode: restart
+    then:
+      - http_request.post:
+          url: "${tonearm_base}/api/device/tidbyt/report?api_key=${device_key}"
+          request_headers:
+            Content-Type: "application/json"
+          json:
+            device: "tidbyt-status"
+            version: "0.1.7"
+            ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
+            wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
+            free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
+            uptime_s: !lambda 'return std::to_string(millis() / 1000);'
+            reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
+            ota_status: "checking"
+            state: !lambda 'return id(migrated) ? "partition-migrated" : "partition-migrating";'
+      - delay: 60s
+      - script.execute: report_status
+
+globals:
+  - id: migrated
+    type: bool
+    initial_value: 'false'
+
+ota:
+  - platform: http_request
+
+http_request:
+  verify_ssl: false
+
+update:
+  - platform: http_request
+    id: remote_firmware
+    name: "Remote Firmware"
+    source: ${update_manifest}
+    update_interval: 5min
+    on_update_available:
+      then:
+        - update.perform:
+            id: remote_firmware
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "tidbyt-setup"
+    password: "tidbytsetup"
