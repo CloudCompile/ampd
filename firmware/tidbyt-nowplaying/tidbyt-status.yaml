@@ -1,0 +1,115 @@
+# Remote-development status image. This is the first image delivered by
+# the bootstrap OTA path: simple enough to be reliable, visibly alive,
+# and still keeps outbound OTA enabled for the next iteration.
+
+substitutions:
+  update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+
+esphome:
+  name: tidbyt-status
+  friendly_name: Tidbyt Remote Status
+  platformio_options:
+    build_flags:
+      - "-DFORCE_COLOR_DEPTH=2"
+    board_build.partitions: huge_app.csv
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+  - platform: http_request
+
+http_request:
+  verify_ssl: false
+
+update:
+  - platform: http_request
+    id: remote_firmware
+    name: "Remote Firmware"
+    source: !secret ota_manifest_url
+    update_interval: 5min
+    on_update_available:
+      then:
+        - update.perform:
+            id: remote_firmware
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "tidbyt-setup"
+    password: "tidbytsetup"
+
+captive_portal:
+
+time:
+  - platform: sntp
+    id: clock
+    timezone: America/New_York
+
+display:
+  - platform: hub75_matrix_display
+    id: matrix
+    driver: FM6126A
+    i2sspeed: HZ_8M
+    clock_phase: false
+    latch_blanking: 1
+    width: 64
+    height: 32
+    R1_pin: 5
+    G1_pin: 23
+    B1_pin: 4
+    R2_pin: 2
+    G2_pin: 22
+    B2_pin: 32
+    A_pin: 25
+    B_pin: 21
+    C_pin: 26
+    D_pin: 19
+    LAT_pin: 18
+    OE_pin: 27
+    CLK_pin: 15
+    update_interval: 100ms
+    lambda: |-
+      it.fill(Color::BLACK);
+      // Big obvious heartbeat: STATUS / HH:MM / WIFI
+      it.printf(2, 1, id(font), "STATUS");
+      if (id(clock).now().is_valid()) {
+        it.strftime(2, 11, id(font), "%H:%M", id(clock).now());
+      } else {
+        it.printf(2, 11, id(font), "--:--");
+      }
+      it.printf(2, 21, id(font), "REMOTE");
+      // Bottom bar = alive; a moving pixel proves the loop is running.
+      it.rectangle(1, 29, 62, 31, id(dim));
+      it.filled_rectangle(2 + ((millis() / 250) % 60), 29,
+                          4 + ((millis() / 250) % 60), 31, id(on));
+
+font:
+  - file: "gfonts://Roboto"
+    id: font
+    size: 8
+    bpp: 2
+
+color:
+  - id: on
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: dim
+    red: 35%
+    green: 35%
+    blue: 35%
