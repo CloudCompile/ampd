@@ -78,8 +78,10 @@ captive_portal:                        # first-boot WiFi provisioning portal
 # buses in declaration order; the actual speaker is attached to I2S1.
 i2s_audio:
   - id: hub75_i2s_reservation
-    i2s_lrclk_pin: GPIO13
-    i2s_bclk_pin: GPIO12
+    # Dummy pins: this hub exists only to reserve I2S0 for the HUB75
+    # LCD-DMA library; it has no speaker child.
+    i2s_lrclk_pin: GPIO16
+    i2s_bclk_pin: GPIO17
   - id: speaker_i2s1
     i2s_lrclk_pin: GPIO13
     i2s_bclk_pin: GPIO12
