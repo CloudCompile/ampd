@@ -28,7 +28,10 @@ esp32:
   board: esp32dev
   framework:
     type: arduino
-  partitions: dual_ota.csv
+  # Absolute path: the Arduino framework branch passes this value straight
+  # to PlatformIO, which resolves it relative to the build dir — our e2b
+  # pipeline always clones the repo to /home/user/tonearm.
+  partitions: /home/user/tonearm/firmware/tidbyt-nowplaying/dual_ota.csv
 
 external_components:
   - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
