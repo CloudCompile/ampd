@@ -12,7 +12,7 @@ esphome:
   friendly_name: Tidbyt Minimal Bose
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.3.1"
+    version: "0.3.2"
   on_boot:
     priority: -100
     then:
@@ -80,7 +80,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-a2dp"
-            version: "0.3.1"
+            version: "0.3.2"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
@@ -88,6 +88,10 @@ script:
             reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
             ota_status: "checking"
             state: "a2dp-test"
+            psram_bytes: !lambda |-
+              return std::to_string(ESP.getPsramSize());
+            flash_bytes: !lambda |-
+              return std::to_string(ESP.getFlashChipSize());
       - delay: 60s
       - script.execute: report_status
 
