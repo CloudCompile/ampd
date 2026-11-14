@@ -154,11 +154,12 @@ interval:
                   // album art: ask Apple for a small variant (96px) and
                   // refresh the online_image only when the art changed
                   std::string art = std::string(root["artworkUrl"] | "");
-                  size_t pos = art.find("600x600");
-                  if (pos != std::string::npos) art.replace(pos, 7, "96x96");
                   if (!art.empty() && art != id(last_art)) {
                     id(last_art) = art;
-                    id(artwork)->set_url(art);
+                    // Fetch the tile through tonearm's plain HTTP relay;
+                    // the ESP32 cannot afford Apple's HTTPS handshake.
+                    id(artwork)->set_url(
+                      "${tonearm_base}/api/playback/artwork-tile?api_key=${tonearm_key}");
                     id(artwork)->update();
                   }
                   return true;

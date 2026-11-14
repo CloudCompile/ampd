@@ -14,6 +14,38 @@ from ..models import (NowPlaying, Ok, OkPlaylist, OkRating, OkRepeat,
 router = APIRouter(prefix="/playback", tags=["playback"])
 
 _background_cache: dict[str, bytes] = {}
+_tile_cache: dict[str, bytes] = {}
+
+
+@router.get("/artwork-tile", include_in_schema=False)
+def artwork_tile():
+    """Return the current cover as one tiny 24x24 JPEG. This is intentionally
+    separate from artwork-background: the constrained Tidbyt reaches this
+    endpoint over the plain relay and must not perform Apple's HTTPS/TLS
+    handshake itself."""
+    try:
+        now = mk.now_playing()
+        url = now.get("artworkUrl") or ""
+        if not url:
+            raise HTTPException(404, "no artwork")
+        url = url.replace("{w}", "96").replace("{h}", "96")
+        if url not in _tile_cache:
+            with urlopen(url, timeout=15) as r:
+                source = r.read(300_000)
+            image = Image.open(BytesIO(source)).convert("RGB")
+            image = ImageOps.fit(image, (24, 24), method=Image.Resampling.LANCZOS)
+            out = BytesIO()
+            image.save(out, format="JPEG", quality=82, optimize=True)
+            _tile_cache[url] = out.getvalue()
+            if len(_tile_cache) > 2:
+                for old in list(_tile_cache)[:-1]:
+                    del _tile_cache[old]
+        return Response(_tile_cache[url], media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=3600"})
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(502, f"artwork tile unavailable: {e}")
 
 
 @router.get("/artwork-background", include_in_schema=False)
