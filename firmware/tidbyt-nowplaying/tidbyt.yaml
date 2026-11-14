@@ -36,8 +36,7 @@ esphome:
       # enough to leave room for I2S1 speaker DMA.
       - "-DFORCE_COLOR_DEPTH=2"
   libraries:
-    - name: ESP32-A2DP
-      source: "https://github.com/pschatzmann/ESP32-A2DP"
+    - "ESP32-A2DP=https://github.com/pschatzmann/ESP32-A2DP"
 esp32:
   board: esp32dev
   framework:
