@@ -162,11 +162,15 @@ async function runOp(op) {
       setTimeout(() => { keepReading = true; readLoop(); }, 800);
     } else if (op.op === "reset") {
       const transport = new window.Transport(port);
-      await transport.setDtr(false); await transport.setRts(true);
+      // classic ESP32 bootloader-style reset pulse (same sequence as the
+      // bundle's ClassicReset): EN low via RTS, release with DTR high
+      await transport.setDTR(false); await transport.setRTS(true);
       await new Promise(r => setTimeout(r, 100));
-      await transport.setRts(false);
-      await report({op, ok: true});
-      opmsg("reset sent");
+      await transport.setDTR(true); await transport.setRTS(false);
+      await new Promise(r => setTimeout(r, 50));
+      await transport.setDTR(false);
+      await report({op, ok: true, at: Date.now()});
+      opmsg("reset pulse sent");
     } else if (op.op === "note") {
       opmsg(op.text || ""); await report({op, ok: true});
     }
