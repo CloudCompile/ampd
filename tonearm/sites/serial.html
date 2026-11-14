@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <title>tonearm serial bridge</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.js"></script>
+<script type="module">
+  import { ESPLoader, Transport } from
+    "https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.js";
+  window.ESPLoader = ESPLoader;
+  window.Transport = Transport;
+</script>
 <style>
   body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3;
          margin: 0; padding: 16px; }
@@ -114,26 +119,27 @@ async function runOp(op) {
   opmsg("op: " + op.op);
   line("[op] " + JSON.stringify(op));
   try {
+    // esptool-js loads as an async module — wait for it before any op
+    for (let i = 0; i < 60 && !window.ESPLoader; i++)
+      await new Promise(r => setTimeout(r, 250));
+    if (!window.ESPLoader) throw new Error("esptool-js failed to load");
     if (op.op === "chip_id" || op.op === "flash") {
       await stopReading();                 // free the port for esptool
       const transport = new window.Transport(port);
-      let loader;
-      try { loader = new window.ESPLoader(transport, op.baud || 115200, {
-              write: s => line(s), write_line: s => line(s) }); }
-      catch (e) { loader = new window.ESPLoader({transport,
-              baudrate: op.baud || 115200,
-              terminal: {write: s => line(s), write_line: s => line(s)}}); }
-      opmsg("syncing with bootloader…");
-      await loader.sync();
-      const chip = loader.chip || "unknown";
+      const shim = {write: s => line(s), writeLine: s => line(s + "\n"),
+                    line: s => line(s), clean: () => {}, cleanLine: () => {}};
+      const loader = new window.ESPLoader({transport,
+        baudrate: op.baud || 115200, terminal: shim});
+      opmsg("resetting into bootloader + syncing…");
+      const chip = await loader.main("default_reset");
       line("[esptool] chip: " + chip);
 
       if (op.op === "chip_id") {
-        let info = {chip};
-        try { info.flash_id = (await loader.readFlashId()).toString(16); } catch (e) {}
-        opmsg("chip: " + chip);
-        await report({op, chip, ...info, ok: true});
-      } else if (op.op === "flash") {
+        let mac = "";
+        try { mac = (await loader.chip.readMac(loader)).join(":"); } catch (e) {}
+        opmsg("chip: " + chip + " mac " + mac);
+        await report({op, chip, mac, ok: true});
+      } else {
         opmsg("fetching firmware…");
         const resp = await fetch(`/api/device/serial/file?api_key=${KEY}&url=`
                                  + encodeURIComponent(op.url));
@@ -142,19 +148,18 @@ async function runOp(op) {
         line("[flash] " + data.length + " bytes @ 0x" +
              (op.offset || 0).toString(16));
         opmsg("flashing 0%…");
-        await loader.write_flash({
+        await loader.writeFlash({
           fileArray: [{data, address: op.offset || 0}],
           flashSize: "keep", flashMode: "keep", flashFreq: "keep",
           eraseAll: false, compress: true,
-          reportProgress: (f, prog, cur, total) =>
+          reportProgress: (f, cur, total) =>
             opmsg("flashing " + Math.round((cur / total) * 100) + "%")});
         opmsg("flash complete — rebooting");
         await report({op, chip, ok: true, bytes: data.length,
                       url: op.url, at: Date.now()});
-        try { await transport.setDtr(false); await transport.setRts(false); } catch (e) {}
       }
       // hand the port back to the console loop
-      setTimeout(() => { keepReading = true; readLoop(); }, 500);
+      setTimeout(() => { keepReading = true; readLoop(); }, 800);
     } else if (op.op === "reset") {
       const transport = new window.Transport(port);
       await transport.setDtr(false); await transport.setRts(true);
