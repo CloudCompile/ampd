@@ -21,7 +21,9 @@ esphome:
   platformio_options:
     build_flags:
       - "-DFORCE_COLOR_DEPTH=2"
-    board_build.partitions: huge_app.csv
+    board_build.partitions: dual_ota.csv
+  includes:
+    - dual_ota.csv
   libraries:
     - "ESP32-A2DP=https://github.com/pschatzmann/ESP32-A2DP"
 

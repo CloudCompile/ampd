@@ -1,0 +1,11 @@
+# Dual large OTA slots, no spiffs. Needed because the A2DP (Bluetooth +
+# HUB75) image is ~1.9MB and ESPHome's default table only has 1.25MB
+# slots — the OTA silently fails on size and the device never updates.
+# One USB flash of a factory image built with this table is required;
+# every later update goes over WiFi.
+# Name,   Type, SubType, Offset,  Size, Flags
+nvs,      data, nvs,     0x9000,  0x5000,
+otadata,  data, ota,     0xe000,  0x2000,
+app0,     app,  ota_0,   0x10000, 0x1F0000,
+app1,     app,  ota_1,   0x200000, 0x1F0000,
+coredump, data, coredump,0x3F0000,0x10000,
