@@ -12,7 +12,7 @@ esphome:
   friendly_name: Tidbyt Remote Status
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.1.4"
+    version: "0.1.5"
   on_boot:
     priority: -100
     then:
@@ -33,7 +33,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-status"
-            version: "0.1.4"
+            version: "0.1.5"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
