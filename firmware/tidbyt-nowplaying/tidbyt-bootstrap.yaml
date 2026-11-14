@@ -1,0 +1,57 @@
+# Tidbyt remote-development bootstrap.
+#
+# Intentionally boring: WiFi, encrypted ESPHome API, fallback AP, and
+# device-initiated OTA polling. No HUB75, image decoder, audio, Bluetooth,
+# web server, lyrics, or touch logic. Install this once over USB; later
+# firmware can be delivered outbound from the VPS without inbound OTA.
+
+substitutions:
+  update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+
+esphome:
+  name: tidbyt-bootstrap
+  friendly_name: Tidbyt Remote Bootstrap
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+  - platform: http_request
+
+http_request:
+  verify_ssl: false
+
+# The device checks outbound every five minutes and installs a newer
+# OTA-format image automatically. The manifest is served from the VPS's
+# plain relay because this tiny ESP32 cannot afford TLS beside future
+# display/audio builds. MD5 prevents truncated/corrupt downloads; the
+# path is private/unlisted and the VPS controls what gets published.
+update:
+  - platform: http_request
+    id: remote_firmware
+    name: "Remote Firmware"
+    source: "${update_manifest}"
+    update_interval: 5min
+    on_update_available:
+      then:
+        - update.perform:
+            id: remote_firmware
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "tidbyt-setup"
+    password: "tidbytsetup"
+
+captive_portal:
