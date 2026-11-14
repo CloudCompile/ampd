@@ -12,7 +12,7 @@ esphome:
   friendly_name: Tidbyt Recovery
   project:
     name: cloudcompile.tonearm_tidbyt
-    version: "0.2.2"
+    version: "0.2.3"
   on_boot:
     priority: -100
     then:
@@ -33,7 +33,7 @@ script:
             Content-Type: "application/json"
           json:
             device: "tidbyt-status"
-            version: "0.2.2"
+            version: "0.2.3"
             ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
             wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
             free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
@@ -41,6 +41,10 @@ script:
             reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
             ota_status: "checking"
             state: "bootstrap-remote-dev"
+            psram_bytes: !lambda |-
+              return std::to_string(ESP.getPsramSize());
+            flash_bytes: !lambda |-
+              return std::to_string(ESP.getFlashChipSize());
       - delay: 60s
       - script.execute: report_status
 
