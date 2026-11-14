@@ -4,14 +4,42 @@
 
 substitutions:
   update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+  tonearm_base: "http://20.221.210.24/tidbyt-relay"
+  device_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"
 
 esphome:
   name: tidbyt-status
   friendly_name: Tidbyt Remote Status
+  on_boot:
+    priority: -100
+    then:
+      - delay: 15s
+      - script.execute: report_status
   platformio_options:
     build_flags:
       - "-DFORCE_COLOR_DEPTH=2"
     board_build.partitions: huge_app.csv
+
+script:
+  - id: report_status
+    mode: restart
+    then:
+      - http_request.post:
+          url: "${tonearm_base}/api/device/tidbyt/report?api_key=${device_key}"
+          request_headers:
+            Content-Type: "application/json"
+          json:
+            device: "tidbyt-status"
+            version: "0.1.2"
+            ip: !lambda 'return WiFi.localIP().toString();'
+            wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
+            free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
+            uptime_s: !lambda 'return std::to_string(millis() / 1000);'
+            reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
+            ota_status: "checking"
+            state: "bootstrap-remote-dev"
+      - delay: 60s
+      - script.execute: report_status
 
 esp32:
   board: esp32dev

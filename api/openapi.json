@@ -253,6 +253,129 @@
     "title": "DedupeReport",
     "type": "object"
    },
+   "DeviceAck": {
+    "properties": {
+     "ok": {
+      "title": "Ok",
+      "type": "boolean"
+     },
+     "received_at": {
+      "title": "Received At",
+      "type": "number"
+     }
+    },
+    "required": [
+     "ok",
+     "received_at"
+    ],
+    "title": "DeviceAck",
+    "type": "object"
+   },
+   "DeviceReport": {
+    "properties": {
+     "device": {
+      "default": "tidbyt",
+      "maxLength": 40,
+      "title": "Device",
+      "type": "string"
+     },
+     "free_heap": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Free Heap"
+     },
+     "ip": {
+      "anyOf": [
+       {
+        "maxLength": 48,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ip"
+     },
+     "ota_status": {
+      "anyOf": [
+       {
+        "maxLength": 32,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ota Status"
+     },
+     "reset_reason": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reset Reason"
+     },
+     "state": {
+      "anyOf": [
+       {
+        "maxLength": 64,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "State"
+     },
+     "uptime_s": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uptime S"
+     },
+     "version": {
+      "anyOf": [
+       {
+        "maxLength": 48,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Version"
+     },
+     "wifi_rssi": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wifi Rssi"
+     }
+    },
+    "title": "DeviceReport",
+    "type": "object"
+   },
    "DiffAdded": {
     "additionalProperties": false,
     "properties": {
@@ -4881,6 +5004,73 @@
     "summary": "Debug",
     "tags": [
      "debug"
+    ]
+   }
+  },
+  "/api/device/tidbyt/report": {
+   "post": {
+    "operationId": "report_tidbyt_api_device_tidbyt_report_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DeviceReport"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DeviceAck"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Report Tidbyt",
+    "tags": [
+     "device"
+    ]
+   }
+  },
+  "/api/device/tidbyt/status": {
+   "get": {
+    "operationId": "tidbyt_status_api_device_tidbyt_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response Tidbyt Status Api Device Tidbyt Status Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Tidbyt Status",
+    "tags": [
+     "device"
     ]
    }
   },

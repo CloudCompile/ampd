@@ -22,7 +22,8 @@ from .routes import (library, favorites, playback, passthrough, catalog,
                      history, overlay, webhooks as webhooks_routes,
                      smartlists as smartlists_routes,
                      watcher as watcher_routes,
-                     audit as audit_routes, batch as batch_routes)
+                     audit as audit_routes, batch as batch_routes,
+                     device as device_routes)
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -343,6 +344,7 @@ app.include_router(smartlists_routes.router, prefix="/api")
 app.include_router(watcher_routes.router, prefix="/api")
 app.include_router(audit_routes.router, prefix="/api")
 app.include_router(batch_routes.router, prefix="/api")
+app.include_router(device_routes.router, prefix="/api")
 
 
 @app.get("/demo", include_in_schema=False)
