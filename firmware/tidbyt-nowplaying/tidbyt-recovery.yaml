@@ -1,0 +1,192 @@
+# Remote-development status image. This is the first image delivered by
+# the bootstrap OTA path: simple enough to be reliable, visibly alive,
+# and still keeps outbound OTA enabled for the next iteration.
+
+substitutions:
+  update_manifest: "http://20.221.210.24/tidbyt-updates/bootstrap/manifest.json"
+  tonearm_base: "http://20.221.210.24/tidbyt-relay"
+  device_key: "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq"
+
+esphome:
+  name: tidbyt-minimal-a2dp
+  friendly_name: Tidbyt Recovery
+  project:
+    name: cloudcompile.tonearm_tidbyt
+    version: "0.2.2"
+  on_boot:
+    priority: -100
+    then:
+      - delay: 15s
+      - script.execute: report_status
+  platformio_options:
+    build_flags:
+      - "-DFORCE_COLOR_DEPTH=2"
+    board_build.partitions: /home/user/tonearm/firmware/tidbyt-nowplaying/dual_ota.csv
+
+script:
+  - id: report_status
+    mode: restart
+    then:
+      - http_request.post:
+          url: "${tonearm_base}/api/device/tidbyt/report?api_key=${device_key}"
+          request_headers:
+            Content-Type: "application/json"
+          json:
+            device: "tidbyt-status"
+            version: "0.2.2"
+            ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
+            wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
+            free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
+            uptime_s: !lambda 'return std::to_string(millis() / 1000);'
+            reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
+            ota_status: "checking"
+            state: "bootstrap-remote-dev"
+      - delay: 60s
+      - script.execute: report_status
+
+globals:
+  - id: oc_state
+    type: std::string
+    initial_value: '"WAITING"'
+  - id: oc_project
+    type: std::string
+    initial_value: '"OpenCode"'
+  - id: oc_activity
+    type: std::string
+    initial_value: '"no session"'
+  - id: oc_busy
+    type: bool
+    initial_value: 'false'
+
+interval:
+  - interval: 10s
+    then:
+      - http_request.get:
+          url: "${tonearm_base}/api/device/tidbyt/status?api_key=${device_key}"
+          capture_response: true
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code != 200) return;
+                  json::parse_json(body, [](JsonObject root) {
+                    JsonObject sessions = root["opencode"].as<JsonObject>();
+                    if (sessions.isNull() || sessions.size() == 0) {
+                      id(oc_state) = "WAITING";
+                      id(oc_project) = "OpenCode";
+                      id(oc_activity) = "no session";
+                      id(oc_busy) = false;
+                      return true;
+                    }
+                    JsonObject newest;
+                    double latest = 0;
+                    for (JsonPair kv : sessions) {
+                      JsonObject candidate = kv.value().as<JsonObject>();
+                      double received = candidate["received_at"] | 0.0;
+                      if (received >= latest) {
+                        latest = received;
+                        newest = candidate;
+                      }
+                    }
+                    id(oc_state) = std::string(newest["state"] | "idle");
+                    id(oc_project) = std::string(newest["project"] | "OpenCode");
+                    id(oc_activity) = std::string(newest["activity"] | "working");
+                    id(oc_busy) = id(oc_state) == "busy";
+                    return true;
+                  });
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+external_components:
+  - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
+
+logger:
+  level: INFO
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+  - platform: http_request
+
+http_request:
+  verify_ssl: false
+
+update:
+  - platform: http_request
+    id: remote_firmware
+    name: "Remote Firmware"
+    source: !secret ota_manifest_url
+    update_interval: 5min
+    on_update_available:
+      then:
+        - update.perform:
+            id: remote_firmware
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "tidbyt-setup"
+    password: "tidbytsetup"
+
+captive_portal:
+
+display:
+  - platform: hub75_matrix_display
+    id: matrix
+    driver: FM6126A
+    i2sspeed: HZ_8M
+    clock_phase: false
+    latch_blanking: 1
+    width: 64
+    height: 32
+    R1_pin: 5
+    G1_pin: 23
+    B1_pin: 4
+    R2_pin: 2
+    G2_pin: 22
+    B2_pin: 32
+    A_pin: 25
+    B_pin: 21
+    C_pin: 26
+    D_pin: 19
+    LAT_pin: 18
+    OE_pin: 27
+    CLK_pin: 15
+    update_interval: 100ms
+    lambda: |-
+      it.fill(Color::BLACK);
+      // Session monitor: state, project, then current activity/tool.
+      it.printf(2, 1, id(status_font), id(oc_busy) ? "OC BUSY" : "OC IDLE");
+      std::string project = id(oc_project);
+      if (project.length() > 10) project = project.substr(0, 9) + ".";
+      std::string activity = id(oc_activity);
+      if (activity.length() > 10) activity = activity.substr(0, 9) + ".";
+      it.printf(2, 11, id(status_font), "%s", project.c_str());
+      it.printf(2, 21, id(status_font), "%s", activity.c_str());
+      // Bottom bar = alive; a moving pixel proves the loop is running.
+      it.rectangle(1, 29, 62, 31, id(dim));
+      if (id(oc_busy))
+        it.filled_rectangle(2 + ((millis() / 250) % 60), 29,
+                            4 + ((millis() / 250) % 60), 31, id(on));
+
+font:
+  - file: "gfonts://Roboto"
+    id: status_font
+    size: 8
+    bpp: 2
+
+color:
+  - id: "on"
+    red: 100%
+    green: 100%
+    blue: 100%
+  - id: dim
+    red: 35%
+    green: 35%
+    blue: 35%
