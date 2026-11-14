@@ -35,8 +35,20 @@ api:
     key: !secret api_encryption_key
 ota:
   - platform: esphome
+  - platform: http_request
 http_request:
   verify_ssl: false
+
+update:
+  - platform: http_request
+    id: remote_firmware
+    name: "Tidbyt Remote Firmware"
+    source: !secret ota_manifest_url
+    update_interval: 30min
+    on_update_available:
+      then:
+        - update.perform:
+            id: remote_firmware
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password

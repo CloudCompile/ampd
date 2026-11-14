@@ -10,7 +10,11 @@ TidbytA2DPSource *TidbytA2DPSource::instance_ = nullptr;
 void TidbytA2DPSource::setup() {
   instance_ = this;
   source_.set_data_callback(TidbytA2DPSource::audio_callback);
-  source_.set_auto_reconnect(true);
+  // Do not read the library's saved connected_bda NVS namespace during
+  // first pairing. The Tidbyt factory image has no prior A2DP peer record;
+  // the library's current auto-reconnect path logs NVS OPEN ERROR and then
+  // hits a null queue delete. Scan/connect-by-name is the safe bootstrap.
+  source_.set_auto_reconnect(false);
   source_.start(device_name_.c_str());
   xTaskCreatePinnedToCore(TidbytA2DPSource::stream_task, "tidbyt_pcm",
                           8192, this, 1, &task_, 0);
@@ -62,12 +66,37 @@ bool TidbytA2DPSource::connect_stream(WiFiClient &client) {
     client.stop();
     return false;
   }
-  // Drain HTTP headers. The relay uses a chunkless streaming response.
+  bool chunked = false;
   while (client.connected()) {
     line = client.readStringUntil('\n');
     if (line == "\r" || line.length() == 0) break;
+    line.toLowerCase();
+    if (line.startsWith("transfer-encoding:") && line.indexOf("chunked") >= 0)
+      chunked = true;
   }
+  chunked_ = chunked;
+  chunk_remaining_ = 0;
   return true;
+}
+
+int TidbytA2DPSource::read_stream_bytes(WiFiClient &client, uint8_t *buffer,
+                                       size_t capacity) {
+  if (!chunked_) return client.read(buffer, capacity);
+  if (chunk_remaining_ == 0) {
+    String size_line = client.readStringUntil('\n');
+    size_line.trim();
+    int semi = size_line.indexOf(';');
+    if (semi >= 0) size_line.remove(semi);
+    chunk_remaining_ = strtoul(size_line.c_str(), nullptr, 16);
+    if (chunk_remaining_ == 0) return -1;
+  }
+  size_t want = std::min(capacity, chunk_remaining_);
+  int got = client.read(buffer, want);
+  if (got > 0) chunk_remaining_ -= (size_t)got;
+  if (chunk_remaining_ == 0) {
+    (void)client.readStringUntil('\n');  // consume CRLF after chunk data
+  }
+  return got;
 }
 
 void TidbytA2DPSource::stream_loop() {
@@ -83,7 +112,7 @@ void TidbytA2DPSource::stream_loop() {
     }
     uint8_t buf[1460];
     while (client.connected()) {
-      int n = client.read(buf, sizeof(buf));
+      int n = read_stream_bytes(client, buf, sizeof(buf));
       if (n <= 0) {
         vTaskDelay(pdMS_TO_TICKS(5));
         continue;

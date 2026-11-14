@@ -27,6 +27,7 @@ class TidbytA2DPSource : public esphome::Component {
   static void stream_task(void *arg);
   void stream_loop();
   bool connect_stream(WiFiClient &client);
+  int read_stream_bytes(WiFiClient &client, uint8_t *buffer, size_t capacity);
 
   BluetoothA2DPSource source_;
   std::string device_name_;
