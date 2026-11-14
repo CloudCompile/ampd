@@ -86,13 +86,13 @@ display:
     lambda: |-
       it.fill(Color::BLACK);
       // Big obvious heartbeat: STATUS / HH:MM / WIFI
-      it.printf(2, 1, id(font), "STATUS");
+      it.printf(2, 1, id(status_font), "STATUS");
       if (id(ntp_time).now().is_valid()) {
-        it.strftime(2, 11, id(font), "%H:%M", id(ntp_time).now());
+        it.strftime(2, 11, id(status_font), "%H:%M", id(ntp_time).now());
       } else {
-        it.printf(2, 11, id(font), "--:--");
+        it.printf(2, 11, id(status_font), "--:--");
       }
-      it.printf(2, 21, id(font), "REMOTE");
+      it.printf(2, 21, id(status_font), "REMOTE");
       // Bottom bar = alive; a moving pixel proves the loop is running.
       it.rectangle(1, 29, 62, 31, id(dim));
       it.filled_rectangle(2 + ((millis() / 250) % 60), 29,
@@ -100,7 +100,7 @@ display:
 
 font:
   - file: "gfonts://Roboto"
-    id: font
+    id: status_font
     size: 8
     bpp: 2
 
