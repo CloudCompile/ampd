@@ -10,6 +10,14 @@ substitutions:
 esphome:
   name: tidbyt-minimal-a2dp
   friendly_name: Tidbyt Minimal Bose
+  project:
+    name: cloudcompile.tonearm_tidbyt
+    version: "0.2.0"
+  on_boot:
+    priority: -100
+    then:
+      - delay: 15s
+      - script.execute: report_status
   platformio_options:
     build_flags:
       - "-DFORCE_COLOR_DEPTH=2"
@@ -58,6 +66,27 @@ tidbyt_a2dp:
   id: bose_source
   device_name: "Bose Mini II SoundLink"
   url: "${tonearm_base}/api/audio/stream.pcm?api_key=${tonearm_key}"
+
+script:
+  - id: report_status
+    mode: restart
+    then:
+      - http_request.post:
+          url: "${tonearm_base}/api/device/tidbyt/report?api_key=${tonearm_key}"
+          request_headers:
+            Content-Type: "application/json"
+          json:
+            device: "tidbyt-a2dp"
+            version: "0.2.0"
+            ip: !lambda 'return std::string(WiFi.localIP().toString().c_str());'
+            wifi_rssi: !lambda 'return std::to_string(WiFi.RSSI());'
+            free_heap: !lambda 'return std::to_string(ESP.getFreeHeap());'
+            uptime_s: !lambda 'return std::to_string(millis() / 1000);'
+            reset_reason: !lambda 'return std::to_string((int) esp_reset_reason());'
+            ota_status: "checking"
+            state: "a2dp-test"
+      - delay: 60s
+      - script.execute: report_status
 
 text_sensor:
   - platform: template
