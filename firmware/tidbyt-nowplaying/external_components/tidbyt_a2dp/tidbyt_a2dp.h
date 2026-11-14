@@ -35,6 +35,8 @@ class TidbytA2DPSource : public esphome::Component {
   std::deque<uint8_t> pcm_;
   std::mutex mutex_;
   TaskHandle_t task_{nullptr};
+  bool chunked_{false};
+  size_t chunk_remaining_{0};
 };
 
 }  // namespace tidbyt_a2dp
