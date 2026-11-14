@@ -44,6 +44,56 @@ script:
       - delay: 60s
       - script.execute: report_status
 
+globals:
+  - id: oc_state
+    type: std::string
+    initial_value: '"WAITING"'
+  - id: oc_project
+    type: std::string
+    initial_value: '"OpenCode"'
+  - id: oc_activity
+    type: std::string
+    initial_value: '"no session"'
+  - id: oc_busy
+    type: bool
+    initial_value: 'false'
+
+interval:
+  - interval: 10s
+    then:
+      - http_request.get:
+          url: "${tonearm_base}/api/device/tidbyt/status?api_key=${device_key}"
+          capture_response: true
+          on_response:
+            then:
+              - lambda: |-
+                  if (response->status_code != 200) return;
+                  json::parse_json(body, [](JsonObject root) {
+                    JsonObject sessions = root["opencode"].as<JsonObject>();
+                    if (sessions.isNull() || sessions.size() == 0) {
+                      id(oc_state) = "WAITING";
+                      id(oc_project) = "OpenCode";
+                      id(oc_activity) = "no session";
+                      id(oc_busy) = false;
+                      return true;
+                    }
+                    JsonObject newest;
+                    double latest = 0;
+                    for (JsonPair kv : sessions) {
+                      JsonObject candidate = kv.value().as<JsonObject>();
+                      double received = candidate["received_at"] | 0.0;
+                      if (received >= latest) {
+                        latest = received;
+                        newest = candidate;
+                      }
+                    }
+                    id(oc_state) = std::string(newest["state"] | "idle");
+                    id(oc_project) = std::string(newest["project"] | "OpenCode");
+                    id(oc_activity) = std::string(newest["activity"] | "working");
+                    id(oc_busy) = id(oc_state) == "busy";
+                    return true;
+                  });
+
 esp32:
   board: esp32dev
   framework:
@@ -86,11 +136,6 @@ wifi:
 
 captive_portal:
 
-time:
-  - platform: sntp
-    id: ntp_time
-    timezone: America/New_York
-
 display:
   - platform: hub75_matrix_display
     id: matrix
@@ -116,18 +161,19 @@ display:
     update_interval: 100ms
     lambda: |-
       it.fill(Color::BLACK);
-      // Big obvious heartbeat: STATUS / HH:MM / WIFI
-      it.printf(2, 1, id(status_font), "STATUS");
-      if (id(ntp_time).now().is_valid()) {
-        it.strftime(2, 11, id(status_font), "%H:%M", id(ntp_time).now());
-      } else {
-        it.printf(2, 11, id(status_font), "--:--");
-      }
-      it.printf(2, 21, id(status_font), "REMOTE");
+      // Session monitor: state, project, then current activity/tool.
+      it.printf(2, 1, id(status_font), id(oc_busy) ? "OC BUSY" : "OC IDLE");
+      std::string project = id(oc_project);
+      if (project.length() > 10) project = project.substr(0, 9) + ".";
+      std::string activity = id(oc_activity);
+      if (activity.length() > 10) activity = activity.substr(0, 9) + ".";
+      it.printf(2, 11, id(status_font), "%s", project.c_str());
+      it.printf(2, 21, id(status_font), "%s", activity.c_str());
       // Bottom bar = alive; a moving pixel proves the loop is running.
       it.rectangle(1, 29, 62, 31, id(dim));
-      it.filled_rectangle(2 + ((millis() / 250) % 60), 29,
-                          4 + ((millis() / 250) % 60), 31, id(on));
+      if (id(oc_busy))
+        it.filled_rectangle(2 + ((millis() / 250) % 60), 29,
+                            4 + ((millis() / 250) % 60), 31, id(on));
 
 font:
   - file: "gfonts://Roboto"

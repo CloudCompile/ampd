@@ -376,6 +376,32 @@
     "title": "DeviceReport",
     "type": "object"
    },
+   "DeviceStatusSnapshot": {
+    "properties": {
+     "devices": {
+      "additionalProperties": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Devices",
+      "type": "object"
+     },
+     "opencode": {
+      "additionalProperties": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Opencode",
+      "type": "object"
+     }
+    },
+    "required": [
+     "devices",
+     "opencode"
+    ],
+    "title": "DeviceStatusSnapshot",
+    "type": "object"
+   },
    "DiffAdded": {
     "additionalProperties": false,
     "properties": {
@@ -1519,6 +1545,38 @@
      "volume"
     ],
     "title": "OkVolume",
+    "type": "object"
+   },
+   "OpenCodeReport": {
+    "properties": {
+     "activity": {
+      "default": "working",
+      "maxLength": 20,
+      "title": "Activity",
+      "type": "string"
+     },
+     "project": {
+      "default": "",
+      "maxLength": 18,
+      "title": "Project",
+      "type": "string"
+     },
+     "session_id": {
+      "maxLength": 80,
+      "title": "Session Id",
+      "type": "string"
+     },
+     "state": {
+      "default": "busy",
+      "maxLength": 24,
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "session_id"
+    ],
+    "title": "OpenCodeReport",
     "type": "object"
    },
    "OverlayNowPlaying": {
@@ -5007,6 +5065,46 @@
     ]
    }
   },
+  "/api/device/tidbyt/opencode": {
+   "post": {
+    "description": "Accept only a short, allowlisted session summary; never accept\nprompts, code, tool arguments, or arbitrary event payloads.",
+    "operationId": "report_opencode_api_device_tidbyt_opencode_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OpenCodeReport"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Report Opencode",
+    "tags": [
+     "device"
+    ]
+   }
+  },
   "/api/device/tidbyt/report": {
    "post": {
     "operationId": "report_tidbyt_api_device_tidbyt_report_post",
@@ -5056,12 +5154,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response Tidbyt Status Api Device Tidbyt Status Get",
-         "type": "object"
+         "$ref": "#/components/schemas/DeviceStatusSnapshot"
         }
        }
       },

@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/device", tags=["device"])
 _lock = threading.Lock()
 _last: dict[str, dict] = {}
+_opencode: dict[str, dict] = {}
 
 
 class DeviceReport(BaseModel):
@@ -34,6 +35,18 @@ class DeviceAck(BaseModel):
     received_at: float
 
 
+class DeviceStatusSnapshot(BaseModel):
+    devices: dict[str, dict]
+    opencode: dict[str, dict]
+
+
+class OpenCodeReport(BaseModel):
+    session_id: str = Field(max_length=80)
+    state: str = Field(default="busy", max_length=24)
+    project: str = Field(default="", max_length=18)
+    activity: str = Field(default="working", max_length=20)
+
+
 @router.post("/tidbyt/report", response_model=DeviceAck)
 def report_tidbyt(body: DeviceReport, request: Request):
     identity = getattr(request.state, "identity", None)
@@ -45,7 +58,29 @@ def report_tidbyt(body: DeviceReport, request: Request):
     return {"ok": True, "received_at": report["received_at"]}
 
 
-@router.get("/tidbyt/status", response_model=dict[str, dict])
+@router.get("/tidbyt/status", response_model=DeviceStatusSnapshot)
 def tidbyt_status():
     with _lock:
-        return {"devices": dict(_last)}
+        return {"devices": dict(_last), "opencode": dict(_opencode)}
+
+
+@router.post("/tidbyt/opencode")
+def report_opencode(body: OpenCodeReport, request: Request):
+    """Accept only a short, allowlisted session summary; never accept
+    prompts, code, tool arguments, or arbitrary event payloads."""
+    identity = getattr(request.state, "identity", None)
+    report = {
+        "session_id": body.session_id,
+        "state": body.state if body.state in {"busy", "idle", "error"} else "busy",
+        "project": body.project[:18],
+        "activity": body.activity[:20],
+        "received_at": time.time(),
+        "key_id": identity.describe() if identity else "keyless",
+    }
+    with _lock:
+        _opencode[body.session_id] = report
+        # Bound retained sessions; this is an activity display, not an archive.
+        if len(_opencode) > 12:
+            oldest = min(_opencode, key=lambda k: _opencode[k]["received_at"])
+            del _opencode[oldest]
+    return {"ok": True, "received_at": report["received_at"]}

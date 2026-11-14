@@ -19,6 +19,7 @@ const KEY = process.env.TONEARM_KEY || (() => {
   } catch { return "" }
 })()
 const LISTEN = process.env.TONEARM_LISTEN_URL || BASE
+const SESSION_STATUS = new Map<string, { state: string; activity: string; project: string; sent: number }>()
 
 async function api(path: string, init?: RequestInit): Promise<any> {
   const res = await fetch(BASE + path, {
@@ -36,9 +37,68 @@ async function api(path: string, init?: RequestInit): Promise<any> {
   return res.json()
 }
 
+function safeLabel(value: unknown, max: number) {
+  return String(value ?? "").replace(/[\r\n\t]/g, " ").slice(0, max)
+}
+
+function safeActivity(value: unknown) {
+  const allowed = new Set(["working", "thinking", "idle", "error", "bash",
+    "read", "edit", "write", "search", "webfetch", "play", "other"])
+  const label = safeLabel(value, 20).toLowerCase()
+  return allowed.has(label) ? label : "other"
+}
+
+async function publishSession(sessionID: string, state: string,
+                              activity = "working", project = "OpenCode") {
+  try {
+    const normalized = {
+      state: ["busy", "idle", "error"].includes(state) ? state : "busy",
+      activity: safeActivity(activity),
+      project: safeLabel(project, 18),
+    }
+    const previous = SESSION_STATUS.get(sessionID)
+    // Coalesce repeated identical events; refresh heartbeat at most once/min.
+    if (previous && previous.state === normalized.state &&
+        previous.activity === normalized.activity &&
+        previous.project === normalized.project && Date.now() - previous.sent < 60_000) return
+    await api("/api/device/tidbyt/opencode", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionID,
+        ...normalized,
+      }),
+    })
+    SESSION_STATUS.set(sessionID, { ...normalized, sent: Date.now() })
+  } catch (error) {
+    console.warn("[tonearm] Tidbyt session status publish failed:",
+      error instanceof Error ? error.message : error)
+  }
+}
+
 export default Plugin.define({
   id: "tonearm",
   async setup(ctx) {
+    const controller = new AbortController()
+    const project = safeLabel(ctx.location.project?.directory?.split("/").pop() || "OpenCode", 18)
+    void (async () => {
+      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
+        const e = event as any
+        const sessionID = e.data?.sessionID
+        if (!sessionID) continue
+        if (e.type === "session.status") {
+          const status = e.data?.status?.type || "busy"
+          void publishSession(sessionID, status, status === "busy" ? "working" : status, project)
+        } else if (e.type === "session.tool.called") {
+          const tool = safeActivity(e.data?.id || "other")
+          void publishSession(sessionID, "busy", tool, project)
+        } else if (e.type === "session.idle" || e.type === "session.execution.succeeded" ||
+                   e.type === "session.execution.failed" || e.type === "session.execution.interrupted") {
+          void publishSession(sessionID, e.type === "session.execution.failed" ? "error" : "idle",
+            e.type === "session.execution.failed" ? "error" : "idle", project)
+        }
+      }
+    })().catch(error => console.warn("[tonearm] Tidbyt event stream stopped:", error))
+
     // ---- the sidebar's RPC (gui-experimental calls this) ----------------
     // Defensive on purpose: the sidebar is a nicety, the agent tools are
     // the point — an RPC failure (host version drift etc.) must not kill
@@ -226,5 +286,6 @@ export default Plugin.define({
         },
       })
     })
+    return () => controller.abort()
   },
 })
