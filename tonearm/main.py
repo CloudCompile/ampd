@@ -343,6 +343,9 @@ app.include_router(webhooks_routes.router, prefix="/api")
 app.include_router(smartlists_routes.router, prefix="/api")
 app.include_router(watcher_routes.router, prefix="/api")
 app.include_router(audit_routes.router, prefix="/api")
+from .serial_bridge import router as serial_bridge_router
+app.include_router(serial_bridge_router, prefix="/api")
+app.include_router(serial_bridge_router)  # /serial-ws + /serial live at the root
 app.include_router(batch_routes.router, prefix="/api")
 app.include_router(device_routes.router, prefix="/api")
 
@@ -391,6 +394,12 @@ def tidbyt_page():
 @app.get("/tidbyt/status", include_in_schema=False)
 def tidbyt_status_page():
     return FileResponse(os.path.join(_SITES, "tidbyt-status.html"),
+                        media_type="text/html")
+
+
+@app.get("/serial", include_in_schema=False)
+def serial_bridge_page():
+    return FileResponse(os.path.join(_SITES, "serial.html"),
                         media_type="text/html")
 
 

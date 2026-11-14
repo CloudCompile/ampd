@@ -1,0 +1,191 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>tonearm serial bridge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/esptool-js@0.5.4/bundle.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3;
+         margin: 0; padding: 16px; }
+  h3 { margin: 0 0 8px; }
+  button { background: #238636; color: #fff; border: 0; border-radius: 6px;
+           padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  button:disabled { background: #30363d; color: #8b949e; }
+  #console { white-space: pre-wrap; height: 45vh; overflow: auto;
+             background: #010409; color: #7ee787; padding: 10px;
+             border-radius: 8px; font: 12px/1.4 monospace; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
+  #status { color: #f0883e; font-size: 13px; }
+  #op { color: #79c0ff; font-size: 13px; min-height: 18px; }
+  details { color: #8b949e; font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h3>tonearm serial bridge</h3>
+<div class="row">
+  <button id="connect">Connect device</button>
+  <span id="status">not connected</span>
+</div>
+<div id="op"></div>
+<pre id="console"></pre>
+<details>
+  <summary>what this page does</summary>
+  <p>Streams the Tidbyt's serial logs to the tonearm server so the agent can
+  read boot output and crash traces remotely, and executes agent-queued ops
+  (chip_id, firmware flashes) in this browser via esptool-js — the same
+  engine web.esphome.io uses. Keep this tab open with the device plugged in
+  whenever the agent needs the wire.</p>
+</details>
+
+<script>
+const WS_URL = "wss://" + location.host + "/serial-ws";
+const KEY = new URLSearchParams(location.search).get("key") ||
+            "toneark_jEpy8GG1FBoTt4BApgDgZIZxTlYkpBcq";
+
+let port = null, keepReading = false, reader = null, ws = null, busy = false;
+const $console = document.getElementById("console");
+const $status = document.getElementById("status");
+const $op = document.getElementById("op");
+
+function line(s) {
+  $console.textContent += s + "\n";
+  $console.scrollTop = $console.scrollHeight;
+}
+function status(s) { $status.textContent = s; }
+function opmsg(s) { $op.textContent = s; }
+async function report(extra) {
+  try {
+    await fetch(`/api/device/serial/results?api_key=${KEY}`, {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(extra)});
+  } catch (e) { /* best effort */ }
+}
+
+// ── websocket uplink ────────────────────────────────────────────────
+function startWS() {
+  try { ws = new WebSocket(WS_URL); } catch (e) { return; }
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => ws.send(JSON.stringify({hello: "browser", at: Date.now()}));
+  ws.onclose = () => { status("ws closed — retrying"); setTimeout(startWS, 3000); };
+}
+function wsSend(bytes) { if (ws && ws.readyState === 1) ws.send(bytes); }
+
+// ── serial read loop ────────────────────────────────────────────────
+async function readLoop() {
+  const dec = new TextDecoder();
+  while (port && port.readable && keepReading) {
+    reader = port.readable.getReader();
+    try {
+      for (;;) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        if (value) {
+          const text = dec.decode(value, {stream: true});
+          $console.textContent += text;
+          if ($console.scrollHeight > 20000) $console.textContent =
+            $console.textContent.slice(-8000);
+          $console.scrollTop = $console.scrollHeight;
+          wsSend(value);
+        }
+      }
+    } catch (e) { line("[read error] " + e); break; }
+    finally { try { reader.releaseLock(); } catch (e) {} }
+  }
+}
+function stopReading() {
+  keepReading = false;
+  try { reader && reader.releaseLock(); } catch (e) {}
+  return new Promise(r => setTimeout(r, 300));
+}
+
+// ── ops (agent-driven) ──────────────────────────────────────────────
+async function pollOps() {
+  if (busy || !port) return;
+  let ops;
+  try {
+    const r = await fetch(`/api/device/serial/ops?api_key=${KEY}&pop=1`);
+    ops = (await r.json()).ops || [];
+  } catch (e) { return; }
+  for (const op of ops) { busy = true; try { await runOp(op); } finally { busy = false; } }
+}
+
+async function runOp(op) {
+  opmsg("op: " + op.op);
+  line("[op] " + JSON.stringify(op));
+  try {
+    if (op.op === "chip_id" || op.op === "flash") {
+      await stopReading();                 // free the port for esptool
+      const transport = new window.Transport(port);
+      let loader;
+      try { loader = new window.ESPLoader(transport, op.baud || 115200, {
+              write: s => line(s), write_line: s => line(s) }); }
+      catch (e) { loader = new window.ESPLoader({transport,
+              baudrate: op.baud || 115200,
+              terminal: {write: s => line(s), write_line: s => line(s)}}); }
+      opmsg("syncing with bootloader…");
+      await loader.sync();
+      const chip = loader.chip || "unknown";
+      line("[esptool] chip: " + chip);
+
+      if (op.op === "chip_id") {
+        let info = {chip};
+        try { info.flash_id = (await loader.readFlashId()).toString(16); } catch (e) {}
+        opmsg("chip: " + chip);
+        await report({op, chip, ...info, ok: true});
+      } else if (op.op === "flash") {
+        opmsg("fetching firmware…");
+        const resp = await fetch(`/api/device/serial/file?api_key=${KEY}&url=`
+                                 + encodeURIComponent(op.url));
+        if (!resp.ok) throw new Error("firmware fetch " + resp.status);
+        const data = new Uint8Array(await resp.arrayBuffer());
+        line("[flash] " + data.length + " bytes @ 0x" +
+             (op.offset || 0).toString(16));
+        opmsg("flashing 0%…");
+        await loader.write_flash({
+          fileArray: [{data, address: op.offset || 0}],
+          flashSize: "keep", flashMode: "keep", flashFreq: "keep",
+          eraseAll: false, compress: true,
+          reportProgress: (f, prog, cur, total) =>
+            opmsg("flashing " + Math.round((cur / total) * 100) + "%")});
+        opmsg("flash complete — rebooting");
+        await report({op, chip, ok: true, bytes: data.length,
+                      url: op.url, at: Date.now()});
+        try { await transport.setDtr(false); await transport.setRts(false); } catch (e) {}
+      }
+      // hand the port back to the console loop
+      setTimeout(() => { keepReading = true; readLoop(); }, 500);
+    } else if (op.op === "reset") {
+      const transport = new window.Transport(port);
+      await transport.setDtr(false); await transport.setRts(true);
+      await new Promise(r => setTimeout(r, 100));
+      await transport.setRts(false);
+      await report({op, ok: true});
+      opmsg("reset sent");
+    } else if (op.op === "note") {
+      opmsg(op.text || ""); await report({op, ok: true});
+    }
+  } catch (e) {
+    line("[op error] " + e);
+    await report({op, ok: false, error: String(e)});
+    opmsg("op failed: " + e);
+    setTimeout(() => { keepReading = true; readLoop(); }, 500);
+  }
+}
+setInterval(pollOps, 2000);
+
+// ── connect ─────────────────────────────────────────────────────────
+document.getElementById("connect").onclick = async () => {
+  try {
+    port = await navigator.serial.requestPort({});
+    await port.open({baudRate: 115200});
+    keepReading = true;
+    startWS();
+    readLoop();
+    status("connected @115200 — logs streaming to tonearm");
+    await report({op: "connected", ok: true, at: Date.now()});
+  } catch (e) { status("connect failed: " + e); }
+};
+</script>
+</body>
+</html>

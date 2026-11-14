@@ -4043,6 +4043,410 @@
     }
    }
   },
+  "/api/api/device/serial/ops": {
+   "post": {
+    "summary": "Push Op",
+    "operationId": "push_op_api_api_device_serial_ops_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "summary": "Get Ops",
+    "operationId": "get_ops_api_api_device_serial_ops_get",
+    "parameters": [
+     {
+      "name": "pop",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 1,
+       "title": "Pop"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/api/device/serial/results": {
+   "post": {
+    "summary": "Post Result",
+    "operationId": "post_result_api_api_device_serial_results_post",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "summary": "Get Results",
+    "operationId": "get_results_api_api_device_serial_results_get",
+    "parameters": [
+     {
+      "name": "n",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 20,
+       "title": "N"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/api/device/serial/console": {
+   "get": {
+    "summary": "Console",
+    "operationId": "console_api_api_device_serial_console_get",
+    "parameters": [
+     {
+      "name": "n",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 150,
+       "title": "N"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/api/device/serial/file": {
+   "get": {
+    "summary": "Proxy File",
+    "description": "Stream a firmware file to the page. The page origin (:8443) differs\nfrom the funnel file host (:10000), and the file server sends no CORS\nheaders, so the page fetches through here. Host allowlisted.",
+    "operationId": "proxy_file_api_api_device_serial_file_get",
+    "parameters": [
+     {
+      "name": "url",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Url"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/device/serial/ops": {
+   "post": {
+    "summary": "Push Op",
+    "operationId": "push_op_api_device_serial_ops_post",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "summary": "Get Ops",
+    "operationId": "get_ops_api_device_serial_ops_get",
+    "parameters": [
+     {
+      "name": "pop",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 1,
+       "title": "Pop"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/device/serial/results": {
+   "post": {
+    "summary": "Post Result",
+    "operationId": "post_result_api_device_serial_results_post",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "additionalProperties": true,
+        "title": "Body"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "summary": "Get Results",
+    "operationId": "get_results_api_device_serial_results_get",
+    "parameters": [
+     {
+      "name": "n",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 20,
+       "title": "N"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/device/serial/console": {
+   "get": {
+    "summary": "Console",
+    "operationId": "console_api_device_serial_console_get",
+    "parameters": [
+     {
+      "name": "n",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "default": 150,
+       "title": "N"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/device/serial/file": {
+   "get": {
+    "summary": "Proxy File",
+    "description": "Stream a firmware file to the page. The page origin (:8443) differs\nfrom the funnel file host (:10000), and the file server sends no CORS\nheaders, so the page fetches through here. Host allowlisted.",
+    "operationId": "proxy_file_api_device_serial_file_get",
+    "parameters": [
+     {
+      "name": "url",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Url"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/batch": {
    "post": {
     "tags": [
