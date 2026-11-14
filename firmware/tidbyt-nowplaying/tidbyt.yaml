@@ -35,16 +35,8 @@ esphome:
       # 1px-stroke/near-monochrome; 2-bit planes cut the DMA framebuffer
       # enough to leave room for I2S1 speaker DMA.
       - "-DFORCE_COLOR_DEPTH=2"
-  on_boot:
-    priority: 600
-    then:
-      - media_player.play_media:
-          id: speaker
-          media_url: "${tonearm_base}/api/audio/stream.mp3?api_key=${tonearm_key}"
-      - media_player.volume_set:
-          id: speaker
-          volume: 20%
-
+  libraries:
+    - "https://github.com/pschatzmann/ESP32-A2DP"
 esp32:
   board: esp32dev
   framework:
@@ -52,6 +44,10 @@ esp32:
 
 external_components:
   - source: github://TillFleisch/ESPHome-HUB75-MatrixDisplayWrapper@main
+  - source:
+      type: local
+      path: external_components
+    components: [tidbyt_a2dp]
 
 logger:
 api:
@@ -80,26 +76,12 @@ captive_portal:                        # first-boot WiFi provisioning portal
 # All text renders from a hand-rolled 3x5 pixel font drawn with 1px
 # strokes — no TTF downloads, no glyph atlases.
 
-# Reserve I2S0 for the HUB75 LCD-DMA display path. ESPHome allocates I2S
-# buses in declaration order; the actual speaker is attached to I2S1.
-i2s_audio:
-  - id: hub75_i2s_reservation
-    # Dummy pins: this hub exists only to reserve I2S0 for the HUB75
-    # LCD-DMA library; it has no speaker child.
-    i2s_lrclk_pin: GPIO16
-    i2s_bclk_pin: GPIO17
-  - id: speaker_i2s1
-    i2s_lrclk_pin: GPIO13
-    i2s_bclk_pin: GPIO12
-
-media_player:
-  - platform: i2s_audio
-    id: speaker
-    name: tonearm speaker
-    i2s_audio_id: speaker_i2s1
-    dac_type: external
-    i2s_dout_pin: GPIO14
-    mode: mono
+# Bluetooth Classic A2DP source: the ESP32 sends the raw PCM relay to the
+# Bose Mini II SoundLink. No onboard I2S speaker and no I2S1 DMA allocation.
+tidbyt_a2dp:
+  id: bose_source
+  device_name: "Bose Mini II SoundLink"
+  url: "${tonearm_base}/api/audio/stream.pcm?api_key=${tonearm_key}"
 
 online_image:
   - id: artwork
@@ -234,7 +216,7 @@ display:
   - platform: hub75_matrix_display
     id: matrix
     driver: FM6126A
-    i2sspeed: HZ_10M
+    i2sspeed: HZ_5M
     clock_phase: false
     latch_blanking: 1
     width: 64
@@ -252,7 +234,7 @@ display:
     LAT_pin: 18
     OE_pin: 27
     CLK_pin: 15
-    update_interval: 16ms
+    update_interval: 50ms            # 20 FPS: calmer, lower bus pressure
     lambda: |-
       // ── 3x5 pixel font, drawn with 1px strokes ──
       // Each glyph: 5 rows x 3 bits (MSB of each row = left column).
@@ -337,13 +319,13 @@ display:
 
 color:
   - id: accent
-    red: 98%
-    green: 18%
-    blue: 28%                  # tonearm's #fa2d48
+    red: 100%
+    green: 100%
+    blue: 100%                 # monochrome display
   - id: dim_white
-    red: 30%
-    green: 30%
-    blue: 30%
+    red: 38%
+    green: 38%
+    blue: 38%
 
 switch:
   - platform: hub75_matrix_display
@@ -356,6 +338,7 @@ number:
   - platform: hub75_matrix_display
     matrix_id: matrix
     name: "Brightness"
+    initial_value: 32
 
 # ── the touch pad: the whole remote ────────────────────────────────────
 esp32_touch:
