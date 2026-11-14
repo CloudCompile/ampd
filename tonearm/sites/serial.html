@@ -124,7 +124,8 @@ async function runOp(op) {
       await new Promise(r => setTimeout(r, 250));
     if (!window.ESPLoader) throw new Error("esptool-js failed to load");
     if (op.op === "chip_id" || op.op === "flash") {
-      await stopReading();                 // free the port for esptool
+      await stopReading();                 // release our reader lock
+      try { await port.close(); } catch (e) {}   // esptool opens it itself
       const transport = new window.Transport(port);
       const shim = {write: s => line(s), writeLine: s => line(s + "\n"),
                     line: s => line(s), clean: () => {}, cleanLine: () => {}};
@@ -158,7 +159,9 @@ async function runOp(op) {
         await report({op, chip, ok: true, bytes: data.length,
                       url: op.url, at: Date.now()});
       }
-      // hand the port back to the console loop
+      // esptool left the port as it left it — close and re-open for logs
+      try { await port.close(); } catch (e) {}
+      await port.open({baudRate: 115200});
       setTimeout(() => { keepReading = true; readLoop(); }, 800);
     } else if (op.op === "reset") {
       const transport = new window.Transport(port);
