@@ -44,7 +44,15 @@ function safeLabel(value: unknown, max: number) {
 function safeActivity(value: unknown) {
   const allowed = new Set(["working", "thinking", "idle", "error", "bash",
     "read", "edit", "write", "search", "webfetch", "play", "other"])
-  const label = safeLabel(value, 20).toLowerCase()
+  const raw = safeLabel(value, 48).toLowerCase()
+  const label = raw.includes("bash") || raw.includes("shell") ? "bash"
+    : raw.includes("read") ? "read"
+    : raw.includes("edit") ? "edit"
+    : raw.includes("write") ? "write"
+    : raw.includes("search") || raw.includes("grep") || raw.includes("glob") ? "search"
+    : raw.includes("webfetch") || raw.includes("fetch") ? "webfetch"
+    : raw.includes("play") ? "play"
+    : raw
   return allowed.has(label) ? label : "other"
 }
 
@@ -80,11 +88,27 @@ export default Plugin.define({
   async setup(ctx) {
     const controller = new AbortController()
     const project = safeLabel(ctx.location.project?.directory?.split("/").pop() || "OpenCode", 18)
+    // Prove the publisher is alive immediately; subsequent server events
+    // replace this with real active/idle tool activity.
+    await publishSession("opencode-monitor", "idle", "plugin online", project)
+    // Startup reconciliation: OpenCode may already have active sessions
+    // before this plugin subscribes to events.
+    try {
+      const result = await ctx.session.list({ limit: 20 })
+      for (const s of (result as any).data || []) {
+        const status = "idle" // event stream below marks active sessions busy
+        void publishSession(s.id, status, status === "busy" ? "working" : "idle", project)
+      }
+    } catch (error) {
+      console.warn("[tonearm] Tidbyt session reconciliation failed:",
+        error instanceof Error ? error.message : error)
+    }
     void (async () => {
       for await (const event of ctx.event.subscribe({ signal: controller.signal })) {
         const e = event as any
         const sessionID = e.data?.sessionID
         if (!sessionID) continue
+        console.info("[tonearm] OpenCode event:", e.type)
         if (e.type === "session.status") {
           const status = e.data?.status?.type || "busy"
           void publishSession(sessionID, status, status === "busy" ? "working" : status, project)
@@ -98,6 +122,10 @@ export default Plugin.define({
         }
       }
     })().catch(error => console.warn("[tonearm] Tidbyt event stream stopped:", error))
+
+    const toolHook = await ctx.tool.hook("execute.before", (event) => {
+      void publishSession(event.sessionID, "busy", event.tool, project)
+    })
 
     // ---- the sidebar's RPC (gui-experimental calls this) ----------------
     // Defensive on purpose: the sidebar is a nicety, the agent tools are
@@ -286,6 +314,9 @@ export default Plugin.define({
         },
       })
     })
-    return () => controller.abort()
+    return async () => {
+      controller.abort()
+      await toolHook.dispose()
+    }
   },
 })

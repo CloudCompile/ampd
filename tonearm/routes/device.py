@@ -60,8 +60,16 @@ def report_tidbyt(body: DeviceReport, request: Request):
 
 @router.get("/tidbyt/status", response_model=DeviceStatusSnapshot)
 def tidbyt_status():
+    now = time.time()
     with _lock:
-        return {"devices": dict(_last), "opencode": dict(_opencode)}
+        sessions = {key: dict(value) for key, value in _opencode.items()}
+        # OpenCode may exit/reload without a final idle event. Never leave a
+        # stale BUSY indicator pinned forever on the Tidbyt.
+        for value in sessions.values():
+            if now - value.get("received_at", 0) > 120:
+                value["state"] = "idle"
+                value["activity"] = "idle"
+        return {"devices": dict(_last), "opencode": sessions}
 
 
 @router.post("/tidbyt/opencode")
