@@ -99,7 +99,7 @@ jobs:
           # and the OBS text overlay (a plain text LINE is the contract).
           # FastAPI's own docs routes (/openapi.json, /docs, /redoc) are
           # framework infrastructure, not part of the API surface.
-          EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/api/playback/artwork-background", "/metrics",
+          EXEMPT_PREFIXES = ("/api/stream", "/api/audio/", "/api/playback/artwork-background", "/api/playback/artwork-tile", "/metrics",
                              "/demo", "/api/amp-api/", "/api/overlay/",
                              "/openapi.json", "/docs", "/redoc",
                              "/ledger", "/radar", "/bench", "/tidbyt",
